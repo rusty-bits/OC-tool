@@ -1,0 +1,7 @@
+log.txt
+config/config.plist
+config/debug-config.plist
+
+EFI-debug/
+Kext_builds/
+UDK/
