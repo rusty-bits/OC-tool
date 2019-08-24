@@ -1,8 +1,16 @@
 # OC-tool
 command line tool for building OpenCore EFI folder
 
-This tool makes certain assumptions, such as:
-xcode, NASM, MTOC etc. required to build EFI files are correctly installed and configured to run from the command line
+Build a working EFI folder based on the list of drivers, kexts and options that your config.plist specifies.
+
+
+
+Note: This tool makes certain assumptions, such as:
+xcode, nasm, mtoc etc. required to build EFI files are correctly installed and configured to run from the command line
+
+---
+
+**Build Process the tool goes through**
 
 When run, the tool will create a log.txt file, git clone any needed packages, update any existing packages, and build the base files
 
@@ -32,7 +40,9 @@ Lastly, if any git updates were done it will list them.
 
 **Usage**: (*release*)
 
-edit the `config/config.plist` file as appropriate, then
+edit `config/config.plist` as appropriate.  
+edit `config/driver.list` with the drivers you want included.  
+edit `config/kext.list` with the kexts you want included, then
 
 `./OpenCore-tool build release`
 
@@ -44,11 +54,9 @@ This will create an `EFI-release` directory with all the required files, this ca
 
 to create a debug version...
 
-create the `config/debug-config.plist` if it doesn't already exist
-
-`cp config/SampleFull.plist config/debug-config.plist`
-
-edit the `config/debug-config.plist` as needed, then
+create the `config/debug-config.plist` if it doesn't already exist, edit as needed.  
+edit `config/driver.list` with the drivers you want included.  
+edit `config/kext.list` with the kexts you want included, then
 
 `./OpenCore-tool build debug`
 
@@ -56,7 +64,7 @@ This will create an `EFI-debug` directory with all the required files, this can 
 
 ---
 
-**Vault:**
+**Vault files:**
 
 The tool will automatically build the required vault files based on the setting of the `RequireVault` field in `config.plist` or `debug-config.plist` and place them in the `EFI/OC` directory
 
