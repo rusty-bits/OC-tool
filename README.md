@@ -1,10 +1,10 @@
 # OC-tool
 command line tool for building OpenCore EFI folder
 
-Build a working EFI folder based on the list of drivers, kexts and options that your config.plist specifies.
-
-
-
+Builds a working EFI folder based on the list of drivers, kexts and options that your config.plist specifies.
+  
+  
+  
 Note: This tool makes certain assumptions, such as:
 xcode, nasm, mtoc etc. required to build EFI files are correctly installed and configured to run from the command line
 
