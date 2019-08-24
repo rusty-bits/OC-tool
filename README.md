@@ -16,6 +16,8 @@ If the config.plist file has RequireVault set then `vault.plist` and `vault.sig`
 
 Lastly, if any git updates were done it will list them.
 
+---
+
 **Installation**:
 
 `git clone https://github.com/rusty-bits/OC-tool`
