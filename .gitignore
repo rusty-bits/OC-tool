@@ -3,5 +3,6 @@ config/config.plist
 config/debug-config.plist
 
 EFI-debug/
+EFI-release/
 Kext_builds/
 UDK/
