@@ -36,7 +36,7 @@ set_up_dirs() {
 check_updates() {
 	echo -e -n "\nChecking${YELLOW} $BASE_DIR ${NC}for git updates ... " >$(tty)
 	cd $BASE_DIR
-	find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
+	find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 	fin
 }
 
@@ -50,7 +50,7 @@ build_drivers() {
 	echo $1 $driver_list >$(tty)
 
 	echo -e -n "Making BaseTools ... " >$(tty)
-	cd $BASE_DIR/UDK
+	cd $BASE_DIR/resources/UDK
 	source edksetup.sh --reconfig
 	make -C BaseTools; fin
 
@@ -72,31 +72,31 @@ build_drivers() {
 		if [ "$1" == "$BASE_DIR/config-$AUDK_CONFIG" ]; then
 			driver_name=`echo $driver|rev|cut -f 1 -d/|rev`
 			echo -e -n "Copying $driver_name into $BUILD_DIR/OC/Drivers ... " >$(tty)
-			cp $BASE_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$driver_name $BASE_DIR/$BUILD_DIR/OC/Drivers; fin
+			cp $BASE_DIR/resources/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$driver_name $BASE_DIR/$BUILD_DIR/OC/Drivers; fin
 		fi
 	done
 }
 
 check_base() {
-	if [ ! -d "UDK" ];then
+	if [ ! -d "resources/UDK" ];then
 		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
-		git clone https://github.com/acidanthera/audk UDK; fin
+		git clone https://github.com/acidanthera/audk resources/UDK; fin
 	fi
 #	CONFIG_DIR="$BASE_DIR/Docs/base"
 	build_drivers "$BASE_DIR/Docs/base"
 
 	echo -e -n "Copying BOOTx64.efi into $BUILD_DIR/BOOT ... " >$(tty)
-	cp $BASE_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BASE_DIR/$BUILD_DIR/BOOT
+	cp $BASE_DIR/resources/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BASE_DIR/$BUILD_DIR/BOOT
 	fin
 
 	echo -e -n "Copying OpenCore.efi into $BUILD_DIR/OC ... " >$(tty)
-	cp $BASE_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/OpenCore.efi $BASE_DIR/$BUILD_DIR/OC
+	cp $BASE_DIR/resources/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/OpenCore.efi $BASE_DIR/$BUILD_DIR/OC
 	fin
 }
 
 config_changed() {
-	cp $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist
-	cp $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist
+	cp $BASE_DIR/resources/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist
+	cp $BASE_DIR/resources/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist
 	echo -e "\n${YELLOW}WARNING:${NC} Sample.plist & SampleFull.plist have been updated\n${RED}Make sure${NC} $BASE_DIR/$CONFIG_PLIST ${RED}is up to date${NC}.\nRun the tool again if you make any changes." >$(tty)
 }
 
@@ -109,8 +109,8 @@ check_config() {
 		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
 		exit 1
 	fi
-	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist || config_changed
-	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist || config_changed
+	cmp --silent $BASE_DIR/resources/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist || config_changed
+	cmp --silent $BASE_DIR/resources/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist || config_changed
 }
 
 build_vault() {
@@ -121,9 +121,9 @@ build_vault() {
 		if ls vault* 1> /dev/null 2>&1; then
 			rm vault.*
 		fi
-		$BASE_DIR/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .
-		make -C $BASE_DIR/UDK/OcSupportPkg/Utilities/RsaTool
-		$BASE_DIR/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
+		$BASE_DIR/resources/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .
+		make -C $BASE_DIR/resources/UDK/OcSupportPkg/Utilities/RsaTool
+		$BASE_DIR/resources/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
 		off=$(($(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d' ')+16))
 		dd of=OpenCore.efi if=vault.pub bs=1 seek=$off count=520 conv=notrunc
 		rm vault.pub
@@ -160,7 +160,7 @@ set_build_type() {
 
 link_lilu() {
 	if [ ! -L "Lilu.kext" ]; then
-		ln -s $BASE_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
+		ln -s $BASE_DIR/resources/Kext_builds/Lilu/build/Debug/Lilu.kext .
 	fi
 }
 
@@ -169,12 +169,12 @@ build_kexts() {
 	while IFS= read -r line; do
 		kext_list+=("$line")
 	done < "$BASE_DIR/config-$AUDK_CONFIG/kext.list"
-	if [ ! -d "$BASE_DIR/Kext_builds" ]; then
-		mkdir $BASE_DIR/Kext_builds
+	if [ ! -d "$BASE_DIR/resources/Kext_builds" ]; then
+		mkdir $BASE_DIR/resources/Kext_builds
 	fi
 	for kext in "${kext_list[@]}"
 	do
-		cd $BASE_DIR/Kext_builds
+		cd $BASE_DIR/resources/Kext_builds
 		git_url=`echo $kext|rev|cut -f 2- -d /|rev`
 		kext_name=`echo $kext|rev|cut -f 1 -d /|rev`
 		kext_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
@@ -191,7 +191,7 @@ build_kexts() {
 		xcodebuild -config $XCODE_CONFIG build
 		fin
 		echo -e -n "Copying $kext_name into $BUILD_DIR/OC/Kexts ... " >$(tty)
-		cp -r $BASE_DIR/Kext_builds/$kext_pkg/build/$XCODE_CONFIG/$kext_name $BASE_DIR/$BUILD_DIR/OC/Kexts
+		cp -r $BASE_DIR/resources/Kext_builds/$kext_pkg/build/$XCODE_CONFIG/$kext_name $BASE_DIR/$BUILD_DIR/OC/Kexts
 		fin
 	done
 }

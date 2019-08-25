@@ -6,5 +6,5 @@ config-RELEASE/config.plist
 
 EFI-debug/*
 EFI-release/*
-Kext_builds/*
-UDK/*
+resources/Kext_builds/*
+resources/UDK/*
