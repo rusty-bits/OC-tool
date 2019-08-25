@@ -27,7 +27,7 @@ set_up_dirs() {
 		rm -Rf $BUILD_DIR; fin
 	fi
 
-	echo -e -n "Creating $BUILD_DIR directory ... " >$(tty)
+	echo -e -n "Creating new $BUILD_DIR ... " >$(tty)
 	mkdir -p $BUILD_DIR/BOOT
 	mkdir -p $BUILD_DIR/OC/Kexts
 	mkdir -p $BUILD_DIR/OC/Drivers
@@ -216,9 +216,20 @@ case $ARG1 in
 		;;
 esac
 
-#****** Start build *************
-#start logging
-echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}\n"
+missing() {
+	echo -e "${RED}ERROR:${NC} $1 not found, install it to continue"
+	exit 1
+}
+
+#****** Check Build Environment ***
+echo -e "\n${GREEN}Checking if required tools are available${NC} ..."
+which xcodebuild||missing "xcodebuild"
+which nasm||missing "nasm"
+which mtoc||missing "mtoc"
+fin
+
+#****** Start build ***************
+echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}\n" #start logging
 
 exec 6>&1
 exec > $LOGFILE
