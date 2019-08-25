@@ -47,8 +47,6 @@ build_drivers() {
 		driver_list+=("$line")
 	done < "$1/driver.list"
 
-	echo $1 $driver_list >$(tty)
-
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $BASE_DIR/resources/UDK
 	source edksetup.sh --reconfig
