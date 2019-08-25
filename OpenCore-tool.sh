@@ -5,7 +5,7 @@ shopt -s extglob
 
 BASE_DIR=`pwd`
 
-LOGFILE="build.log"
+LOGFILE="tool.log"
 
 ARG1=$1
 ARG2=$2
@@ -41,15 +41,17 @@ check_updates() {
 }
 
 build_drivers() {
-	driver_list=()
+	driver_list=() #have this read drivers from conf|g.plist
 	built=()
 	while IFS= read -r line; do
 		driver_list+=("$line")
-	done < "$CONFIG_DIR/driver.list"
+	done < "$1/driver.list"
+
+	echo $1 $driver_list >$(tty)
 
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $BASE_DIR/UDK
-	source edksetup.sh
+	source edksetup.sh --reconfig
 	make -C BaseTools; fin
 
 	for driver in "${driver_list[@]}"
@@ -67,7 +69,7 @@ build_drivers() {
 				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
 			fi
 		fi
-		if [ "$CONFIG_DIR" == "$BASE_DIR/Docs" ]; then
+		if [ "$1" == "$BASE_DIR/config-$AUDK_CONFIG" ]; then
 			driver_name=`echo $driver|rev|cut -f 1 -d/|rev`
 			echo -e -n "Copying $driver_name into $BUILD_DIR/OC/Drivers ... " >$(tty)
 			cp $BASE_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$driver_name $BASE_DIR/$BUILD_DIR/OC/Drivers; fin
@@ -80,8 +82,8 @@ check_base() {
 		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
 		git clone https://github.com/acidanthera/audk UDK; fin
 	fi
-	CONFIG_DIR="$BASE_DIR/Docs/base"
-	build_drivers
+#	CONFIG_DIR="$BASE_DIR/Docs/base"
+	build_drivers "$BASE_DIR/Docs/base"
 
 	echo -e -n "Copying BOOTx64.efi into $BUILD_DIR/BOOT ... " >$(tty)
 	cp $BASE_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BASE_DIR/$BUILD_DIR/BOOT
@@ -139,7 +141,7 @@ set_build_type() {
 			XCODE_CONFIG="Debug"
 			AUDK_CONFIG="DEBUG"
 			AUDK_BUILD_DIR="DEBUG_XCODE5"
-			CONFIG_PLIST="debug-config.plist"
+			CONFIG_PLIST="config-DEBUG/config.plist"
 			;;
 		r?(elease) )
 			echo -e "\n${GREEN}Setting up ${YELLOW}RELEASE${GREEN} environment${NC}" >$(tty)
@@ -147,7 +149,7 @@ set_build_type() {
 			XCODE_CONFIG="Release"
 			AUDK_CONFIG="RELEASE"
 			AUDK_BUILD_DIR="RELEASE_XCODE5"
-			CONFIG_PLIST="config.plist"
+			CONFIG_PLIST="config-RELEASE/config.plist"
 			;;
 		*)
 			echo -e "usage: (b)uild (r)elease, (b)uild (d)ebug" >$(tty)
@@ -163,10 +165,10 @@ link_lilu() {
 }
 
 build_kexts() {
-	kext_list=()
+	kext_list=() #read these from config.plist
 	while IFS= read -r line; do
 		kext_list+=("$line")
-	done < "$BASE_DIR/Docs/kext.list"
+	done < "$BASE_DIR/config-$AUDK_CONFIG/kext.list"
 	if [ ! -d "$BASE_DIR/Kext_builds" ]; then
 		mkdir $BASE_DIR/Kext_builds
 	fi
@@ -230,8 +232,7 @@ echo -e "\n${GREEN}Setting up base files/drivers${NC}" >$(tty)
 check_base
 
 echo -e "\n${GREEN}Setting up user drivers${NC}" >$(tty)
-CONFIG_DIR="$BASE_DIR/Docs"
-build_drivers
+build_drivers "$BASE_DIR/config-$AUDK_CONFIG"
 
 echo -e "\n${GREEN}Setting up user kexts${NC}" >$(tty)
 build_kexts

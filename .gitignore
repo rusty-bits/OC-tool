@@ -1,8 +1,8 @@
 .DS_Store
 
-log.txt
-config/config.plist
-config/debug-config.plist
+tool.log
+config-DEBUG/config.plist
+config-RELEASE/config.plist
 
 EFI-debug/*
 EFI-release/*
