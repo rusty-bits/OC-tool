@@ -211,7 +211,7 @@ case $ARG1 in
 		exit 0
 		;;
 	*)
-		echo -e "usage: OpenCore-tool\t(b)uild (r)elease,\n\t\t\t(b)uild (d)ebug,\n\t\t\t(v)ault (r)elease,\n\t\t\t(v)ault (d)ebug,\n\t\t\t(u)pdate" >$(tty)
+		echo -e "usage: OpenCore-tool.sh\t(b)uild (r)elease,\n\t\t\t(b)uild (d)ebug,\n\t\t\t(v)ault (r)elease,\n\t\t\t(v)ault (d)ebug,\n\t\t\t(u)pdate" >$(tty)
 		exit 0
 		;;
 esac
