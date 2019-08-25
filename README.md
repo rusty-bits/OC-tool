@@ -56,7 +56,7 @@ This will create an `EFI-release` directory with all the required files, this ca
 
 to create a debug version...
 
-create the `config-DEBUG/config.plist` if it doesn't already exist, edit as needed.  
+edit `config-DEBUG/config.plist` as needed.  
 edit `config-DEBUG/driver.list` with the drivers you want included.  
 edit `config-DEBUG/kext.list` with the kexts you want included, then
 
