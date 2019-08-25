@@ -48,8 +48,6 @@ build_drivers() {
 		driver_list+=("$line")
 	done < "$1/driver.list"
 
-	echo $1 $driver_list >$(tty)
-
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $RES_DIR/UDK
 	source edksetup.sh --reconfig
@@ -165,10 +163,25 @@ link_lilu() {
 }
 
 build_kexts() {
-	kext_list=() #todo-read these from config.plist
-	while IFS= read -r line; do
-		kext_list+=("$line")
-	done < "$BASE_DIR/config-$AUDK_CONFIG/kext.list"
+#	kext_list=() #todo-read these from config.plist
+#	while IFS= read -r line; do
+#		kext_list+=("$line")
+#	done < "$BASE_DIR/config-$AUDK_CONFIG/kext.list"
+	count=0
+	BundlePath="start"
+	while [ "$BundlePath" != "" ]
+	do
+		BundlePath=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:BundlePath" $BASE_DIR/$CONFIG_PLIST`||BundlePath=""
+		if [ "$BundlePath" != "" ]; then
+			Enabled=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:Enabled" $BASE_DIR/$CONFIG_PLIST`
+			echo -e "$BundlePath   $Enabled" >$(tty)
+		fi
+	count=$(( $count + 1))
+	done
+	fin
+	exit 0
+
+
 	if [ ! -d "$RES_DIR/Kext_builds" ]; then
 		mkdir $RES_DIR/Kext_builds
 	fi
