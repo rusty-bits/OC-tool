@@ -5,7 +5,7 @@ shopt -s extglob
 
 BASE_DIR=`pwd`
 
-LOGFILE="log.txt"
+LOGFILE="build.log"
 
 ARG1=$1
 ARG2=$2
@@ -36,23 +36,23 @@ set_up_dirs() {
 check_updates() {
 	echo -e -n "\nChecking${YELLOW} $BASE_DIR ${NC}for git updates ... " >$(tty)
 	cd $BASE_DIR
-	find . -maxdepth 3 -name .git -type d | rev | cut -c 6- | rev | xargs -I {} git -C {} pull
+	find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 	fin
 }
 
 build_drivers() {
-	arr=()
+	driver_list=()
 	built=()
 	while IFS= read -r line; do
-		arr+=("$line")
-	done < "$BASE_DIR/$CONFIG_DIR/driver.list"
+		driver_list+=("$line")
+	done < "$CONFIG_DIR/driver.list"
 
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $BASE_DIR/UDK
 	source edksetup.sh
 	make -C BaseTools; fin
 
-	for driver in "${arr[@]}"
+	for driver in "${driver_list[@]}"
 	do
 		git_url=`echo $driver|rev|cut -f 2- -d /|rev`
 		driver_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
@@ -67,7 +67,7 @@ build_drivers() {
 				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
 			fi
 		fi
-		if [ "$CONFIG_DIR" == "config" ]; then
+		if [ "$CONFIG_DIR" == "$BASE_DIR/Docs" ]; then
 			driver_name=`echo $driver|rev|cut -f 1 -d/|rev`
 			echo -e -n "Copying $driver_name into $BUILD_DIR/OC/Drivers ... " >$(tty)
 			cp $BASE_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$driver_name $BASE_DIR/$BUILD_DIR/OC/Drivers; fin
@@ -80,7 +80,7 @@ check_base() {
 		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
 		git clone https://github.com/acidanthera/audk UDK; fin
 	fi
-	CONFIG_DIR="config/base"
+	CONFIG_DIR="$BASE_DIR/Docs/base"
 	build_drivers
 
 	echo -e -n "Copying BOOTx64.efi into $BUILD_DIR/BOOT ... " >$(tty)
@@ -93,26 +93,26 @@ check_base() {
 }
 
 config_changed() {
-	cp $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/config/Sample.plist
-	cp $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/config/SampleFull.plist
-	echo -e "\n${YELLOW}WARNING:${NC} Sample.plist & SampleFull.plist have been updated\n${RED}Make sure${NC} $BASE_DIR/config/$CONFIG_PLIST ${RED}is up to date${NC}.\nRun the tool again if you make any changes." >$(tty)
+	cp $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist
+	cp $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist
+	echo -e "\n${YELLOW}WARNING:${NC} Sample.plist & SampleFull.plist have been updated\n${RED}Make sure${NC} $BASE_DIR/$CONFIG_PLIST ${RED}is up to date${NC}.\nRun the tool again if you make any changes." >$(tty)
 }
 
 check_config() {
-	if [ -f "$BASE_DIR/config/$CONFIG_PLIST" ]; then
+	if [ -f "$BASE_DIR/$CONFIG_PLIST" ]; then
 		echo -e -n "Copying $CONFIG_PLIST into $BUILD_DIR/OC ... " >$(tty)
-		cp $BASE_DIR/config/$CONFIG_PLIST $BASE_DIR/$BUILD_DIR/OC/config.plist
+		cp $BASE_DIR/$CONFIG_PLIST $BASE_DIR/$BUILD_DIR/OC/config.plist
 		fin
 	else
-		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/config/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
+		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
 		exit 1
 	fi
-	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/config/Sample.plist || config_changed
-	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/config/SampleFull.plist || config_changed
+	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist || config_changed
+	cmp --silent $BASE_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist || config_changed
 }
 
 build_vault() {
-	use_vault=`/usr/libexec/PlistBuddy -c "print :Misc:Security:RequireVault" $BASE_DIR/config/$CONFIG_PLIST`||use_vault="false"
+	use_vault=`/usr/libexec/PlistBuddy -c "print :Misc:Security:RequireVault" $BASE_DIR/$CONFIG_PLIST`||use_vault="false"
 	if [ "$use_vault" == "true" ]; then
 		echo -e -n "\nBuilding vault files for $BUILD_DIR ... " >$(tty)
 		cd $BASE_DIR/$BUILD_DIR/OC
@@ -127,7 +127,7 @@ build_vault() {
 		rm vault.pub
 		fin
 	else
-		echo -e "\nRequireVault not set in $BASE_DIR/config/$CONFIG_PLIST\nskipping vault" >$(tty)
+		echo -e "\nRequireVault not set in $BASE_DIR/$CONFIG_PLIST\nskipping vault" >$(tty)
 	fi
 }
 
@@ -166,7 +166,7 @@ build_kexts() {
 	kext_list=()
 	while IFS= read -r line; do
 		kext_list+=("$line")
-	done < "$BASE_DIR/config/kext.list"
+	done < "$BASE_DIR/Docs/kext.list"
 	if [ ! -d "$BASE_DIR/Kext_builds" ]; then
 		mkdir $BASE_DIR/Kext_builds
 	fi
@@ -230,7 +230,7 @@ echo -e "\n${GREEN}Setting up base files/drivers${NC}" >$(tty)
 check_base
 
 echo -e "\n${GREEN}Setting up user drivers${NC}" >$(tty)
-CONFIG_DIR="config"
+CONFIG_DIR="$BASE_DIR/Docs"
 build_drivers
 
 echo -e "\n${GREEN}Setting up user kexts${NC}" >$(tty)
@@ -246,5 +246,5 @@ exec 1>&6 6>&- 2>&1 #stop logfile
 echo -e "\n${GREEN}Finished building ${YELLOW}$BUILD_DIR${NC}"
 
 echo -e "\n${GREEN}Any git updates will appear below ...${NC}"
-cat $BASE_DIR/log.txt | grep github || echo -e "No git updates were found"
+cat $BASE_DIR/$LOGFILE | grep github || echo -e "No git updates were found"
 fin
