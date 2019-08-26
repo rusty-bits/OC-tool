@@ -68,11 +68,7 @@ build_drivers() {
 	built=()
 	while IFS= read -r line; do
 		driver_list+=("$line")
-<<<<<<< HEAD
-	done < "$1/driver.list"
-=======
 	done < "$BASE_DIR/Docs/base/driver.list"
->>>>>>> auto
 
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $RES_DIR/UDK
