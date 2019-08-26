@@ -79,5 +79,5 @@ The tool will automatically build the required vault files based on the setting 
 
 **Notes:**
 
-still a work in progress, I think the code is quite cluttered, but I'm working on it
+still a work in progress, I think the code is quite cluttered, but I'm working on it   
 planning to add the Tools folder and ACPI folder when I get around to it
