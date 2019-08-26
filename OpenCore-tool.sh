@@ -42,20 +42,25 @@ check_updates() {
 }
 
 build_drivers() {
-	driver_list=() #todo-have this read drivers from config.plist
+	echo -e "\n${GREEN}Setting up EFI/BOOT and EFI/OC${NC}" >$(tty)
+	if [ ! -d "resources/UDK" ];then
+		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
+		git clone https://github.com/acidanthera/audk resources/UDK; fin
+	fi
+	driver_list=()
 	built=()
 	while IFS= read -r line; do
 		driver_list+=("$line")
-	done < "$1/driver.list"
+	done < "$BASE_DIR/Docs/base/driver.list"
 
 	echo -e -n "Making BaseTools ... " >$(tty)
 	cd $RES_DIR/UDK
 	source edksetup.sh --reconfig
 	make -C BaseTools; fin
 
-	for driver in "${driver_list[@]}"
+	for Driver in "${driver_list[@]}"
 	do
-		git_url=`echo $driver|rev|cut -f 2- -d /|rev`
+		git_url=`echo $Driver|rev|cut -f 2- -d /|rev`
 		driver_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
 		if [ ! -d "$driver_pkg" ]; then
 			echo -e -n "Cloning $git_url ... " >$(tty)
@@ -68,20 +73,7 @@ build_drivers() {
 				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
 			fi
 		fi
-		if [ "$1" == "$BASE_DIR/config-$AUDK_CONFIG" ]; then
-			driver_name=`echo $driver|rev|cut -f 1 -d/|rev`
-			echo -e -n "Copying $driver_name into $BUILD_DIR/OC/Drivers ... " >$(tty)
-			cp $RES_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$driver_name $BUILD_DIR/OC/Drivers; fin
-		fi
 	done
-}
-
-check_base() {
-	if [ ! -d "resources/UDK" ];then
-		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
-		git clone https://github.com/acidanthera/audk resources/UDK; fin
-	fi
-	build_drivers "$BASE_DIR/Docs/base"
 
 	echo -e -n "Copying BOOTx64.efi into $BUILD_DIR/BOOT ... " >$(tty)
 	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BUILD_DIR/BOOT
@@ -90,6 +82,38 @@ check_base() {
 	echo -e -n "Copying OpenCore.efi into $BUILD_DIR/OC ... " >$(tty)
 	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/OpenCore.efi $BUILD_DIR/OC
 	fin
+
+	echo -e "\n${GREEN}Setting up EFI/OC/Drivers${NC}" >$(tty)
+	count=0
+	Driver="start"
+	while [ "$Driver" != "" ]
+	do
+		Driver=`/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$count" $BASE_DIR/$CONFIG_PLIST`||Driver=""
+		if [ "$Driver" != "" ]; then
+			git_url=`/usr/libexec/PlistBuddy -c "print :$Driver" $BASE_DIR/Docs/repo.plist`||git_url=""
+			if [ "$git_url" != "" ]; then
+				driver_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
+				if [ ! -d "$driver_pkg" ]; then
+					echo -e -n "Cloning $git_url ..." >$(tty)
+					git clone $git_url
+					fin
+				fi
+				if [[ ! " ${built[@]} " =~ " ${driver_pkg} " ]]; then
+					built+=("$driver_pkg")
+					if [ -f "$driver_pkg/$driver_pkg.dsc" ]; then
+						echo -e -n "Building $driver_pkg ... " >$(tty)
+						build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
+					fi
+				fi
+				echo -e -n "Copying $Driver into $BUILD_DIR/OC/Drivers ... " >$(tty)
+				cp $RES_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$Driver $BUILD_DIR/OC/Drivers; fin
+			else
+				echo -e "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/driver.plist" >$(tty)
+				exit 1
+			fi
+		fi
+	count=$(( $count + 1))
+	done
 }
 
 config_changed() {
@@ -99,6 +123,7 @@ config_changed() {
 }
 
 check_config() {
+	echo -e "\n${GREEN}Setting up user config${NC}" >$(tty)
 	if [ -f "$BASE_DIR/$CONFIG_PLIST" ]; then
 		echo -e -n "Copying $CONFIG_PLIST into $BUILD_DIR/OC ... " >$(tty)
 		cp $BASE_DIR/$CONFIG_PLIST $BUILD_DIR/OC/config.plist
@@ -107,8 +132,8 @@ check_config() {
 		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
 		exit 1
 	fi
-	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist || config_changed
-	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist || config_changed
+	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
+	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed
 }
 
 build_vault() {
@@ -163,10 +188,11 @@ link_lilu() {
 }
 
 build_kexts() {
-#	kext_list=() #todo-read these from config.plist
-#	while IFS= read -r line; do
-#		kext_list+=("$line")
-#	done < "$BASE_DIR/config-$AUDK_CONFIG/kext.list"
+	echo -e "\n${GREEN}Setting up EFI/OC/Kexts${NC}" >$(tty)
+	if [ ! -d "$RES_DIR/Kext_builds" ]; then
+		mkdir $RES_DIR/Kext_builds
+	fi
+
 	count=0
 	BundlePath="start"
 	while [ "$BundlePath" != "" ]
@@ -174,38 +200,33 @@ build_kexts() {
 		BundlePath=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:BundlePath" $BASE_DIR/$CONFIG_PLIST`||BundlePath=""
 		if [ "$BundlePath" != "" ]; then
 			Enabled=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:Enabled" $BASE_DIR/$CONFIG_PLIST`
-			echo -e "$BundlePath   $Enabled" >$(tty)
+			if [ "$Enabled" == "true" ]; then
+				git_url=`/usr/libexec/PlistBuddy -c "print :$BundlePath" $BASE_DIR/Docs/repo.plist`||git_url=""
+				if [ "$git_url" != "" ]; then
+					cd $RES_DIR/Kext_builds
+					kext_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
+					if [ ! -d "$kext_pkg" ]; then
+						echo -e -n "Cloning $git_url ..." >$(tty)
+						git clone $git_url
+						fin
+					fi
+					cd $kext_pkg
+					echo -e -n "Building $kext_pkg ... " >$(tty)
+					if [ "$kext_pkg" != "Lilu" ]; then
+						link_lilu
+					fi
+					xcodebuild -config $XCODE_CONFIG build
+					fin
+					echo -e -n "Copying $BundlePath into $BUILD_DIR/OC/Kexts ... " >$(tty)
+					cp -r $RES_DIR/Kext_builds/$kext_pkg/build/$XCODE_CONFIG/$BundlePath $BUILD_DIR/OC/Kexts
+					fin
+				else
+					echo -e "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist" >$(tty)
+					exit 1
+				fi
+			fi
 		fi
 	count=$(( $count + 1))
-	done
-	fin
-	exit 0
-
-
-	if [ ! -d "$RES_DIR/Kext_builds" ]; then
-		mkdir $RES_DIR/Kext_builds
-	fi
-	for kext in "${kext_list[@]}"
-	do
-		cd $RES_DIR/Kext_builds
-		git_url=`echo $kext|rev|cut -f 2- -d /|rev`
-		kext_name=`echo $kext|rev|cut -f 1 -d /|rev`
-		kext_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
-		if [ ! -d "$kext_pkg" ]; then
-			echo -e -n "Cloning $git_url ... " >$(tty)
-			git clone $git_url
-			fin
-		fi
-		cd $kext_pkg
-		echo -e -n "Building $kext_pkg ... " >$(tty)
-		if [ "$kext_pkg" != "Lilu" ]; then
-			link_lilu
-		fi
-		xcodebuild -config $XCODE_CONFIG build
-		fin
-		echo -e -n "Copying $kext_name into $BUILD_DIR/OC/Kexts ... " >$(tty)
-		cp -r $RES_DIR/Kext_builds/$kext_pkg/build/$XCODE_CONFIG/$kext_name $BUILD_DIR/OC/Kexts
-		fin
 	done
 }
 
@@ -230,38 +251,32 @@ case $ARG1 in
 esac
 
 missing() {
-	echo -e "${RED}ERROR:${NC} $1 not found, install it to continue"
+	echo -e "\n${RED}ERROR:${NC} $1 not found, install it to continue"
 	exit 1
 }
 
-#****** Check Build Environment ***
-echo -e "\n${GREEN}Checking if required tools are available${NC} ..."
-which xcodebuild||missing "xcodebuild"
-which nasm||missing "nasm"
-which mtoc||missing "mtoc"
-fin
-
 #****** Start build ***************
-echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}\n" #start logging
+echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}" #start logging
 
 exec 6>&1
 exec > $LOGFILE
 exec 2>&1
 
+#****** Check Build Environment ***
+echo -e -n "\nChecking if required tools are available ..." >$(tty)
+which xcodebuild||missing "xcodebuild"
+which nasm||missing "nasm"
+which mtoc||missing "mtoc"
+fin
+
 set_up_dirs
 
 check_updates
 
-echo -e "\n${GREEN}Setting up base files/drivers${NC}" >$(tty)
-check_base
+build_drivers
 
-echo -e "\n${GREEN}Setting up user drivers${NC}" >$(tty)
-build_drivers "$BASE_DIR/config-$AUDK_CONFIG"
-
-echo -e "\n${GREEN}Setting up user kexts${NC}" >$(tty)
 build_kexts
 
-echo -e "\n${GREEN}Setting up user config${NC}" >$(tty)
 check_config
 
 build_vault
