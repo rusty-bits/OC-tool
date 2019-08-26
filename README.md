@@ -67,6 +67,10 @@ The tool will automatically build the required vault files based on the setting 
 
 `base/driver.list` are the base files needed for OpenCore.efi to be built
 
+`repo.plist` is a plist linking efi and kext files to their repositories
+
+---
+
 **Descriprion of files in `config-DEBUG` and `config-RELEASE` directories:**
 
 `config.plist` is the config file that gets copied to `EFI/OC/config.plist` . 
