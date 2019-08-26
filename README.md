@@ -2,9 +2,7 @@
 command line tool for building OpenCore EFI folder
 
 Builds a working EFI folder based on the list of drivers, kexts and options that your config.plist specifies.
-  
-  
-  
+
 Note: This tool makes certain assumptions, such as:
 xcode, nasm, mtoc etc. required to build EFI files are correctly installed and configured to run from the command line
 
@@ -12,17 +10,13 @@ xcode, nasm, mtoc etc. required to build EFI files are correctly installed and c
 
 **Build Process the tool goes through**
 
-When run, the tool will create a tool.log file, git clone any needed packages, update any existing packages, and build the base files
+When run, the tool will create a tool.log file, clone any needed packages, update any existing packages, and build and copy the base files
 
-Next, it will git clone or update any required driver packages, build the additional drivers specified in the `driver.list` file and copy them to the new `EFI-xxxxx/OC/Drivers` directory  
-*this is being updated to read the drivers from config.plist automatically, but it's not done yet*
+Next, it will clone or update any required driver packages based on the UEFI/Drivers section of `config.plist`, then build  and copy them to `EFI/OC/Drivers`  
 
-It will then do the same for the kests in the `kext.list` file and copy them to the new `EFI-xxxxx/OC/Kexts` directory  
-*also being made automatic from the config.plist, but not done yet*
+It then does the same for the kexts based on the Kernel/Add section of `config.plist` and copies them to `EFI/OC/Kexts`
 
-The appropriate config.plist will be copied to `EFI-xxxx/OC/config.plist`
-
-If the config.plist file has RequireVault set then `vault.plist` and `vault.sig` will be created automatically, and `OpenCore.efi` will be updated
+If config.plist file has RequireVault set then `vault.plist` and `vault.sig` will be created automatically, and `OpenCore.efi` will be updated
 
 Lastly, if any git updates were pulled it will list them.
 
@@ -30,10 +24,10 @@ Lastly, if any git updates were pulled it will list them.
 
 **Installation**:
 
-`git clone https://github.com/rusty-bits/OC-tool`
-
+`git clone https://github.com/rusty-bits/OC-tool`   
 `cd OC-tool`
 
+then place your config.plist file in the appropriate directory, eg.  
 `cp Docs/SampleFull.plist config-RELEASE/config.plist` for making a release version
 
 `cp Docs/SampleFull.plist config-DEBUG/config.plist` for making a debug version
@@ -43,10 +37,8 @@ Lastly, if any git updates were pulled it will list them.
 **Usage**: (*release*)
 
 edit `config-RELEASE/config.plist` as appropriate.  
-edit `config-RELEASE/driver.list` with the drivers you want included.  
-edit `config-RELEASE/kext.list` with the kexts you want included, then
 
-`./OpenCore-tool build release`
+`./OpenCore-tool.sh build release`
 
 This will create an `EFI-release` directory with all the required files, this can be copied to an EFI partition and renamed `EFI` if desired
 
@@ -57,10 +49,8 @@ This will create an `EFI-release` directory with all the required files, this ca
 to create a debug version...
 
 edit `config-DEBUG/config.plist` as needed.  
-edit `config-DEBUG/driver.list` with the drivers you want included.  
-edit `config-DEBUG/kext.list` with the kexts you want included, then
 
-`./OpenCore-tool build debug`
+`./OpenCore-tool.sh build debug`
 
 This will create an `EFI-debug` directory with all the required files, this can be copied to an EFI partition and renamed `EFI` if desired
 
@@ -77,26 +67,17 @@ The tool will automatically build the required vault files based on the setting 
 
 `base/driver.list` are the base files needed for OpenCore.efi to be built
 
+`repo.plist` is a plist linking efi and kext files to their repositories
+
+---
+
 **Descriprion of files in `config-DEBUG` and `config-RELEASE` directories:**
 
-`driver.list` are the drivers that will be built and copied into the `EFI/OC/Drivers` directory
-
-`kext.list` are the kexts that will be built and copied into the `EFI/OC/Kexts` directory
-
-`config.plist` is the config file that gets copied to `EFI/OC/config.plist`  
-*the RequireVault setting will have the tool automatically create the vault files  
-eventually the drivers and kexts will automatically be built based on the config.plist settings, but that is a work in progress*
+`config.plist` is the config file that gets copied to `EFI/OC/config.plist` . 
 
 ---
 
 **Notes:**
 
-These are the drivers and kexts that work for my build, you will likely need to edit `driver.list` and `kext.list` for your specific hardware
-
-For now, it is important to keep the format of the .list files as
-
-`https://github.com/<github-user>/<repository>/<driver-name>.efi`
-
-`https://github.com/<github-user>/<repository>/<kext-name>.kext`
-
-since the tool parses this for what to build and copy to the new EFI
+still a work in progress, I think the code is quite cluttered, but I'm working on it   
+planning to add the Tools folder and ACPI folder when I get around to it

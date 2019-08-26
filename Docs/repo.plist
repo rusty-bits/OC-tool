@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AirportBrcmFixup.kext</key>
+	<string>https://github.com/acidanthera/AirportBrcmFixup</string>
+	<key>ApfsDriverLoader.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>AppleALC.kext</key>
+	<string>https://github.com/acidanthera/AppleALC</string>
+	<key>BT4LEContinuityFixup.kext</key>
+	<string>https://github.com/acidanthera/BT4LEContinuityFixup</string>
+	<key>CPUFriend.kext</key>
+	<string>https://github.com/acidanthera/CPUFriend</string>
+	<key>FwRuntimeServices.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>HibernationFixup.kext</key>
+	<string>https://github.com/acidanthera/HibernationFixup</string>
+	<key>IntelMausi.kext</key>
+	<string>https://github.com/acidanthera/IntelMausi</string>
+	<key>Lilu.kext</key>
+	<string>https://github.com/acidanthera/Lilu</string>
+	<key>VirtualSMC.kext</key>
+	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>VirtualSmc.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>VoodooPS2Controller.kext</key>
+	<string>https://github.com/acidanthera/VoodooPS2</string>
+	<key>WhateverGreen.kext</key>
+	<string>https://github.com/acidanthera/WhateverGreen</string>
+</dict>
+</plist>
