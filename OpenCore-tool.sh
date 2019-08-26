@@ -34,6 +34,23 @@ set_up_dirs() {
 	fin
 }
 
+missing() {
+	echo -e "\n${RED}ERROR:${NC} $1 not found, install it to continue"
+	exit 1
+}
+
+check_requirements() {
+	echo -e -n "\nChecking if required tools and files exist ..." >$(tty)
+	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
+		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
+		exit 1
+	fi
+	which xcodebuild||missing "xcodebuild"
+	which nasm||missing "nasm"
+	which mtoc||missing "mtoc"
+	fin
+}
+
 check_updates() {
 	echo -e -n "\nChecking${YELLOW} $BASE_DIR ${NC}for git updates ... " >$(tty)
 	cd $BASE_DIR
@@ -75,12 +92,16 @@ build_drivers() {
 		fi
 	done
 
-	echo -e -n "Copying BOOTx64.efi into $BUILD_DIR/BOOT ... " >$(tty)
+	echo -e -n "Copying BOOTx64.efi into EFI/BOOT ... " >$(tty)
 	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BUILD_DIR/BOOT
 	fin
 
-	echo -e -n "Copying OpenCore.efi into $BUILD_DIR/OC ... " >$(tty)
+	echo -e -n "Copying OpenCore.efi into EFI/OC ... " >$(tty)
 	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/OpenCore.efi $BUILD_DIR/OC
+	fin
+
+	echo -e -n "Copying $CONFIG_PLIST into EFI/OC ... " >$(tty)
+	cp $BASE_DIR/$CONFIG_PLIST $BUILD_DIR/OC/config.plist
 	fin
 
 	echo -e "\n${GREEN}Setting up EFI/OC/Drivers${NC}" >$(tty)
@@ -123,15 +144,7 @@ config_changed() {
 }
 
 check_config() {
-	echo -e "\n${GREEN}Setting up user config${NC}" >$(tty)
-	if [ -f "$BASE_DIR/$CONFIG_PLIST" ]; then
-		echo -e -n "Copying $CONFIG_PLIST into $BUILD_DIR/OC ... " >$(tty)
-		cp $BASE_DIR/$CONFIG_PLIST $BUILD_DIR/OC/config.plist
-		fin
-	else
-		echo -e "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again." >$(tty)
-		exit 1
-	fi
+	echo -e "\nChecking if config.plist format has changed" >$(tty)
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed
 }
@@ -250,24 +263,14 @@ case $ARG1 in
 		;;
 esac
 
-missing() {
-	echo -e "\n${RED}ERROR:${NC} $1 not found, install it to continue"
-	exit 1
-}
-
 #****** Start build ***************
-echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}" #start logging
+echo -e "\n${YELLOW}Writing log to $BASE_DIR/$LOGFILE${NC}"
 
-exec 6>&1
+exec 6>&1 #start logging
 exec > $LOGFILE
 exec 2>&1
 
-#****** Check Build Environment ***
-echo -e -n "\nChecking if required tools are available ..." >$(tty)
-which xcodebuild||missing "xcodebuild"
-which nasm||missing "nasm"
-which mtoc||missing "mtoc"
-fin
+check_requirements
 
 set_up_dirs
 
