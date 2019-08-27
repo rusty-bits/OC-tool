@@ -28,19 +28,19 @@ Lastly, if any git updates were pulled it will list them.
 `cd OC-tool`
 
 then place your config.plist file in the appropriate directory, eg.  
-`cp Docs/SampleFull.plist config-RELEASE/config.plist` for making a release version
+`cp Docs/SampleFull.plist RELEASE/config.plist` for making a release version
 
-`cp Docs/SampleFull.plist config-DEBUG/config.plist` for making a debug version
+`cp Docs/SampleFull.plist DEBUG/config.plist` for making a debug version
 
 ---
 
 **Usage**: (*release*)
 
-edit `config-RELEASE/config.plist` as appropriate.  
+edit `RELEASE/config.plist` as appropriate.  
 
 `./OpenCore-tool.sh build release`
 
-This will create an `EFI-release` directory with all the required files, this can be copied to an EFI partition and renamed `EFI` if desired
+This will create a `RELEASE/EFI` directory with all the required files, this can be copied to an EFI partition
 
 ---
 
@@ -48,11 +48,11 @@ This will create an `EFI-release` directory with all the required files, this ca
 
 to create a debug version...
 
-edit `config-DEBUG/config.plist` as needed.  
+edit `DEBUG/config.plist` as needed.  
 
 `./OpenCore-tool.sh build debug`
 
-This will create an `EFI-debug` directory with all the required files, this can be copied to an EFI partition and renamed `EFI` if desired
+This will create a `DEBUG/EFI` directory with all the required files, this can be copied to an EFI partition
 
 ---
 
@@ -63,17 +63,15 @@ The tool will automatically build the required vault files based on the setting 
 ---
 
 **Description of files in `Docs` directory:**
-`Sample.plist` and `SampleFull.plist` are from acidanthera/OpenCorePkg/Docs and will also be found locally in `OC-tool/UDK/OpenCorePkg/Docs` they are updated when the tool is run, there is a notification if they have been updated, check the `OpenCorePkg/Docs/Configuration.pdf` document and update `config-RELEASE/config.plist` or `config-DEBUG/config.plist` when needed
-
-`base/driver.list` are the base files needed for OpenCore.efi to be built
+`Sample.plist` and `SampleFull.plist` are from acidanthera/OpenCorePkg/Docs and will also be found locally in `OC-tool/resources/UDK/OpenCorePkg/Docs` they are updated when the tool is run, there is a notification if they have been updated, check the `OpenCorePkg/Docs/Configuration.pdf` document and update `RELEASE/config.plist` or `DEBUG/config.plist` when needed
 
 `repo.plist` is a plist linking efi and kext files to their repositories
 
 ---
 
-**Descriprion of files in `config-DEBUG` and `config-RELEASE` directories:**
+**Descriprion of files in `DEBUG` and `RELEASE` directories:**
 
-`config.plist` is the config file that gets copied to `EFI/OC/config.plist` . 
+`config.plist` is the config file that is used to see which drivers and kexts will be built, it is then copied to `EFI/OC/config.plist`  
 
 ---
 
