@@ -11,13 +11,6 @@ res_list=( \
 	"OpenCore.efi" "https://github.com/acidanthera/OpenCorePkg" "OC" \
 	)
 
-print_list() {
-for (( i = 0; i < ${#res_list[@]} ; i+=3 )); do
-	type=`echo ${res_list[i]}|rev|cut -f 1 -d .|rev`
-	echo "$type ${res_list[i]} ${res_list[i+1]} ${res_list[i+2]}" >$(tty)
-done
-}
-
 BASE_DIR=`pwd`
 RES_DIR="$BASE_DIR/resources"
 
@@ -67,7 +60,7 @@ check_requirements() {
 }
 
 check_for_updates() {
-	echo -e -n "\nChecking${YELLOW} $BASE_DIR ${NC}for git updates ... " >$(tty)
+	echo -e -n "\nChecking $BASE_DIR for git updates ... " >$(tty)
 	cd $BASE_DIR
 	find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 	fin
@@ -168,7 +161,7 @@ config_changed() {
 
 
 check_if_Sample_Config_updated() {
-	echo -e -n "\nChecking if config.plist format has changed" >$(tty)
+	echo -e -n "\nChecking if config.plist format has changed ... " >$(tty)
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed
 	fin
