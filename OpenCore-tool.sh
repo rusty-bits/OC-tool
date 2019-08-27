@@ -151,6 +151,9 @@ copy_resources() {
 				;;
 		esac
 	done
+	echo -e -n "Copying $CONFIG_PLIST to EFI/OC ... " >$(tty)
+	cp $BASE_DIR/$CONFIG_PLIST $BUILD_DIR/OC
+	fin
 }
 
 config_changed() {
@@ -160,7 +163,7 @@ config_changed() {
 }
 
 
-check_if_Sample_Config_updated() {
+check_if_Sample_plist_updated() {
 	echo -e -n "\nChecking if config.plist format has changed ... " >$(tty)
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed
@@ -288,7 +291,7 @@ check_for_updates
 build_resources
 copy_resources
 
-check_if_Sample_Config_updated
+check_if_Sample_plist_updated
 
 build_vault
 
