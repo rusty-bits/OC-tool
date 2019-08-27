@@ -3,6 +3,21 @@
 set -e
 shopt -s extglob
 
+res_list=( \
+	"0.base" "https://github.com/acidanthera/EfiPkg" "" \
+	"0.base" "https://github.com/acidanthera/MacInfoPkg" "" \
+	"0.base" "https://github.com/acidanthera/OcSupportPkg" "" \
+	"BOOTx64.efi" "https://github.com/acidanthera/OpenCorePkg" "BOOT" \
+	"OpenCore.efi" "https://github.com/acidanthera/OpenCorePkg" "OC" \
+	)
+
+print_list() {
+for (( i = 0; i < ${#res_list[@]} ; i+=3 )); do
+	type=`echo ${res_list[i]}|rev|cut -f 1 -d .|rev`
+	echo "$type ${res_list[i]} ${res_list[i+1]} ${res_list[i+2]}" >$(tty)
+done
+}
+
 BASE_DIR=`pwd`
 RES_DIR="$BASE_DIR/resources"
 
@@ -51,89 +66,97 @@ check_requirements() {
 	fin
 }
 
-check_updates() {
+check_for_updates() {
 	echo -e -n "\nChecking${YELLOW} $BASE_DIR ${NC}for git updates ... " >$(tty)
 	cd $BASE_DIR
 	find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 	fin
 }
 
-build_drivers() {
-	echo -e "\n${GREEN}Setting up EFI/BOOT and EFI/OC${NC}" >$(tty)
+build_kext() {
+	cd $RES_DIR/Kext_builds
+	git_url=${res_list[$1+1]}
+	pkg_name=`echo $git_url|rev|cut -f 1 -d /|rev`
+	if [ ! -d "$pkg_name" ]; then
+		echo -e -n "Cloning $git_url ..." >$(tty)
+		git clone $git_url
+		fin
+	fi
+	cd $pkg_name
+	echo -e -n "Building $pkg_name ... " >$(tty)
+	if [ "$pkg_name" != "Lilu" ]; then
+		if [ ! -L "Lilu.kext" ]; then
+			ln -s $RES_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
+		fi
+	fi
+	xcodebuild -config $XCODE_CONFIG build
+	fin
+}
+
+build_driver() {
+	cd $RES_DIR/UDK
+	git_url=${res_list[$1+1]}
+	pkg_name=`echo $git_url|rev|cut -f 1 -d /|rev`
+	if [ ! -d "$pkg_name" ]; then
+		echo -e -n "Cloning $git_url ... " >$(tty)
+		git clone $git_url; fin
+	fi
+	if [[ ! " ${built[@]} " =~ " ${pkg_name} " ]]; then
+		built+=("$pkg_name")
+		if [ -f "$pkg_name/$pkg_name.dsc" ]; then
+			echo -e -n "Building $pkg_name ... " >$(tty)
+			build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $pkg_name/$pkg_name.dsc; fin
+		fi
+	fi
+}
+
+build_resources() {
+	built=()
+	echo -e "\n${GREEN}Building resources${NC}" >$(tty)
+
 	if [ ! -d "resources/UDK" ];then
 		echo -e -n "Cloning acidanthera/audk into UDK ... " >$(tty)
 		git clone https://github.com/acidanthera/audk resources/UDK; fin
 	fi
-	driver_list=()
-	built=()
-	while IFS= read -r line; do
-		driver_list+=("$line")
-	done < "$BASE_DIR/Docs/base/driver.list"
 
-	echo -e -n "Making BaseTools ... " >$(tty)
+	if [ ! -d "$RES_DIR/Kext_builds" ]; then
+		mkdir $RES_DIR/Kext_builds
+	fi
+
+	echo -e -n "Making base tools ... " >$(tty)
 	cd $RES_DIR/UDK
 	source edksetup.sh --reconfig
 	make -C BaseTools; fin
 
-	for Driver in "${driver_list[@]}"
-	do
-		git_url=`echo $Driver|rev|cut -f 2- -d /|rev`
-		driver_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
-		if [ ! -d "$driver_pkg" ]; then
-			echo -e -n "Cloning $git_url ... " >$(tty)
-			git clone $git_url; fin
-		fi
-		if [[ ! " ${built[@]} " =~ " ${driver_pkg} " ]]; then
-			built+=("$driver_pkg")
-			if [ -f "$driver_pkg/$driver_pkg.dsc" ]; then
-				echo -e -n "Building $driver_pkg ... " >$(tty)
-				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
-			fi
-		fi
+	for (( i = 0; i < ${#res_list[@]} ; i+=3 )); do
+		case `echo ${res_list[i]}|rev|cut -f 1 -d .|rev` in
+			"base" | "efi" )
+				build_driver i
+				;;
+			"kext" )
+				build_kext i
+				;;
+		esac
 	done
+}
 
-	echo -e -n "Copying BOOTx64.efi into EFI/BOOT ... " >$(tty)
-	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/BOOTx64.efi $BUILD_DIR/BOOT
-	fin
-
-	echo -e -n "Copying OpenCore.efi into EFI/OC ... " >$(tty)
-	cp $RES_DIR/UDK/Build/OpenCorePkg/$AUDK_BUILD_DIR/X64/OpenCore.efi $BUILD_DIR/OC
-	fin
-
-	echo -e -n "Copying $CONFIG_PLIST into EFI/OC ... " >$(tty)
-	cp $BASE_DIR/$CONFIG_PLIST $BUILD_DIR/OC/config.plist
-	fin
-
-	echo -e "\n${GREEN}Setting up EFI/OC/Drivers${NC}" >$(tty)
-	count=0
-	Driver="start"
-	while [ "$Driver" != "" ]
-	do
-		Driver=`/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$count" $BASE_DIR/$CONFIG_PLIST`||Driver=""
-		if [ "$Driver" != "" ]; then
-			git_url=`/usr/libexec/PlistBuddy -c "print :$Driver" $BASE_DIR/Docs/repo.plist`||git_url=""
-			if [ "$git_url" != "" ]; then
-				driver_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
-				if [ ! -d "$driver_pkg" ]; then
-					echo -e -n "Cloning $git_url ..." >$(tty)
-					git clone $git_url
-					fin
-				fi
-				if [[ ! " ${built[@]} " =~ " ${driver_pkg} " ]]; then
-					built+=("$driver_pkg")
-					if [ -f "$driver_pkg/$driver_pkg.dsc" ]; then
-						echo -e -n "Building $driver_pkg ... " >$(tty)
-						build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $driver_pkg/$driver_pkg.dsc; fin
-					fi
-				fi
-				echo -e -n "Copying $Driver into $BUILD_DIR/OC/Drivers ... " >$(tty)
-				cp $RES_DIR/UDK/Build/$driver_pkg/$AUDK_BUILD_DIR/X64/$Driver $BUILD_DIR/OC/Drivers; fin
-			else
-				echo -e "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/driver.plist" >$(tty)
-				exit 1
-			fi
-		fi
-	count=$(( $count + 1))
+copy_resources() {
+	echo -e "\n${GREEN}Moving resources into place${NC}" >$(tty)
+	for (( i = 0; i < ${#res_list[@]} ; i+=3 )); do
+		pkg_name=`echo ${res_list[i+1]}|rev|cut -f 1 -d /|rev`
+		dest=${res_list[i+2]}
+		case `echo ${res_list[i]}|rev|cut -f 1 -d .|rev` in
+			"efi" )
+				echo -e -n "Copying ${res_list[i]} to $dest ... " >$(tty)
+				cp $RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64/${res_list[i]} $BUILD_DIR/$dest
+				fin
+				;;
+			"kext" )
+				echo -e -n "Copying ${res_list[i]} to $dest ... " >$(tty)
+				cp -r $RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG/${res_list[i]} $BUILD_DIR/$dest
+				fin
+				;;
+		esac
 	done
 }
 
@@ -143,10 +166,12 @@ config_changed() {
 	echo -e "\n${YELLOW}WARNING:${NC} Sample.plist & SampleFull.plist have been updated\n${RED}Make sure${NC} $BASE_DIR/$CONFIG_PLIST ${RED}is up to date${NC}.\nRun the tool again if you make any changes." >$(tty)
 }
 
-check_config() {
-	echo -e "\nChecking if config.plist format has changed" >$(tty)
+
+check_if_Sample_Config_updated() {
+	echo -e -n "\nChecking if config.plist format has changed" >$(tty)
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed
+	fin
 }
 
 build_vault() {
@@ -194,18 +219,26 @@ set_build_type() {
 	esac
 }
 
-link_lilu() {
-	if [ ! -L "Lilu.kext" ]; then
-		ln -s $RES_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
-	fi
+add_drivers_res_list() {
+	count=0
+	Driver="start"
+	while [ "$Driver" != "" ]
+	do
+		Driver=`/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$count" $BASE_DIR/$CONFIG_PLIST`||Driver=""
+		if [ "$Driver" != "" ]; then
+			git_url=`/usr/libexec/PlistBuddy -c "print :$Driver" $BASE_DIR/Docs/repo.plist`||git_url=""
+			if [ "$git_url" != "" ]; then
+				res_list+=("$Driver" "$git_url" "OC/Drivers")
+			else
+				echo -e "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/driver.plist" >$(tty)
+				exit 1
+			fi
+		fi
+	let "count += 1"
+	done
 }
 
-build_kexts() {
-	echo -e "\n${GREEN}Setting up EFI/OC/Kexts${NC}" >$(tty)
-	if [ ! -d "$RES_DIR/Kext_builds" ]; then
-		mkdir $RES_DIR/Kext_builds
-	fi
-
+add_kexts_res_list() {
 	count=0
 	BundlePath="start"
 	while [ "$BundlePath" != "" ]
@@ -216,30 +249,14 @@ build_kexts() {
 			if [ "$Enabled" == "true" ]; then
 				git_url=`/usr/libexec/PlistBuddy -c "print :$BundlePath" $BASE_DIR/Docs/repo.plist`||git_url=""
 				if [ "$git_url" != "" ]; then
-					cd $RES_DIR/Kext_builds
-					kext_pkg=`echo $git_url|rev|cut -f 1 -d /|rev`
-					if [ ! -d "$kext_pkg" ]; then
-						echo -e -n "Cloning $git_url ..." >$(tty)
-						git clone $git_url
-						fin
-					fi
-					cd $kext_pkg
-					echo -e -n "Building $kext_pkg ... " >$(tty)
-					if [ "$kext_pkg" != "Lilu" ]; then
-						link_lilu
-					fi
-					xcodebuild -config $XCODE_CONFIG build
-					fin
-					echo -e -n "Copying $BundlePath into $BUILD_DIR/OC/Kexts ... " >$(tty)
-					cp -r $RES_DIR/Kext_builds/$kext_pkg/build/$XCODE_CONFIG/$BundlePath $BUILD_DIR/OC/Kexts
-					fin
+					res_list+=("$BundlePath" "$git_url" "OC/Kexts")
 				else
 					echo -e "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist" >$(tty)
 					exit 1
 				fi
 			fi
 		fi
-	count=$(( $count + 1))
+	let "count += 1"
 	done
 }
 
@@ -274,13 +291,14 @@ check_requirements
 
 set_up_dirs
 
-check_updates
+add_drivers_res_list
+add_kexts_res_list
 
-build_drivers
+check_for_updates
+build_resources
+copy_resources
 
-build_kexts
-
-check_config
+check_if_Sample_Config_updated
 
 build_vault
 
