@@ -7,5 +7,4 @@ RELEASE/config.plist
 DEBUG/EFI/*
 RELEASE/EFI/*
 
-resources/Kext_builds/*
-resources/UDK/*
+resources/*

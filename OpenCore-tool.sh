@@ -253,6 +253,36 @@ add_kexts_res_list() {
 	done
 }
 
+build_shell_tool() {
+	echo -e "\n${GREEN}Setting up OpenCoreShell environment" >$(tty)
+	cd $BASE_DIR/resources
+	if [ ! -d "OpenCoreShell" ]; then
+		echo -e -n "Cloning OpenCoreShell ... " >$(tty)
+		git clone https://github.com/acidanthera/OpenCoreShell
+		fin
+	fi
+	cd OpenCoreShell
+	if [ ! -d "UDK" ]; then
+		echo -e -n "Cloning UDK2018 ... " >$(tty)
+		git clone "https://github.com/tianocore/edk2" -b UDK2018 --depth=1 UDK
+		fin
+	fi
+	cd UDK
+	echo -e -n "Making UDK2018 BaseTools ... " >$(tty)
+	source edksetup.sh --reconfig
+	make -C BaseTools
+	fin
+
+	echo -e -n "Patching UDK2018 ... " >$(tty)
+	for i in ../Patches/* ; do
+		git apply "$i" || echo "$i ignored"
+	done
+	fin
+
+	echo -e -n "Building Shell.efi (OpenCoreShell.efi) ... " >$(tty)
+	build -a X64 -b DEBUG -t XCODE5 -p ShellPkg/ShellPkg.dsc
+	fin
+}
 #parse command line arguments
 case $ARG1 in
 	b?(uild) )
@@ -289,6 +319,8 @@ add_kexts_res_list
 
 check_for_updates
 build_resources
+build_shell_tool
+
 copy_resources
 
 check_if_Sample_plist_updated
