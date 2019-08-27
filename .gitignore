@@ -1,10 +1,11 @@
 .DS_Store
 
 tool.log
-config-DEBUG/config.plist
-config-RELEASE/config.plist
+DEBUG/config.plist
+RELEASE/config.plist
 
-EFI-debug/*
-EFI-release/*
+DEBUG/EFI/*
+RELEASE/EFI/*
+
 resources/Kext_builds/*
 resources/UDK/*

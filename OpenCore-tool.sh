@@ -198,25 +198,22 @@ set_build_type() {
 	case $ARG2 in
 		d?(ebug) )
 			echo -e "\n${GREEN}Setting up ${YELLOW}DEBUG${GREEN} environment${NC}" >$(tty)
-			BUILD_DIR="$BASE_DIR/EFI-debug"
 			XCODE_CONFIG="Debug"
 			AUDK_CONFIG="DEBUG"
-			AUDK_BUILD_DIR="DEBUG_XCODE5"
-			CONFIG_PLIST="config-DEBUG/config.plist"
 			;;
 		r?(elease) )
 			echo -e "\n${GREEN}Setting up ${YELLOW}RELEASE${GREEN} environment${NC}" >$(tty)
-			BUILD_DIR="$BASE_DIR/EFI-release"
 			XCODE_CONFIG="Release"
 			AUDK_CONFIG="RELEASE"
-			AUDK_BUILD_DIR="RELEASE_XCODE5"
-			CONFIG_PLIST="config-RELEASE/config.plist"
 			;;
 		*)
 			echo -e "usage: (b)uild (r)elease, (b)uild (d)ebug" >$(tty)
 			exit 1
 			;;
 	esac
+	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
+	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
+	AUDK_BUILD_DIR="$AUDK_CONFIG""_XCODE5"
 }
 
 add_drivers_res_list() {
