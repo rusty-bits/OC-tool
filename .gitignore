@@ -8,4 +8,6 @@ DEBUG/EFI/*
 RELEASE/EFI/*
 
 resources/*
+
 extras/*
+!extras/README.txt
