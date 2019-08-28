@@ -73,17 +73,22 @@ build_kext() {
 	if [ ! -d "$pkg_name" ]; then
 		echo -e -n "Cloning $git_url ..." >$(tty)
 		git clone $git_url
+		echo "new" > $pkg_name/gitStatDEBUG
+		echo "new" > $pkg_name/gitStatRELEASE
 		fin
 	fi
 	cd $pkg_name
-	echo -e -n "Building $pkg_name ... " >$(tty)
-	if [ "$pkg_name" != "Lilu" ]; then
-		if [ ! -L "Lilu.kext" ]; then
-			ln -s $RES_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
+	if [ "`git rev-parse HEAD`" != "`cat gitStat$AUDK_CONFIG`" ]; then
+		echo -e -n "Building $pkg_name ... " >$(tty)
+		if [ "$pkg_name" != "Lilu" ]; then
+			if [ ! -L "Lilu.kext" ]; then
+				ln -s $RES_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
+			fi
 		fi
+		xcodebuild -config $XCODE_CONFIG build
+		git rev-parse HEAD > gitStat$AUDK_CONFIG
+		fin
 	fi
-	xcodebuild -config $XCODE_CONFIG build
-	fin
 }
 
 build_driver() {
@@ -93,12 +98,21 @@ build_driver() {
 	if [ ! -d "$pkg_name" ]; then
 		echo -e -n "Cloning $git_url ... " >$(tty)
 		git clone $git_url; fin
+		echo "new" > $pkg_name/gitStatDEBUG
+		echo "new" > $pkg_name/gitStatRELEASE
 	fi
+	cd $pkg_name
 	if [[ ! " ${built[@]} " =~ " ${pkg_name} " ]]; then
 		built+=("$pkg_name")
-		if [ -f "$pkg_name/$pkg_name.dsc" ]; then
-			echo -e -n "Building $pkg_name ... " >$(tty)
-			build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $pkg_name/$pkg_name.dsc; fin
+		if [ -f "$pkg_name.dsc" ]; then
+			if [ "`git rev-parse HEAD`" != "`cat gitStat$AUDK_CONFIG`" ]; then
+				cd ..
+				echo -e -n "Building $pkg_name ... " >$(tty)
+				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $pkg_name/$pkg_name.dsc
+				cd $pkg_name
+				git rev-parse HEAD > gitStat$AUDK_CONFIG
+				fin
+			fi
 		fi
 	fi
 }
@@ -254,7 +268,10 @@ add_kexts_res_list() {
 }
 
 build_shell_tool() {
-	echo -e "\n${GREEN}Setting up OpenCoreShell environment" >$(tty)
+	echo -e "\n${GREEN}Setting up OpenCoreShell environment${NC}" >$(tty)
+	if [ ! -d "$BASE_DIR/resources" ]; then
+		mkdir $BASE_DIR/resources
+	fi
 	cd $BASE_DIR/resources
 	if [ ! -d "OpenCoreShell" ]; then
 		echo -e -n "Cloning OpenCoreShell ... " >$(tty)
@@ -264,11 +281,14 @@ build_shell_tool() {
 	cd OpenCoreShell
 	if [ ! -d "UDK" ]; then
 		echo -e -n "Cloning UDK2018 ... " >$(tty)
-		git clone "https://github.com/tianocore/edk2" -b UDK2018 --depth=1 UDK
+#		git clone https://github.com/tianocore/edk2 -b UDK2018 --depth=1 UDK
+		git clone https://github.com/acidanthera/audk UDK
 		fin
 	fi
 	cd UDK
 	echo -e -n "Making UDK2018 BaseTools ... " >$(tty)
+	unset WORKSPACE
+	unset EDK_TOOLS_PATH
 	source edksetup.sh --reconfig
 	make -C BaseTools
 	fin

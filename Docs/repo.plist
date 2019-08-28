@@ -2,24 +2,62 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ATH9KFixup.kext</key>
+	<string>https://github.com/chunnann/ATH9KFixup</string>
 	<key>AirportBrcmFixup.kext</key>
 	<string>https://github.com/acidanthera/AirportBrcmFixup</string>
 	<key>ApfsDriverLoader.efi</key>
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AppleALC.kext</key>
 	<string>https://github.com/acidanthera/AppleALC</string>
+	<key>AppleGenericInput.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>AppleImageLoader.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>AppleUiSupport.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>AtherosE2200Ethernet.kext</key>
+	<string>https://github.com/Mieze/AtherosE2200Ethernet</string>
 	<key>BT4LEContinuityFixup.kext</key>
 	<string>https://github.com/acidanthera/BT4LEContinuityFixup</string>
 	<key>CPUFriend.kext</key>
 	<string>https://github.com/acidanthera/CPUFriend</string>
+	<key>CleanNvram.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>DiskArbitrationFixup.kext</key>
+	<string>https://github.com/Goldfish64/DiskArbitrationFixup</string>
 	<key>FwRuntimeServices.efi</key>
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>HibernationFixup.kext</key>
 	<string>https://github.com/acidanthera/HibernationFixup</string>
 	<key>IntelMausi.kext</key>
 	<string>https://github.com/acidanthera/IntelMausi</string>
+	<key>IntelMausiEthernet.kext</key>
+	<string>https://github.com/Mieze/IntelMausiEthernet</string>
 	<key>Lilu.kext</key>
 	<string>https://github.com/acidanthera/Lilu</string>
+	<key>NoTouchID.kext</key>
+	<string>https://github.com/al3xtjames/NoTouchID</string>
+	<key>RTCMemoryFixup.kext</key>
+	<string>https://github.com/acidanthera/RTCMemoryFixup</string>
+	<key>RealtekRTL8111.kext</key>
+	<string>https://github.com/Mieze/RTL8111_driver_for_OS_X</string>
+	<key>SMCBatteryManager.kext</key>
+	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>SMCLightSensor.kext</key>
+	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>SMCProcessor.kext</key>
+	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>SMCSuperIO.kext</key>
+	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>TSCAdjustReset.kext</key>
+	<string>https://github.com/interferenc/TSCAdjustReset</string>
+	<key>UsbKbDxe.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>VBoxHfs.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
+	<key>VerifyMsrE2.efi</key>
+	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>VirtualSMC.kext</key>
 	<string>https://github.com/acidanthera/VirtualSMC</string>
 	<key>VirtualSmc.efi</key>
