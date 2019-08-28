@@ -91,11 +91,26 @@ build_kext() {
 	fi
 }
 
+make_dummy_pkg() {
+	cd $RES_DIR/UDK
+	if [ ! -d "dummyPkg" ]; then
+		mkdir dummyPkg
+	fi
+	if [ ! -d "Build/dummyPkg" ]; then
+		mkdir -p Build/dummyPkg
+		echo "dummy" > Build/dummyPkg
+		echo "dummy" > Build/dummyPkg
+		built+=("dummyPkg")
+	fi
+}
+
 build_driver() {
 	cd $RES_DIR/UDK
 	git_url=${res_list[$1+1]}
 	pkg_name=`echo $git_url|rev|cut -f 1 -d /|rev`
-	if [ ! -d "$pkg_name" ]; then
+	if [ "$pkg_name" == "dummyPkg" ]; then
+		make_dummy_pkg
+	elif [ ! -d "$pkg_name" ]; then
 		echo -e -n "Cloning $git_url ... " >$(tty)
 		git clone $git_url; fin
 		echo "new" > $pkg_name/gitStatDEBUG
@@ -161,6 +176,12 @@ copy_resources() {
 			"kext" )
 				echo -e -n "Copying ${res_list[i]} to $dest ... " >$(tty)
 				cp -r $RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG/${res_list[i]} $BUILD_DIR/$dest
+				fin
+				;;
+			"extras" )
+				pkg_name=`echo ${res_list[i]}|cut -f -2 -d .`
+				echo -e -n "Copying $pkg_name to $dest ... " >$(tty)
+				cp $BASE_DIR/extras/$pkg_name $BUILD_DIR/$dest
 				fin
 				;;
 		esac
@@ -236,8 +257,10 @@ add_drivers_res_list() {
 			git_url=`/usr/libexec/PlistBuddy -c "print :$Driver" $BASE_DIR/Docs/repo.plist`||git_url=""
 			if [ "$git_url" != "" ]; then
 				res_list+=("$Driver" "$git_url" "OC/Drivers")
+			elif [ -f "$BASE_DIR/extras/$Driver" ]; then
+				res_list+=("$Driver.extras" "extras/dummyPkg" "OC/Drivers")
 			else
-				echo -e "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/driver.plist" >$(tty)
+				echo -e "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/repo.plist or extras" >$(tty)
 				exit 1
 			fi
 		fi
