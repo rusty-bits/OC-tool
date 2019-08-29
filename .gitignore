@@ -9,5 +9,5 @@ RELEASE/EFI/*
 
 resources/*
 
-extras/*
-!extras/README.txt
+EXTRAS/*
+!EXTRAS/README.txt
