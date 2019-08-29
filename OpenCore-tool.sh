@@ -11,9 +11,7 @@ LOGFILE="tool.log"
 
 ARG1=$1; ARG2=$2
 
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
+RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 print_resources() {
@@ -43,25 +41,22 @@ set_up_dest_dir() {
 
 init_res_list() {
 	res_list=( \
-		"0.base" "https://github.com/acidanthera/EfiPkg" "" "" \
-		"0.base" "https://github.com/acidanthera/MacInfoPkg" "" "" \
-		"0.base" "https://github.com/acidanthera/OcSupportPkg" "" "" \
+		"base" "https://github.com/acidanthera/EfiPkg" "" "" \
+		"base" "https://github.com/acidanthera/MacInfoPkg" "" "" \
+		"base" "https://github.com/acidanthera/OcSupportPkg" "" "" \
 		"BOOTx64.efi" "https://github.com/acidanthera/OpenCorePkg" "" "BOOT" \
 		"OpenCore.efi" "https://github.com/acidanthera/OpenCorePkg" "" "OC" \
-		"config.plist" "base/config" "$BASE_DIR/$AUDK_CONFIG" "OC"
+		"config.plist" "" "$BASE_DIR/$AUDK_CONFIG" "OC"
 		)
 	}
 
 clone() {
-	if [ ! -d "$1" ]; then
-		if [ "1" == "dummyPkg" ]; then
-			mkdir dummyPkg
-		else
-			msg "Cloning $2 ..."
-			git clone $2; fin
-		fi
-		echo "new" > $1/gitStatDEBUG
-		echo "new" > $1/gitStatRELEASE
+	pkg_name=`echo $1|rev|cut -f 1 -d /|cut -f 1 -d " "|rev`
+	if [ ! -d "$pkg_name" ]; then
+		msg "Cloning $1 ..."
+		git clone $1; fin
+		echo "new" > $pkg_name/gitStatDEBUG
+		echo "new" > $pkg_name/gitStatRELEASE
 	fi
 }
 
@@ -95,7 +90,7 @@ build_shell_tool() {
 		mkdir $BASE_DIR/resources
 	fi
 	cd $BASE_DIR/resources
-	clone "OpenCoreShell" "https//github.com/acidanthera/OpenCoreShell"
+	clone "https://github.com/acidanthera/OpenCoreShell"
 	cd OpenCoreShell
 	if [ ! -d "UDK" ]; then
 		msg "Cloning UDK2018 ... "
@@ -124,10 +119,8 @@ build_shell_tool() {
 }
 
 build_kext() {
-	cd $RES_DIR/Kext_builds
-	git_url=${res_list[$1+1]}
-	pkg_name=`echo $git_url|rev|cut -f 1 -d /|rev`
-	clone "$pkg_name" "$git_url"
+	mkdir -p $RES_DIR/Kext_builds && cd $_
+	clone "${res_list[$1+1]}"
 	cd $pkg_name
 	if [ "`git rev-parse HEAD`" != "`cat gitStat$AUDK_CONFIG`" ]; then
 		msg "Building $pkg_name ... "
@@ -142,27 +135,11 @@ build_kext() {
 	fi
 }
 
-make_dummy_pkg() {
-	cd $RES_DIR/UDK
-	if [ ! -d "dummyPkg" ]; then
-		mkdir dummyPkg
-	fi
-	if [ ! -d "Build/dummyPkg" ]; then
-		mkdir -p Build/dummyPkg
-		echo "dummy" > Build/dummyPkg
-		echo "dummy" > Build/dummyPkg
-		built+=("dummyPkg")
-	fi
-}
-
 build_driver() {
 	cd $RES_DIR/UDK
-	git_url=${res_list[$1+1]}
-	pkg_name=`echo $git_url|rev|cut -f 1 -d /|rev`
-	clone $pkg_name $git_url
+	clone "${res_list[$1+1]}"
 	if [[ ! " ${built[@]} " =~ " ${pkg_name} " ]]; then
 		cd $pkg_name
-		built+=("$pkg_name")
 		if [ -f "$pkg_name.dsc" ]; then
 			if [ "`git rev-parse HEAD`" != "`cat gitStat$AUDK_CONFIG`" ]; then
 				if [ "$BASE_TOOLS" == "unbuilt" ]; then
@@ -181,21 +158,19 @@ build_driver() {
 				fin
 			fi
 		fi
+		built+=("$pkg_name")
 	fi
 }
 
 build_resources() {
-	cd $BASE_DIR
-	built=()
 	msg "\n${GREEN}Building needed resources${NC}\n"
+	mkdir -p $BASE_DIR/resources && cd $_
+	built=()
 
-	clone "resources/UDK" "https://github.com/acidanthera/audk resources/UDK"
-
-	if [ ! -d "$RES_DIR/Kext_builds" ]; then
-		mkdir $RES_DIR/Kext_builds
-	fi
+	clone "https://github.com/acidanthera/audk UDK"
 
 	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
+		if [ "${res_list[i+2]}" = "" ]; then
 		case `echo ${res_list[i]}|rev|cut -f 1 -d .|rev` in
 			"base" | "efi" )
 				if [ "${res_list[i]}" == "Shell.efi" ]; then #special case
@@ -208,10 +183,10 @@ build_resources() {
 				;;
 			"kext" )
 				build_kext "$i"
-				kext_type=`echo $XCODE_CONFIG|tr A-Z a-z`
-				res_list[i+2]="$RES_DIR/Kext_builds/$pkg_name/build/$kext_type"
+				res_list[i+2]="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
 				;;
 		esac
+	fi
 	done
 }
 
@@ -277,7 +252,7 @@ set_build_type() {
 	AUDK_CONFIG=`echo $XCODE_CONFIG|tr a-z A-Z`
 	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
-	AUDK_BUILD_DIR="$AUDK_CONFIG""_XCODE5"
+	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
 	echo -e "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
 }
 
@@ -292,7 +267,7 @@ add_drivers_res_list() {
 			if [ "$git_url" != "" ]; then
 				res_list+=("$Driver" "$git_url" "" "OC/Drivers")
 			elif [ -f "$BASE_DIR/extras/$Driver" ]; then
-				res_list+=("$Driver.extras" "extras/dummyPkg" "$BASE_DIR/extras" "OC/Drivers")
+				res_list+=("$Driver" "" "$BASE_DIR/extras" "OC/Drivers")
 			else
 				msg "\n${RED}ERROR:${NC} $Driver - repo was not found in Docs/repo.plist or extras\n"
 				exit 1
@@ -314,8 +289,10 @@ add_kexts_res_list() {
 				git_url=`/usr/libexec/PlistBuddy -c "print :$BundlePath" $BASE_DIR/Docs/repo.plist`||git_url=""
 				if [ "$git_url" != "" ]; then
 					res_list+=("$BundlePath" "$git_url" "" "OC/Kexts")
+				elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
+					res_list+=("$BundlePath" "" "$BASE_DIR/extras" "OC/Kexts")
 				else
-					msg "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist\n"
+					msg "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist or extras\n"
 					exit 1
 				fi
 			fi
@@ -372,15 +349,18 @@ exec 2>&1
 
 check_requirements
 
-set_up_dest_dirs
+set_up_dest_dir
 
 init_res_list
 add_drivers_res_list
 add_kexts_res_list
 add_tools_res_list
 
-#check_for_updates
-msg "\n${RED}auto update check currently disabled${NC}\nrun ${YELLOW}./OpenCore-tool.sh update${NC} to update\n"
+#print_resources
+#exit 0
+
+#check_for_update
+msg "\n${RED}auto update check currently disabled${NC}\nrun ${YELLOW}./OpenCore-tool.sh update${NC} if you want to update\n"
 
 build_resources
 copy_resources
