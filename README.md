@@ -38,7 +38,7 @@ then place your config.plist file in the appropriate directory, or copy and edit
 
 edit `RELEASE/config.plist` as appropriate.  
 
-`./OpenCore-tool.sh build release`
+`./OpenCore-tool build release`
 
 This will create a `RELEASE/EFI` directory with all the required files, this can be copied to an EFI partition
 
@@ -50,7 +50,7 @@ to create a debug version...
 
 edit `DEBUG/config.plist` as needed.  
 
-`./OpenCore-tool.sh build debug`
+`./OpenCore-tool build debug`
 
 This will create a `DEBUG/EFI` directory with all the required files, this can be copied to an EFI partition
 
@@ -63,9 +63,11 @@ The tool will automatically build the required vault files based on the setting 
 ---
 
 **Description of files in `Docs` directory:**
-`Sample.plist` and `SampleFull.plist` are from acidanthera/OpenCorePkg/Docs and will also be found locally in `OC-tool/resources/UDK/OpenCorePkg/Docs` they are updated when the update command is used, there is a notification if they have been updated, check the `OpenCorePkg/Docs/Configuration.pdf` document and update `RELEASE/config.plist` or `DEBUG/config.plist` when needed
+`Sample.plist` and `SampleFull.plist` are from acidanthera/OpenCorePkg/Docs and will also be found locally in `OC-tool/resources/UDK/OpenCorePkg/Docs` they are updated when the update command is used, there is a notification if they have been updated, check the `OpenCorePkg/Docs/Configuration.pdf` document and update `RELEASE/config.plist` or `DEBUG/config.plist` when needed  
 
-`repo.plist` is a plist linking efi and kext files to their repositories
+`repo.plist` is a plist linking efi and kext files to their repositories  
+
+`usage.txt` text file with formatted text to show tool help/usage with -h flag  
 
 ---
 
@@ -75,8 +77,12 @@ The tool will automatically build the required vault files based on the setting 
 
 ---
 
+**Description of `extras` directory**  
+
+If there are kexts or drivers that do not have a git repo place them here in the `extras` directory.  They will then be copied to the appropriate place in the new `EFI`
+
 **Notes:**
 
 -still a work in progress, code needs cleaning, I'm working on it   
--basic Tools folder support it done for Shell.efi  
--planning on adding ACPI folder support when I get around to it
+-basic Tools folder support is done for Shell.efi  
+-planning on adding ACPI folder support if I get around to it  
