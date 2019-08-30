@@ -318,7 +318,7 @@ add_tools_res_list() {
 			if [ "$git_url" != "" ]; then
 				res_list+=("$Path" "$git_url" "" "OC/Tools")
 			elif [ -f "$BASE_DIR/extras/$Path" ]; then
-					res_list+=("$Path" "extras/dummyPkg" "$BASE_DIR/extras" "OC/Tools")
+					res_list+=("$Path" "" "$BASE_DIR/extras" "OC/Tools")
 			else
 				msg "\n${RED}ERROR:${NC} $Name - repo was not found\n"
 				exit 1
@@ -336,7 +336,7 @@ set_build_type() {
 			XCODE_CONFIG="Release"
 			;;
 		*)
-			echo -e "usage: (b)uild (r)elease, (b)uild (d)ebug" >$(tty)
+			echo -e "need to specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after $ARG1 command" >$(tty)
 			exit 1
 			;;
 	esac
@@ -358,7 +358,7 @@ case $ARG1 in
 		exit 0
 		;;
 	*)
-		if [ "$UPDATE" == "true" ]; then
+		if [ "$UPDATE" == "true" ] & [ "$ARG1" == "" ]; then
 			check_for_updates
 			exit 0
 		fi
