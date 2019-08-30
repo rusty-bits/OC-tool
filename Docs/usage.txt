@@ -1,0 +1,11 @@
+\n\033[1mUsage: ./OpenCore-tool.sh [-huvX] [\033[0m\033[4mcommand\033[0m\033[1m] [\033[0m\033[4mtype\033[0m\033[1m]\033[0m\n
+\n
+\t./OpenCore-tool.sh\t-u\t\t:update pulled repos only and quit\n
+\n
+\t./OpenCore-tool.sh [-u] build release\t:build RELEASE version\n
+\t\t\t\t\t\t:<update first if -u flag set>\n
+\n
+\t\t\t\tbuild debug\t:build DEBUG version\n
+\t\t\t\t\t\t:<update first if -u flag set>\n
+\n
+\t\t\t\tcopy [release, debug] not implemented yet

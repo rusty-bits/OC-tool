@@ -1,18 +1,41 @@
 #!/bin/bash
 
-set -e
 shopt -s extglob
-
 BASE_DIR=`pwd`
+
+args=`getopt huvX $*`
+if [ "$?" != "0" ]; then
+	echo -e `cat $BASE_DIR/Docs/usage.txt`
+	exit 0
+fi
+
+set -e
 RES_DIR="$BASE_DIR/resources"
-BASE_TOOLS="unbuilt"
-
+BASE_TOOLS="unbuilt"; UPDATE="false"
 LOGFILE="tool.log"
-
-ARG1=$1; ARG2=$2
-
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
+VER="0.1"
+
+set -- $args
+for i
+do
+	case "$i"
+	in
+	-h)
+		echo -e `cat $BASE_DIR/Docs/usage.txt`
+		exit 0;;
+	-u)
+		UPDATE="true"
+		shift;;
+	-v)
+		echo -e "OpenCore-tool version $VER"
+		exit 0;;
+	--)
+		shift; break;;
+	esac
+done
+ARG1=$1; ARG2=$2
 
 print_resources() {
 	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
@@ -79,10 +102,12 @@ check_requirements() {
 }
 
 check_for_updates() {
-	msg "\nChecking for updates ... "
-	cd $BASE_DIR
-	find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
-	fin
+	if [ "$UPDATE" == "true" ]; then
+		msg "\nChecking for updates ... "
+		cd $BASE_DIR
+		find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
+		fin
+	fi
 }
 
 build_shell_tool() {
@@ -236,26 +261,6 @@ build_vault() {
 	fi
 }
 
-set_build_type() {
-	case $ARG2 in
-		d?(ebug) )
-			XCODE_CONFIG="Debug"
-			;;
-		r?(elease) )
-			XCODE_CONFIG="Release"
-			;;
-		*)
-			echo -e "usage: (b)uild (r)elease, (b)uild (d)ebug" >$(tty)
-			exit 1
-			;;
-	esac
-	AUDK_CONFIG=`echo $XCODE_CONFIG|tr a-z A-Z`
-	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
-	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
-	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
-	echo -e "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
-}
-
 add_drivers_res_list() {
 	count=0
 	Driver="start"
@@ -322,6 +327,26 @@ add_tools_res_list() {
 		let "count += 1"
 	done
 }
+set_build_type() {
+	case $ARG2 in
+		d?(ebug) )
+			XCODE_CONFIG="Debug"
+			;;
+		r?(elease) )
+			XCODE_CONFIG="Release"
+			;;
+		*)
+			echo -e "usage: (b)uild (r)elease, (b)uild (d)ebug" >$(tty)
+			exit 1
+			;;
+	esac
+	AUDK_CONFIG=`echo $XCODE_CONFIG|tr a-z A-Z`
+	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
+	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
+	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
+	echo -e "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
+}
+
 
 #parse command line arguments
 case $ARG1 in
@@ -332,12 +357,12 @@ case $ARG1 in
 		msg "\n${YELLOW}copy mode not implemented yet${NC}\n"
 		exit 0
 		;;
-	u?(pdate) )
-		check_for_updates
-		exit 0
-		;;
 	*)
-		msg "\nusage: OpenCore-tool.sh\tcommand <option>\n\n\t\t\t(b)uild <(d)ebug,(r)elease>\n\t\t\t(c)opy  <(d)ebug,(r)elease>\n\t\t\t(u)pdate\n"
+		if [ "$UPDATE" == "true" ]; then
+			check_for_updates
+			exit 0
+		fi
+		echo -e `cat $BASE_DIR/Docs/usage.txt`
 		exit 0
 		;;
 esac
@@ -359,8 +384,7 @@ add_tools_res_list
 #print_resources
 #exit 0
 
-#check_for_update
-msg "\n${RED}auto update check currently disabled${NC}\nrun ${YELLOW}./OpenCore-tool.sh update${NC} if you want to update\n"
+check_for_updates
 
 build_resources
 copy_resources
