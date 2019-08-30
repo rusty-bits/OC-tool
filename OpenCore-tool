@@ -348,6 +348,7 @@ set_build_type() {
 }
 
 
+echo "ARG1 $ARG1"
 #parse command line arguments
 case $ARG1 in
 	b?(uild) ) #build first if repo exists, else copy from extras folder
@@ -358,7 +359,7 @@ case $ARG1 in
 		exit 0
 		;;
 	*)
-		if [ "$UPDATE" == "true" ] & [ "$ARG1" == "" ]; then
+		if [ "$UPDATE" == "true" ] && [ "$ARG1" == "" ]; then
 			check_for_updates
 			exit 0
 		fi
