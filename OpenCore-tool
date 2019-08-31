@@ -103,7 +103,11 @@ check_requirements() {
 
 check_for_updates() {
 	if [ "$UPDATE" == "true" ]; then
-		msg "\nChecking for updates ... "
+		if [ "$ARG2" = "" ]; then
+			msg "\nChecking for updates ... \n"
+		else
+			msg "\nChecking for updates ... "
+		fi
 		cd $BASE_DIR
 		find . -maxdepth 4 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 		fin
@@ -232,15 +236,19 @@ copy_resources() {
 config_changed() {
 	cp $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist
 	cp $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist
-	msg "\n${YELLOW}WARNING:${NC} Samplei$1.plist has been updated\n${YELLOW}!!!${NC} Make sure$ $BASE_DIR/$CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
+	msg "\n${YELLOW}WARNING:${NC} Sample$1.plist has been updated\n${YELLOW}!!!${NC} Make sure $BASE_DIR/$CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
+	cfg_ok="false"
 }
 
 
 check_if_Sample_plist_updated() {
+	cfg_ok="true"
 	msg "\nChecking if config.plist format has changed ... "
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/Sample.plist $BASE_DIR/Docs/Sample.plist||config_changed
 	cmp --silent $RES_DIR/UDK/OpenCorePkg/Docs/SampleFull.plist $BASE_DIR/Docs/SampleFull.plist||config_changed "Full"
-	fin
+	if [ "$cfg_ok" == "true" ]; then
+		fin
+	fi
 }
 
 build_vault() {
@@ -288,18 +296,16 @@ add_kexts_res_list() {
 	while [ "$BundlePath" != "" ]
 	do
 		BundlePath=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:BundlePath" $BASE_DIR/$CONFIG_PLIST`||BundlePath=""
-		if [ "$BundlePath" != "" ]; then
-			Enabled=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:Enabled" $BASE_DIR/$CONFIG_PLIST`
-			if [ "$Enabled" == "true" ]; then
-				git_url=`/usr/libexec/PlistBuddy -c "print :$BundlePath" $BASE_DIR/Docs/repo.plist`||git_url=""
-				if [ "$git_url" != "" ]; then
-					res_list+=("$BundlePath" "$git_url" "" "OC/Kexts")
-				elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
-					res_list+=("$BundlePath" "" "$BASE_DIR/extras" "OC/Kexts")
-				else
-					msg "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist or extras\n"
-					exit 1
-				fi
+		Enabled=`/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:Enabled" $BASE_DIR/$CONFIG_PLIST`||Enabled=""
+		if [ "$Enabled" == "true" ]; then
+			git_url=`/usr/libexec/PlistBuddy -c "print :$BundlePath" $BASE_DIR/Docs/repo.plist`||git_url=""
+			if [ "$git_url" != "" ]; then
+				res_list+=("$BundlePath" "$git_url" "" "OC/Kexts")
+			elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
+				res_list+=("$BundlePath" "" "$BASE_DIR/extras" "OC/Kexts")
+			else
+				msg "\n${RED}ERROR:${NC} $BundlePath - repo was not found in Docs/repo.plist or extras directory\n"
+				exit 1
 			fi
 		fi
 		let "count += 1"
@@ -320,7 +326,7 @@ add_tools_res_list() {
 			elif [ -f "$BASE_DIR/extras/$Path" ]; then
 					res_list+=("$Path" "" "$BASE_DIR/extras" "OC/Tools")
 			else
-				msg "\n${RED}ERROR:${NC} $Name - repo was not found\n"
+				msg "\n${RED}ERROR:${NC} $Name - repo was not found in Docs/repo.list or extras directory\n"
 				exit 1
 			fi
 		fi
@@ -348,7 +354,6 @@ set_build_type() {
 }
 
 
-echo "ARG1 $ARG1"
 #parse command line arguments
 case $ARG1 in
 	b?(uild) ) #build first if repo exists, else copy from extras folder
