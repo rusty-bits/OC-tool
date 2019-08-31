@@ -3,7 +3,7 @@
 shopt -s extglob
 BASE_DIR=`pwd`
 
-args=`getopt huvX $*`
+args=`getopt huvAX $*`
 if [ "$?" != "0" ]; then
 	echo -e `cat $BASE_DIR/Docs/usage.txt`
 	exit 0
@@ -30,6 +30,12 @@ do
 		shift;;
 	-v)
 		echo -e "OpenCore-tool version $VER"
+		exit 0;;
+	-A)
+		echo -e "build All resources not implemented yet"
+		exit 0;;
+	-X)
+		echo -e "remove all resources not implemented yet"
 		exit 0;;
 	--)
 		shift; break;;
