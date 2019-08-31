@@ -14,8 +14,6 @@
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AppleImageLoader.efi</key>
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
-	<key>AppleUiSupport.efi</key>
-	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AtherosE2200Ethernet.kext</key>
 	<string>https://github.com/Mieze/AtherosE2200Ethernet</string>
 	<key>BT4LEContinuityFixup.kext</key>

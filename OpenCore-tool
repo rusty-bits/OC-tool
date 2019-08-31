@@ -16,6 +16,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 VER="0.1"
+BUILD_ALL="false"
 
 set -- $args
 for i
@@ -32,8 +33,8 @@ do
 		echo -e "OpenCore-tool version $VER"
 		exit 0;;
 	-A)
-		echo -e "build All resources not implemented yet"
-		exit 0;;
+		BUILD_ALL="true"
+		shift;;
 	-X)
 		echo -e "remove all resources not implemented yet"
 		exit 0;;
@@ -67,6 +68,7 @@ set_up_dest_dir() {
 	mkdir -p $BUILD_DIR/OC
 	fin
 }
+
 
 init_res_list() {
 	res_list=( \
@@ -159,13 +161,26 @@ build_kext() {
 	cd $pkg_name
 	if [ "`git rev-parse HEAD`" != "`cat gitStat$AUDK_CONFIG`" ]; then
 		msg "Building $pkg_name ... "
-		if [ "$pkg_name" != "Lilu" ]; then
-			if [ ! -L "Lilu.kext" ]; then
+		if [ "$pkg_name" = "Lilu" ]; then
+			if [ "`git rev-parse HEAD`" != "`cat gitStatDEBUG`" ]; then
+				echo -e -n "DEBUG ... " >$(tty)
+				xcodebuild -config Debug build #special case, always build DEBUG lilu
+				git rev-parse HEAD > gitStatDEBUG
+				fin; msg "Building Lilu ... RELEASE ... "
+			fi
+		else
+			if [ -d "Lilu.kext" ]; then #remove Lilu from repos that contain it
+				rm -rf Lilu.kext
+			fi
+			if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
 				ln -s $RES_DIR/Kext_builds/Lilu/build/Debug/Lilu.kext .
 			fi
 		fi
 		xcodebuild -config $XCODE_CONFIG build
 		git rev-parse HEAD > gitStat$AUDK_CONFIG
+		if [ -d "build/Products" ]; then #copy Products contents back to build level
+			cp -r build/Products/* build
+		fi
 		fin
 	fi
 }
@@ -197,19 +212,20 @@ build_driver() {
 	fi
 }
 
+
 build_resources() {
-	msg "\n${GREEN}Building needed resources${NC}\n"
+	msg "\n${GREEN}Building resources${NC}\n"
 	mkdir -p $BASE_DIR/resources && cd $_
 	built=()
 
 	clone "https://github.com/acidanthera/audk UDK"
 
 	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
-		if [ "${res_list[i+2]}" = "" ]; then
+		if [ "${res_list[i+2]}" == "" ]; then
 		case `echo ${res_list[i]}|rev|cut -f 1 -d .|rev` in
 			"base" | "efi" )
 				if [ "${res_list[i]}" == "Shell.efi" ]; then #special case
-					build_shell_tool
+					build_shell_tool #store Shell.efi in extras folder for now
 					res_list[i+2]=$dest
 				else
 					build_driver "$i"
@@ -223,6 +239,7 @@ build_resources() {
 		esac
 	fi
 	done
+	echo -e "" >$(tty)
 }
 
 copy_resources() {
@@ -339,6 +356,37 @@ add_tools_res_list() {
 		let "count += 1"
 	done
 }
+
+build_all_repos() {
+	count=0
+	Repos=`/usr/libexec/PlistBuddy -c "print" $BASE_DIR/Docs/repo.plist`||Repos=""
+	if [ "$Repos" != "" ]; then
+		items=`awk -F" = " '
+		{
+			if ($0 ~ /[{}]/){}
+			else{printf $1","}
+		}' <<< "${Repos}"|tr -d ' '`
+
+		IFS=',' read -ra array <<< "$items"
+
+		init_res_list
+		res_list+=("Lilu.kext" "https://github.com/acidanthera/Lilu" "" "") #add Lilu before other kexts
+
+		for element in "${array[@]}"
+		do
+			git_url=`/usr/libexec/PlistBuddy -c "print :$element" $BASE_DIR/Docs/repo.plist`||git_url=""
+			if [ "$element" != "Lilu.kext" ]; then #Lilu alread added first
+				res_list+=("$element" "$git_url" "" "")
+			fi
+		done
+		build_resources
+		exit 0
+	else
+		msg "${RED}ERROR:${NC} Docs/repo.plist not found or invalid format\n"
+		exit 1
+	fi
+}
+
 set_build_type() {
 	case $ARG2 in
 		d?(ebug) )
@@ -359,7 +407,6 @@ set_build_type() {
 	echo -e "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
 }
 
-
 #parse command line arguments
 case $ARG1 in
 	b?(uild) ) #build first if repo exists, else copy from extras folder
@@ -374,6 +421,9 @@ case $ARG1 in
 			check_for_updates
 			exit 0
 		fi
+		if [ "$BUILD_ALL" == "true" ]; then
+			build_all_repos
+		fi
 		echo -e `cat $BASE_DIR/Docs/usage.txt`
 		exit 0
 		;;
@@ -386,24 +436,23 @@ exec 2>&1
 
 check_requirements
 
-set_up_dest_dir
-
 init_res_list
 add_drivers_res_list
 add_kexts_res_list
 add_tools_res_list
 
-#print_resources
-#exit 0
+print_resources
 
-check_for_updates
+#check_for_updates
 
 build_resources
-copy_resources
+
+set_up_dest_dir #todo - change to tmp folder and set up dest dir only if build succeds
+copy_resources #todo - copy from tmp folder?
 
 check_if_Sample_plist_updated
 
-build_vault
+build_vault #todo - before or after copy?
 
 exec 1>&6 6>&- 2>&1 #stop logfile
 
