@@ -1,11 +1,18 @@
-\n\033[1mUsage:\t./OpenCore-tool [-huvAX] [\033[0m\033[4mcommand\033[0m\033[1m] [\033[0m\033[4mtype\033[0m\033[1m]\033[0m\n
+\033[1mSYNOPSIS\n\t./OpenCore-tool [-huvAX] [\033[0m\033[4mcommand\033[0m\033[1m] [\033[0m\033[4mtype\033[0m\033[1m]\n
 \n
-\t./OpenCore-tool\t-u\t\t:update pulled repos only and quit\n
-\n
-\t./OpenCore-tool [-u] build release\t:build RELEASE version\n
-\t\t\t\t\t\t:<update first if -u flag set>\n
-\n
-\t\t\t\tbuild debug\t:build DEBUG version\n
-\t\t\t\t\t\t:<update first if -u flag set>\n
-\n
-\t\t\t\tcopy [release, debug] not implemented yet
+OPTIONS\n
+\t-h\033[0m\tprint this help info and quit\n
+\t\033[1m-u\033[0m\twhen used alone-update pulled repos and quit\n
+\t\twhen used before \033[4mbuild\033[0m command-update repos before building\n
+\t\033[1m-v\033[0m\tprint version info and quit\n
+\t\033[1m-A\033[0m\tpull and build all available repos\n
+\t\trequires debug or release after -A\n
+\t\033[1m-X\033[0m\tremove current resources\n
+\n\033[1mCOMMAND\n
+\tbuild\033[0m\tbuild EFI directory based on config.plist\n
+\t\twill update existing resources first if \033[1m-u\033[0m option set\n
+\t\033[1mcopy\033[0m\tcopy files from extras then build remaining requirements\n
+\t\tnot yet implemented\n
+\n\033[1mTYPE\n
+\tdebug\033[0m\tbuild EFI folder with DEBUG resources using DEBUG/config.plist\n
+\t\033[1mrelease\033[0m\tbuild EFI folder with RELEASE resources using RELEASE/config.plist\n
