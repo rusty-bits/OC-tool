@@ -15,7 +15,7 @@ BASE_TOOLS="unbuilt"; UPDATE="false"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="0.1(0831) last checkec with OpenCore version DBG-2019-08-31"
+VER="0.1(0831) last checked with OpenCore version DBG-2019-08-31"
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
