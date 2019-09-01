@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/sh
 
 shopt -s extglob
 BASE_DIR=`pwd`
 
 args=`getopt huvAX $*`
 if [ "$?" != "0" ]; then
-	echo -e `cat $BASE_DIR/Docs/usage.txt`
+	echo `cat $BASE_DIR/Docs/usage.txt`
 	exit 0
 fi
 
@@ -25,21 +25,21 @@ do
 	case "$i"
 	in
 	-h)
-		echo -e `cat $BASE_DIR/Docs/usage.txt`
+		echo `cat $BASE_DIR/Docs/usage.txt`
 		exit 0;;
 	-u)
 		UPDATE="true"
 		shift;;
 	-v)
-		echo -e "OpenCore-tool version $VER"
+		echo "OpenCore-tool version $VER"
 		exit 0;;
 	-A)
 		BUILD_ALL="true"
 		shift;;
 	-X)
-		echo -e -n "Deleting $BASE_DIR/resources ... "
-		rm -rf $BASE_DIR/resources	
-		echo -e "${GREEN}done${NC}"
+		echo "Deleting $BASE_DIR/resources ... \c"
+		rm -rf $BASE_DIR/resources
+		echo "${GREEN}done${NC}"
 		REMOVE_ALL="true"
 		shift;;
 	--)
@@ -50,16 +50,16 @@ ARG1=$1; ARG2=$2
 
 print_resources() {
 	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
-		echo -e "${res_list[i]}\t${res_list[i+1]}\t${res_list[i+2]}\t${res_list[i+3]}" >$(tty)
+		echo "${res_list[i]}\t${res_list[i+1]}\t${res_list[i+2]}\t${res_list[i+3]}" >$(tty)
 	done
 }
 
 msg() {
-	echo -e -n "$1" >$(tty)
+	echo "$1\c" >$(tty)
 }
 
 fin() {
-	echo -e "${GREEN}done${NC}" >$(tty)
+	echo "${GREEN}done${NC}" >$(tty)
 }
 
 set_up_dest_dir() {
@@ -83,7 +83,7 @@ init_res_list() {
 		"OpenCore.efi" "https://github.com/acidanthera/OpenCorePkg" "" "OC" \
 		"config.plist" "" "$BASE_DIR/$AUDK_CONFIG" "OC"
 		)
-	}
+}
 
 clone() {
 	pkg_name=`echo $1|rev|cut -f 1 -d /|cut -f 1 -d " "|rev`
@@ -167,7 +167,7 @@ build_kext() {
 		msg "Building $pkg_name ... "
 		if [ "$pkg_name" = "Lilu" ]; then
 			if [ "`git rev-parse HEAD`" != "`cat gitStatDEBUG`" ]; then
-				echo -e -n "DEBUG ... " >$(tty)
+				echo "DEBUG ... \c" >$(tty)
 				xcodebuild -config Debug build #special case, always build DEBUG lilu
 				git rev-parse HEAD > gitStatDEBUG
 				fin; msg "Building Lilu ... RELEASE ... "
@@ -243,7 +243,7 @@ build_resources() {
 		esac
 	fi
 	done
-	echo -e "" >$(tty)
+	echo "" >$(tty)
 }
 
 copy_resources() {
@@ -404,7 +404,7 @@ set_build_type() {
 			XCODE_CONFIG="Release"
 			;;
 		*)
-			echo -e "need to specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after $ARG1 command" >$(tty)
+			echo "need to specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after $ARG1 command" >$(tty)
 			exit 1
 			;;
 	esac
@@ -412,7 +412,7 @@ set_build_type() {
 	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
 	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
-	echo -e "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
+	echo "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}" >$(tty)
 }
 
 
@@ -436,7 +436,7 @@ case $ARG1 in
 			build_all_repos
 			exit 0
 		else
-			echo -e "${YELLOW}Usage:${NC} must specify \033[4mcommand\033[0m or \033[1m-A\033[0m before $ARG1" >$(tty)
+			echo "${YELLOW}Usage:${NC} must specify \033[4mcommand\033[0m or \033[1m-A\033[0m before $ARG1" >$(tty)
 			exit 1
 		fi
 		;;
@@ -447,14 +447,14 @@ case $ARG1 in
 			exit 0
 		fi
 		if [ "$BUILD_ALL" == "true" ]; then
-			echo -e "${YELLOW}Usage:${NC} must specify either debug or release after -A" >$(tty)
+			echo "${YELLOW}Usage:${NC} must specify either debug or release after -A" >$(tty)
 			exit 1
 		fi
 		if [ "$REMOVE_ALL" == "true" ]; then
 			exit 0
 		fi
 
-		echo -e `cat $BASE_DIR/Docs/usage.txt` >$(tty)
+		echo `cat $BASE_DIR/Docs/usage.txt` >$(tty)
 		exit 0
 		;;
 esac
