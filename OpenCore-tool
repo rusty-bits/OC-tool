@@ -7,7 +7,7 @@ BASE_TOOLS="unbuilt"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="0.1p(0901) last checked with OpenCore version DBG-050-2019-08-31"
+VER="0.1p(0902) last checked with OpenCore version DBG-050-2019-08-31"
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
@@ -286,14 +286,16 @@ build_vault() {
 }
 
 res_not_found() {
-	msg "\n${RED}ERROR:${NC} $1 - repo was not found in Docs/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+	msg "\n${RED}ERROR:${NC} $1 - repo was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
 }
 
 add_res_array() {
 	git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
 	if [ "$git_url" != "" ]; then
 		srce=""
-	elif [ -d "$BASE_DIR/extras/$res_name" ]; then
+	elif [ -d "$BASE_DIR/extras/$res_name" ]; then #found directory (kext)
+		srce="$BASE_DIR/extras"
+	elif [ -f "$BASE_DIR/extras/$res_name" ]; then #found file (driver)
 		srce="$BASE_DIR/extras"
 	else
 		res_not_found "$res_name"
