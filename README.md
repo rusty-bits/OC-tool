@@ -79,6 +79,8 @@ The tool will automatically build the required vault files based on the setting 
 
 `usage.txt` text file with formatted text to show tool help/usage with -h flag  
 
+---
+
 **Description of `extras` directory**  
 
 Kexts and Drivers that OpenCore-tool can not build need to be placed in the `extras` directory.  
