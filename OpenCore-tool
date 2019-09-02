@@ -47,8 +47,6 @@ fin() {
 	msg "${GREEN}done${NC}\n"
 }
 
-inc() { eval "$1"=$(eval expr "$""$1" + 1); }
-
 set_up_dest_dir() {
 	if [ -d "$BUILD_DIR" ]; then
 		msg "Removing old $BUILD_DIR ... "
@@ -60,6 +58,9 @@ set_up_dest_dir() {
 	fin
 }
 
+inc_res_num() {
+	res_num=$((res_num+1))
+}
 
 init_res_list() {
 	res_list="base,https://github.com/acidanthera/EfiPkg,,,"
@@ -72,7 +73,7 @@ init_res_list() {
 	IFS=","
 	for line in $res_list
 	do
-		inc "res_num"
+		inc_res_num
 		eval arr$res_num="$line"
 	done
 }
@@ -81,8 +82,7 @@ clone() {
 	pkg_name=$(echo "$1"|rev|cut -f 1 -d /|cut -f 1 -d " "|rev)
 	if [ ! -d "$pkg_name" ]; then
 		msg "Cloning $1 ... "
-		exit 0
-		git clone $1; fin
+		git clone "$1"; fin
 		echo "new" > "$pkg_name"/gitStatDEBUG
 		echo "new" > "$pkg_name"/gitStatRELEASE
 	fi
@@ -99,10 +99,10 @@ check_requirements() {
 		msg "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
 		exit 1
 	fi
-	which xcodebuild||missing "xcodebuild"
-	which nasm||missing "nasm"
-	which mtoc||missing "mtoc"
-	which git||missing "git"
+	command -v xcodebuild||missing "xcodebuild"
+	command -v nasm||missing "nasm"
+	command -v mtoc||missing "mtoc"
+	command -v git||missing "git"
 	fin
 }
 
@@ -123,7 +123,7 @@ build_shell_tool() {
 	if [ ! -d "$BASE_DIR/resources" ]; then
 		mkdir "$BASE_DIR"/resources
 	fi
-	cd $BASE_DIR/resources
+	cd "$BASE_DIR"/resources
 	clone "https://github.com/acidanthera/OpenCoreShell"
 	cd OpenCoreShell
 	if [ ! -d "UDK" ]; then
@@ -135,7 +135,7 @@ build_shell_tool() {
 	msg "Making UDK2018 BaseTools ... "
 	unset WORKSPACE
 	unset EDK_TOOLS_PATH
-	source edksetup.sh --reconfig
+	. edksetup.sh --reconfig
 	make -C BaseTools
 	fin
 
@@ -148,7 +148,7 @@ build_shell_tool() {
 	msg "Building Shell.efi (OpenCoreShell.efi) ... "
 	build -a X64 -b DEBUG -t XCODE5 -p ShellPkg/ShellPkg.dsc
 	fin
-	srce="$(pwd)/Build/Shell/DEBUG_XCODE5/X64"; dest="$BASE_DIR/extras"
+	srce="$(pwd)/Build/Shell/DEBUG_XCODE5/X64"; dest="$BASE_DIR"/extras
 	mkdir -p "$dest"
 	cp "$srce"/Shell.efi "$dest"
 }
@@ -157,8 +157,8 @@ build_kext() {
 	mkdir -p "$RES_DIR"/Kext_builds
 	cd "$RES_DIR"/Kext_builds
 	clone "$git_url"
-	cd $pkg_name
-	if [ "$(git rev-parse HEAD)" != "$(cat gitStat$AUDK_CONFIG)" ]; then
+	cd "$pkg_name"
+	if [ "$(git rev-parse HEAD)" != "$(cat gitStat"$AUDK_CONFIG")" ]; then
 		msg "Building $pkg_name ... "
 		if [ "$pkg_name" = "Lilu" ]; then
 			if [ "$(git rev-parse HEAD)" != "$(cat gitStatDEBUG)" ]; then
@@ -175,8 +175,8 @@ build_kext() {
 				ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 			fi
 		fi
-		xcodebuild -config $XCODE_CONFIG build
-		git rev-parse HEAD > gitStat$AUDK_CONFIG
+		xcodebuild -config "$XCODE_CONFIG" build
+		git rev-parse HEAD > gitStat"$AUDK_CONFIG"
 		if [ -d "build/Products" ]; then #copy Products contents back to build level
 			cp -r build/Products/* build
 		fi
@@ -196,22 +196,22 @@ build_driver() {
 		fi
 	done
 	if [ "$need_build" = "true" ]; then
-		cd $pkg_name
+		cd "$pkg_name"
 		if [ -f "$pkg_name.dsc" ]; then
-			if [ "$(git rev-parse HEAD)" != "$(cat gitStat$AUDK_CONFIG)" ]; then
+			if [ "$(git rev-parse HEAD)" != "$(cat gitStat"$AUDK_CONFIG")" ]; then
 				if [ "$BASE_TOOLS" = "unbuilt" ]; then
 					msg "Making base tools ... "
 					cd ..
-					source edksetup.sh --reconfig
+					. edksetup.sh --reconfig
 					make -C BaseTools; fin
-					cd $pkg_name
+					cd "$pkg_name"
 					BASE_TOOLS="built"
 				fi
 				cd ..
 				msg "Building $pkg_name ... "
-				build -a X64 -b $AUDK_CONFIG -t XCODE5 -p $pkg_name/$pkg_name.dsc
-				cd $pkg_name
-				git rev-parse HEAD > gitStat$AUDK_CONFIG
+				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc
+				cd "$pkg_name"
+				git rev-parse HEAD > gitStat"$AUDK_CONFIG"
 				fin
 			fi
 		fi
@@ -230,27 +230,27 @@ build_resources() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
 	do
-		res_name=$(eval echo "\$arr$(expr $i )")
-		git_url=$(eval echo "\$arr$(expr $i + 1)")
-		srce=$(eval echo "\$arr$(expr $i + 2)")
+		res_name=$(eval echo "\$arr$((i))")
+		git_url=$(eval echo "\$arr$((i+1))")
+		srce=$(eval echo "\$arr$((i+2))")
 		if [ "$srce" = "" ]; then
 			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
 			"base" | "efi" )
 				if [ "$res_name" = "Shell.efi" ]; then #special case
 					build_shell_tool #store Shell.efi in extras folder for now
-					eval arr$(expr $i + 2 )=$dest
+					eval arr$((i+2))="$dest"
 				else
 					build_driver "$git_url"
-					eval arr$(expr $i + 2 )="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+					eval arr$((i+2))="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 				fi
 				;;
 			"kext" )
 				build_kext "$git_url"
-				eval arr$(expr $i + 2)="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
+				eval arr$((i+2))="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
 				;;
 			esac
 		fi
-		inc "i"; inc "i"; inc "i"; inc "i"
+		i=$((i+4))
 	done
 	msg "\n"
 }
@@ -260,10 +260,9 @@ copy_resources() {
 	n=1
 	while [ "$n" -lt "$res_num" ]
 	do
-		res_name=$(eval echo "\$arr$n"); inc "n"
-		inc "n"
-		srce=$(eval echo "\$arr$n"); inc "n"
-		dest=$(eval echo "\$arr$n"); inc "n"
+		res_name=$(eval echo "\$arr$n"); n=$((n+2))
+		srce=$(eval echo "\$arr$n"); n=$((n+1))
+		dest=$(eval echo "\$arr$n"); n=$((n+1))
 		if [ "$dest" != "" ]; then
 			msg "Copying $res_name to $dest ... "
 			mkdir -p "$BUILD_DIR"/"$dest"
@@ -303,7 +302,7 @@ build_vault() {
 		make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool
 		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
 		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
-		off=$(expr "$str" + 16)
+		off=$((str+16))
 		dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=520 conv=notrunc
 		rm vault.pub
 		fin
@@ -323,23 +322,23 @@ add_drivers_res_list() {
 		if [ "$Driver" != "" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$Driver" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				inc "res_num"
-				eval arr$res_num="$Driver"; inc "res_num"
-				eval arr$res_num="$git_url"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$Driver"; inc_res_num
+				eval arr$res_num="$git_url"; inc_res_num
+				eval arr$res_num=""; inc_res_num
 				eval arr$res_num="OC/Drivers"
 			elif [ -f "$BASE_DIR/extras/$Driver" ]; then
-				inc "res_num"
-				eval arr$res_num="$Driver"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
-				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$Driver"; inc_res_num
+				eval arr$res_num=""; inc_res_num
+				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
 				eval arr$res_num="OC/Drivers"
 			else
 				res_not_found "$Driver"
 				exit 1
 			fi
 		fi
-		inc "n"
+		n=$((n+1))
 	done
 }
 
@@ -353,23 +352,23 @@ add_kexts_res_list() {
 		if [ "$Enabled" = "true" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$BundlePath" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				inc "res_num"
-				eval arr$res_num="$BundlePath"; inc "res_num"
-				eval arr$res_num="$git_url"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$BundlePath"; inc_res_num
+				eval arr$res_num="$git_url"; inc_res_num
+				eval arr$res_num=""; inc_res_num
 				eval arr$res_num="OC/Kexts"
 			elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
-				inc "res_num"
-				eval arr$res_num="$BundlePath"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
-				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$BundlePath"; inc_res_num
+				eval arr$res_num=""; inc_res_num
+				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
 				eval arr$res_num="OC/Kexts"
 			else
 				res_not_found "$BundlePath"
 				exit 1
 			fi
 		fi
-		inc "n"
+		n=$((n+1))
 	done
 }
 
@@ -383,23 +382,23 @@ add_tools_res_list() {
 		if [ "$Enabled" = "true" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$Path" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				inc "res_num"
-				eval arr$res_num="$Path"; inc "res_num"
-				eval arr$res_num="$git_url"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$Path"; inc_res_num
+				eval arr$res_num="$git_url"; inc_res_num
+				eval arr$res_num=""; inc_res_num
 				eval arr$res_num="OC/Tools"
 			elif [ -f "$BASE_DIR/extras/$Path" ]; then
-				inc "res_num"
-				eval arr$res_num="$Path"; inc "res_num"
-				eval arr$res_num=""; inc "res_num"
-				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				inc_res_num
+				eval arr$res_num="$Path"; inc_res_num
+				eval arr$res_num=""; inc_res_num
+				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
 				eval arr$res_num="OC/Tools"
 			else
 				res_not_found "$Path"
 				exit 1
 			fi
 		fi
-		inc "n"
+		n=$((n+1))
 	done
 }
 
