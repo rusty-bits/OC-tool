@@ -11,7 +11,8 @@ VER="0.1p(0902) last checked with OpenCore version DBG-050-2019-08-31"
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
-set -- $(getopt hvAX "$@")
+args=$(getopt hvAX "$@")
+set -- $args
 
 msg() {
 	echo "$1\c" >"$(tty)"
@@ -354,36 +355,40 @@ add_tools_res_list() {
 
 # ***** not yet POSIX compliant **************
 build_all_repos() {
-	msg "${YELLOW}NOTICE:${NC} build all - currently disabled, code not POSIX compliant\n"
+	Repos=$(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist)||Repos=""
+	if [ "$Repos" != "" ]; then
+		n=1
+		Repos=$(echo $Repos|tr -d "\n")
+		init_res_list
+		res_name="Lilu.kext" #add Lilu before other kexts
+		git_url="https://github.com/acidanthera/Lilu"
+		srce=""
+		dest=""
+		add_res_array
+
+		while :
+		do
+			res_name=$(echo "$Repos"|cut -f$((n*3)) -d" ")
+			if [ "$res_name" != "}" ]; then
+				git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
+				if [ "$res_name" != "Lilu.kext" ]; then #Lilu alread added first, don't add it again
+					srce=""
+					dest=""
+					add_res_array
+				fi
+			else
+				break
+			fi
+			n=$((n+1))
+		done
+
+		build_resources
+		exit 0 #just build all and exit for now
+	else
+		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
+		exit 1
+	fi
 }
-#	count=0
-#	Repos=$(/usr/libexec/PlistBuddy -c "print" "$BASE_DIR"/Docs/repo.plist)||Repos=""
-#	if [ "$Repos" != "" ]; then
-#		items=$(awk -F" = " '
-#		{
-#		if ($0 ~ /[{}]/){}
-#		else{printf $1","}
-#		}' <<< "${Repos}"|tr -d ' ')
-#
-#		IFS=',' read -ra array <<< "$items"
-#
-#		init_res_list
-#		res_list+=("Lilu.kext" "https://github.com/acidanthera/Lilu" "" "") #add Lilu before other kexts
-#
-#		for element in "${array[@]}"
-#		do
-#			git_url=$(/usr/libexec/PlistBuddy -c "print :$element" "$BASE_DIR"/Docs/repo.plist)||git_url=""
-#			if [ "$element" != "Lilu.kext" ]; then #Lilu alread added first
-#				res_list+=("$element" "$git_url" "" "")
-#			fi
-#		done
-#		build_resources
-#		exit 0
-#	else
-#		msg "${RED}ERROR:${NC} Docs/repo.plist not found or invalid format\n"
-#		exit 1
-#	fi
-#}
 
 set_build_type() {
 	case $ARG2 in
@@ -482,7 +487,7 @@ add_tools_res_list
 
 build_resources
 
-set_up_dest_dir #todo - change to tmp folder and set up dest dir only if build succeds
+set_up_dest_dir #todo - change to tmp folder and set up dest dir only if build succeds?
 copy_resources #todo - copy from tmp folder?
 
 check_if_Sample_plist_updated
