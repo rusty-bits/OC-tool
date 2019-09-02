@@ -73,7 +73,7 @@ The tool will automatically build the required vault files based on the setting 
 
 ---
 
-**Description of files in `tool-files` directory**  
+**Description of files in `tool-files` directory:**  
 
 `repo.plist` is a plist linking efi and kext files to their repositories  
 
@@ -81,10 +81,12 @@ The tool will automatically build the required vault files based on the setting 
 
 ---
 
-**Description of `extras` directory**  
+**Description of `extras` directory:**  
 
 Kexts and Drivers that OpenCore-tool can not build need to be placed in the `extras` directory.  
 They will then be copied to the appropriate place in the new `EFI`  
+
+---
 
 **Notes:**
 
