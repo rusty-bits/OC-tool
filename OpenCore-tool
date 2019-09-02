@@ -174,9 +174,9 @@ build_driver() {
 				if [ "$BASE_TOOLS" = "unbuilt" ]; then
 					msg "Making base tools ... "
 					cd ..
-	#				unset WORKSPACE
-	#				unset EDK_TOOLS_PATH
-	#				unset CONF_PATH
+					unset WORKSPACE
+					unset EDK_TOOLS_PATH
+					unset CONF_PATH
 					. edksetup.sh
 					make -C BaseTools; fin
 					cd "$pkg_name"
@@ -289,30 +289,32 @@ res_not_found() {
 	msg "\n${RED}ERROR:${NC} $1 - repo was not found in Docs/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
 }
 
+add_res_array() {
+	git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
+	if [ "$git_url" != "" ]; then
+		srce=""
+	elif [ -d "$BASE_DIR/extras/$res_name" ]; then
+		srce="$BASE_DIR/extras"
+	else
+		res_not_found "$res_name"
+		exit 1
+	fi
+	inc_res_num
+	eval arr$res_num="$res_name"; inc_res_num
+	eval arr$res_num="$git_url"; inc_res_num
+	eval arr$res_num="$srce"; inc_res_num
+	eval arr$res_num="$dest"
+}
+
 add_drivers_res_list() {
 	n=0
-	Driver="start"
-	until [ "$Driver" = "" ]
+	res_name="start"
+	until [ "$res_name" = "" ]
 	do
-		Driver=$(/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$n" "$BASE_DIR"/"$CONFIG_PLIST")||Driver=""
-		if [ "$Driver" != "" ]; then
-			git_url=$(/usr/libexec/PlistBuddy -c "print :$Driver" "$TOOL_FILES"/repo.plist)||git_url=""
-			if [ "$git_url" != "" ]; then
-				inc_res_num
-				eval arr$res_num="$Driver"; inc_res_num
-				eval arr$res_num="$git_url"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="OC/Drivers"
-			elif [ -f "$BASE_DIR/extras/$Driver" ]; then
-				inc_res_num
-				eval arr$res_num="$Driver"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
-				eval arr$res_num="OC/Drivers"
-			else
-				res_not_found "$Driver"
-				exit 1
-			fi
+		res_name=$(/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$n" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
+		if [ "$res_name" != "" ]; then
+			dest="/OC/Drivers"
+			add_res_array
 		fi
 		n=$((n+1))
 	done
@@ -320,29 +322,14 @@ add_drivers_res_list() {
 
 add_kexts_res_list() {
 	n=0
-	BundlePath="start"
-	until [ "$BundlePath" = "" ]
+	res_name="start"
+	until [ "$res_name" = "" ]
 	do
-		BundlePath=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:BundlePath" "$BASE_DIR"/"$CONFIG_PLIST")||BundlePath=""
+		res_name=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:BundlePath" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
 		Enabled=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
 		if [ "$Enabled" = "true" ]; then
-			git_url=$(/usr/libexec/PlistBuddy -c "print :$BundlePath" "$TOOL_FILES"/repo.plist)||git_url=""
-			if [ "$git_url" != "" ]; then
-				inc_res_num
-				eval arr$res_num="$BundlePath"; inc_res_num
-				eval arr$res_num="$git_url"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="OC/Kexts"
-			elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
-				inc_res_num
-				eval arr$res_num="$BundlePath"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
-				eval arr$res_num="OC/Kexts"
-			else
-				res_not_found "$BundlePath"
-				exit 1
-			fi
+			dest="OC/Kexts"
+			add_res_array
 		fi
 		n=$((n+1))
 	done
@@ -350,34 +337,20 @@ add_kexts_res_list() {
 
 add_tools_res_list() {
 	n=0
-	Path="start"
-	until [ "$Path" = "" ]
+	res_name="start"
+	until [ "$res_name" = "" ]
 	do
-		Path=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Path" "$BASE_DIR"/"$CONFIG_PLIST")||Path=""
+		res_name=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Path" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
 		Enabled=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
 		if [ "$Enabled" = "true" ]; then
-			git_url=$(/usr/libexec/PlistBuddy -c "print :$Path" "$TOOL_FILES"/repo.plist)||git_url=""
-			if [ "$git_url" != "" ]; then
-				inc_res_num
-				eval arr$res_num="$Path"; inc_res_num
-				eval arr$res_num="$git_url"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="OC/Tools"
-			elif [ -f "$BASE_DIR/extras/$Path" ]; then
-				inc_res_num
-				eval arr$res_num="$Path"; inc_res_num
-				eval arr$res_num=""; inc_res_num
-				eval arr$res_num="$BASE_DIR/extras"; inc_res_num
-				eval arr$res_num="OC/Tools"
-			else
-				res_not_found "$Path"
-				exit 1
-			fi
+			dest="OC/Tools"
+			add_res_array
 		fi
 		n=$((n+1))
 	done
 }
 
+# ***** not yet POSIX compliant **************
 #build_all_repos() {
 #	count=0
 #	Repos=$(/usr/libexec/PlistBuddy -c "print" "$BASE_DIR"/Docs/repo.plist)||Repos=""
