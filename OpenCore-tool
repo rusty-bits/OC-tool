@@ -351,7 +351,9 @@ add_tools_res_list() {
 }
 
 # ***** not yet POSIX compliant **************
-#build_all_repos() {
+build_all_repos() {
+	msg "${YELLOW}NOTICE:${NC} build all - currently disabled, code not POSIX compliant\n"
+}
 #	count=0
 #	Repos=$(/usr/libexec/PlistBuddy -c "print" "$BASE_DIR"/Docs/repo.plist)||Repos=""
 #	if [ "$Repos" != "" ]; then
