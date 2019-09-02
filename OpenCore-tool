@@ -6,7 +6,7 @@ BASE_TOOLS="unbuilt"; UPDATE="false"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="0.1(0831) last checked with OpenCore version DBG-050-2019-08-31"
+VER="0.1p(0901) last checked with OpenCore version DBG-050-2019-08-31"
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
@@ -39,12 +39,6 @@ do
 done
 ARG1=$1; ARG2=$2
 
-print_resources() {
-	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
-		msg "${res_list[i]}\t${res_list[i+1]}\t${res_list[i+2]}\t${res_list[i+3]}\n"
-	done
-}
-
 msg() {
 	echo "$1\c" >"$(tty)"
 }
@@ -68,20 +62,26 @@ set_up_dest_dir() {
 
 
 init_res_list() {
-	res_list=( \
-		"base" "https://github.com/acidanthera/EfiPkg" "" "" \
-		"base" "https://github.com/acidanthera/MacInfoPkg" "" "" \
-		"base" "https://github.com/acidanthera/OcSupportPkg" "" "" \
-		"BOOTx64.efi" "https://github.com/acidanthera/OpenCorePkg" "" "BOOT" \
-		"OpenCore.efi" "https://github.com/acidanthera/OpenCorePkg" "" "OC" \
-		"config.plist" "" "$BASE_DIR/$AUDK_CONFIG" "OC"
-		)
+	res_list="base,https://github.com/acidanthera/EfiPkg,,,"
+	res_list="${res_list}base,https://github.com/acidanthera/MacInfoPkg,,,"
+	res_list="${res_list}base,https://github.com/acidanthera/OcSupportPkg,,,"
+	res_list="${res_list}BOOTx64.efi,https://github.com/acidanthera/OpenCorePkg,,BOOT,"
+	res_list="${res_list}OpenCore.efi,https://github.com/acidanthera/OpenCorePkg,,OC,"
+	res_list="${res_list}config.plist,,$BASE_DIR/$AUDK_CONFIG,OC,"
+	res_num=0
+	IFS=","
+	for line in $res_list
+	do
+		inc "res_num"
+		eval arr$res_num="$line"
+	done
 }
 
 clone() {
-	pkg_name=$(echo $1|rev|cut -f 1 -d /|cut -f 1 -d " "|rev)
+	pkg_name=$(echo "$1"|rev|cut -f 1 -d /|cut -f 1 -d " "|rev)
 	if [ ! -d "$pkg_name" ]; then
 		msg "Cloning $1 ... "
+		exit 0
 		git clone $1; fin
 		echo "new" > "$pkg_name"/gitStatDEBUG
 		echo "new" > "$pkg_name"/gitStatRELEASE
@@ -149,12 +149,14 @@ build_shell_tool() {
 	build -a X64 -b DEBUG -t XCODE5 -p ShellPkg/ShellPkg.dsc
 	fin
 	srce="$(pwd)/Build/Shell/DEBUG_XCODE5/X64"; dest="$BASE_DIR/extras"
-	mkdir -p $dest && cp $srce/Shell.efi $_
+	mkdir -p "$dest"
+	cp "$srce"/Shell.efi "$dest"
 }
 
 build_kext() {
-	mkdir -p $RES_DIR/Kext_builds && cd $_
-	clone "${res_list[$1+1]}"
+	mkdir -p "$RES_DIR"/Kext_builds
+	cd "$RES_DIR"/Kext_builds
+	clone "$git_url"
 	cd $pkg_name
 	if [ "$(git rev-parse HEAD)" != "$(cat gitStat$AUDK_CONFIG)" ]; then
 		msg "Building $pkg_name ... "
@@ -184,8 +186,16 @@ build_kext() {
 
 build_driver() {
 	cd "$RES_DIR"/UDK
-	clone "${res_list[$1+1]}"
-	if [[ ! " ${built[@]} " =~ " ${pkg_name} " ]]; then
+	clone "$git_url"
+	need_build="true"
+	IFS=","
+	for pkg in $built
+	do
+		if [ "$pkg_name" = "$pkg" ]; then
+			need_build="false"
+		fi
+	done
+	if [ "$need_build" = "true" ]; then
 		cd $pkg_name
 		if [ -f "$pkg_name.dsc" ]; then
 			if [ "$(git rev-parse HEAD)" != "$(cat gitStat$AUDK_CONFIG)" ]; then
@@ -205,49 +215,59 @@ build_driver() {
 				fin
 			fi
 		fi
-		built+=( "$pkg_name" )
+		built="${built},$pkg_name,"
 	fi
 }
 
 
 build_resources() {
 	msg "\n${GREEN}Building resources${NC}\n"
-	mkdir -p "$BASE_DIR"/resources && cd $_
-	built=()
+	mkdir -p "$BASE_DIR"/resources
+	cd "$BASE_DIR"/resources
+	built=""
 
 	clone "https://github.com/acidanthera/audk UDK"
-
-	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
-		if [ "${res_list[i+2]}" = "" ]; then
-			case $(echo ${res_list[i]}|rev|cut -f 1 -d .|rev) in
+	i=1
+	while [ "$i" -lt "$res_num" ]
+	do
+		res_name=$(eval echo "\$arr$(expr $i )")
+		git_url=$(eval echo "\$arr$(expr $i + 1)")
+		srce=$(eval echo "\$arr$(expr $i + 2)")
+		if [ "$srce" = "" ]; then
+			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
 			"base" | "efi" )
-				if [ "${res_list[i]}" == "Shell.efi" ]; then #special case
+				if [ "$res_name" = "Shell.efi" ]; then #special case
 					build_shell_tool #store Shell.efi in extras folder for now
-					res_list[i+2]=$dest
+					eval arr$(expr $i + 2 )=$dest
 				else
-					build_driver "$i"
-					res_list[i+2]="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+					build_driver "$git_url"
+					eval arr$(expr $i + 2 )="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 				fi
 				;;
 			"kext" )
-				build_kext "$i"
-				res_list[i+2]="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
+				build_kext "$git_url"
+				eval arr$(expr $i + 2)="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
 				;;
-		esac
-	fi
+			esac
+		fi
+		inc "i"; inc "i"; inc "i"; inc "i"
 	done
 	msg "\n"
 }
 
 copy_resources() {
 	msg "\n${GREEN}Moving resources into place${NC}\n"
-	for (( i = 0; i < ${#res_list[@]} ; i+=4 )); do
-		dest=${res_list[i+3]}
+	n=1
+	while [ "$n" -lt "$res_num" ]
+	do
+		res_name=$(eval echo "\$arr$n"); inc "n"
+		inc "n"
+		srce=$(eval echo "\$arr$n"); inc "n"
+		dest=$(eval echo "\$arr$n"); inc "n"
 		if [ "$dest" != "" ]; then
-			res_name=${res_list[i]}
-			srce=${res_list[i+2]}
 			msg "Copying $res_name to $dest ... "
-			mkdir -p "$BUILD_DIR"/"$dest" && cp -r "$srce"/"$res_name" "$_"
+			mkdir -p "$BUILD_DIR"/"$dest"
+			cp -r "$srce"/"$res_name" "$BUILD_DIR"/"$dest"
 			fin
 		fi
 	done
@@ -295,99 +315,123 @@ res_not_found() {
 }
 
 add_drivers_res_list() {
-	count=0
+	n=0
 	Driver="start"
 	until [ "$Driver" = "" ]
 	do
-		Driver=$(/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$count" "$BASE_DIR"/"$CONFIG_PLIST")||Driver=""
+		Driver=$(/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$n" "$BASE_DIR"/"$CONFIG_PLIST")||Driver=""
 		if [ "$Driver" != "" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$Driver" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				res_list+=( "$Driver" "$git_url" "" "OC/Drivers" )
+				inc "res_num"
+				eval arr$res_num="$Driver"; inc "res_num"
+				eval arr$res_num="$git_url"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="OC/Drivers"
 			elif [ -f "$BASE_DIR/extras/$Driver" ]; then
-				res_list+=( "$Driver" "" "$BASE_DIR/extras" "OC/Drivers" )
+				inc "res_num"
+				eval arr$res_num="$Driver"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				eval arr$res_num="OC/Drivers"
 			else
 				res_not_found "$Driver"
 				exit 1
 			fi
 		fi
-		inc "count"
+		inc "n"
 	done
 }
 
 add_kexts_res_list() {
-	count=0
+	n=0
 	BundlePath="start"
 	until [ "$BundlePath" = "" ]
 	do
-		BundlePath=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:BundlePath" "$BASE_DIR"/"$CONFIG_PLIST")||BundlePath=""
-		Enabled=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$count:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
+		BundlePath=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:BundlePath" "$BASE_DIR"/"$CONFIG_PLIST")||BundlePath=""
+		Enabled=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
 		if [ "$Enabled" = "true" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$BundlePath" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				res_list+=( "$BundlePath" "$git_url" "" "OC/Kexts" )
+				inc "res_num"
+				eval arr$res_num="$BundlePath"; inc "res_num"
+				eval arr$res_num="$git_url"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="OC/Kexts"
 			elif [ -d "$BASE_DIR/extras/$BundlePath" ]; then
-				res_list+=( "$BundlePath" "" "$BASE_DIR/extras" "OC/Kexts" )
+				inc "res_num"
+				eval arr$res_num="$BundlePath"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				eval arr$res_num="OC/Kexts"
 			else
 				res_not_found "$BundlePath"
 				exit 1
 			fi
 		fi
-		inc "count"
+		inc "n"
 	done
 }
 
 add_tools_res_list() {
-	count=0
+	n=0
 	Path="start"
 	until [ "$Path" = "" ]
 	do
-		Path=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$count:Path" "$BASE_DIR"/"$CONFIG_PLIST")||Path=""
-		Enabled=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$count:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
+		Path=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Path" "$BASE_DIR"/"$CONFIG_PLIST")||Path=""
+		Enabled=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
 		if [ "$Enabled" = "true" ]; then
 			git_url=$(/usr/libexec/PlistBuddy -c "print :$Path" "$BASE_DIR"/Docs/repo.plist)||git_url=""
 			if [ "$git_url" != "" ]; then
-				res_list+=( "$Path" "$git_url" "" "OC/Tools" )
+				inc "res_num"
+				eval arr$res_num="$Path"; inc "res_num"
+				eval arr$res_num="$git_url"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="OC/Tools"
 			elif [ -f "$BASE_DIR/extras/$Path" ]; then
-					res_list+=( "$Path" "" "$BASE_DIR/extras" "OC/Tools" )
+				inc "res_num"
+				eval arr$res_num="$Path"; inc "res_num"
+				eval arr$res_num=""; inc "res_num"
+				eval arr$res_num="$BASE_DIR/extras"; inc "res_num"
+				eval arr$res_num="OC/Tools"
 			else
 				res_not_found "$Path"
 				exit 1
 			fi
 		fi
-		inc "count"
+		inc "n"
 	done
 }
 
-build_all_repos() {
-	count=0
-	Repos=$(/usr/libexec/PlistBuddy -c "print" "$BASE_DIR"/Docs/repo.plist)||Repos=""
-	if [ "$Repos" != "" ]; then
-		items=$(awk -F" = " '
-		{
-		if ($0 ~ /[{}]/){}
-		else{printf $1","}
-		}' <<< "${Repos}"|tr -d ' ')
-
-		IFS=',' read -ra array <<< "$items"
-
-		init_res_list
-		res_list+=("Lilu.kext" "https://github.com/acidanthera/Lilu" "" "") #add Lilu before other kexts
-
-		for element in "${array[@]}"
-		do
-			git_url=$(/usr/libexec/PlistBuddy -c "print :$element" "$BASE_DIR"/Docs/repo.plist)||git_url=""
-			if [ "$element" != "Lilu.kext" ]; then #Lilu alread added first
-				res_list+=("$element" "$git_url" "" "")
-			fi
-		done
-		build_resources
-		exit 0
-	else
-		msg "${RED}ERROR:${NC} Docs/repo.plist not found or invalid format\n"
-		exit 1
-	fi
-}
+#build_all_repos() {
+#	count=0
+#	Repos=$(/usr/libexec/PlistBuddy -c "print" "$BASE_DIR"/Docs/repo.plist)||Repos=""
+#	if [ "$Repos" != "" ]; then
+#		items=$(awk -F" = " '
+#		{
+#		if ($0 ~ /[{}]/){}
+#		else{printf $1","}
+#		}' <<< "${Repos}"|tr -d ' ')
+#
+#		IFS=',' read -ra array <<< "$items"
+#
+#		init_res_list
+#		res_list+=("Lilu.kext" "https://github.com/acidanthera/Lilu" "" "") #add Lilu before other kexts
+#
+#		for element in "${array[@]}"
+#		do
+#			git_url=$(/usr/libexec/PlistBuddy -c "print :$element" "$BASE_DIR"/Docs/repo.plist)||git_url=""
+#			if [ "$element" != "Lilu.kext" ]; then #Lilu alread added first
+#				res_list+=("$element" "$git_url" "" "")
+#			fi
+#		done
+#		build_resources
+#		exit 0
+#	else
+#		msg "${RED}ERROR:${NC} Docs/repo.plist not found or invalid format\n"
+#		exit 1
+#	fi
+#}
 
 set_build_type() {
 	case $ARG2 in
@@ -459,8 +503,6 @@ init_res_list
 add_drivers_res_list
 add_kexts_res_list
 add_tools_res_list
-
-#print_resources
 
 check_for_updates
 
