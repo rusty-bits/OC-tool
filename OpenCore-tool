@@ -287,7 +287,7 @@ build_vault() {
 }
 
 res_not_found() {
-	msg "\n${RED}ERROR:${NC} $1 - repo was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+	msg "\n${RED}ERROR:${NC}\t$1 - repo was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
 }
 
 add_res_array() {
@@ -353,7 +353,6 @@ add_tools_res_list() {
 	done
 }
 
-# ***** not yet POSIX compliant **************
 build_all_repos() {
 	Repos=$(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist)||Repos=""
 	if [ "$Repos" != "" ]; then
