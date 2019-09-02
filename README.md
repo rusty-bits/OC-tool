@@ -87,7 +87,7 @@ They will then be copied to the appropriate place in the new `EFI`
 **Notes:**
 
 -unsure if macOS Catalina will support bash commands right out of the box  
-  rewrote code to be POSIX compliant so it will run without issue in sh  
+    rewrote code to be POSIX compliant so it will run without issue in sh  
 -still a work in progress, code needs cleaning, I'm working on it   
 -basic Tools folder support is done for Shell.efi - needs improvement  
 -planning on adding ACPI folder support if I get around to it  
