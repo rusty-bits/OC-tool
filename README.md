@@ -34,7 +34,7 @@ then place your config.plist file in the appropriate directory, or copy and edit
 
 ---
 
-**Usage**: (*release*)
+**Usage**: (*for building release configuration*)
 
 edit `RELEASE/config.plist` as appropriate.  
 
@@ -44,7 +44,7 @@ This will create a `RELEASE/EFI` directory with all the required files, this can
 
 ---
 
-**Usage**: (*debug*)
+**Usage**: (*for building debug configuration*)
 
 to create a debug version...
 
@@ -65,10 +65,6 @@ The tool will automatically build the required vault files based on the setting 
 **Description of files in `Docs` directory:**
 `Sample.plist` and `SampleFull.plist` are from acidanthera/OpenCorePkg/Docs and will also be found locally in `OC-tool/resources/UDK/OpenCorePkg/Docs` they are updated when the update command is used, there is a notification if they have been updated, check the `OpenCorePkg/Docs/Configuration.pdf` document and update `RELEASE/config.plist` or `DEBUG/config.plist` when needed  
 
-`repo.plist` is a plist linking efi and kext files to their repositories  
-
-`usage.txt` text file with formatted text to show tool help/usage with -h flag  
-
 ---
 
 **Descriprion of files in `DEBUG` and `RELEASE` directories:**
@@ -77,12 +73,21 @@ The tool will automatically build the required vault files based on the setting 
 
 ---
 
+**Description of files in `tool-files` directory**  
+
+`repo.plist` is a plist linking efi and kext files to their repositories  
+
+`usage.txt` text file with formatted text to show tool help/usage with -h flag  
+
 **Description of `extras` directory**  
 
-If there are kexts or drivers that do not have a git repo place them here in the `extras` directory.  They will then be copied to the appropriate place in the new `EFI`
+Kexts and Drivers that OpenCore-tool can not build need to be placed in the `extras` directory.  
+They will then be copied to the appropriate place in the new `EFI`  
 
 **Notes:**
 
+-unsure if macOS Catalina will support bash commands right out of the box  
+  rewrote code to be POSIX compliant so it will run without issue in sh  
 -still a work in progress, code needs cleaning, I'm working on it   
--basic Tools folder support is done for Shell.efi  
+-basic Tools folder support is done for Shell.efi - needs improvement  
 -planning on adding ACPI folder support if I get around to it  
