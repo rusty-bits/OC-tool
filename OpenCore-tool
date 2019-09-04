@@ -7,15 +7,19 @@ BASE_TOOLS="unbuilt"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="0.1p(0902) last checked with OpenCore version DBG-050-2019-08-31"
+VER="0.1p(0903) last checked with OpenCore version DBG-050-2019-08-31"
+SILENT=false
+VERBOSE=false
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
-args=$(getopt hvAX "$@")
+args=$(getopt hsvAVX "$@")
 set -- $args
 
 msg() {
-	echo "$1\c" >"$(tty)"
+	if [ "$SILENT" != "true" ]; then
+		echo "$1\c" >"$(tty)"
+	fi
 }
 
 fin() {
@@ -126,6 +130,11 @@ build_shell_tool() {
 	cp "$srce"/Shell.efi "$dest"
 }
 
+build_failed() {
+	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n\tsee $LOGFILE for details\n"
+	exit 1
+}
+
 build_kext() {
 	mkdir -p "$RES_DIR"/Kext_builds
 	cd "$RES_DIR"/Kext_builds
@@ -133,12 +142,13 @@ build_kext() {
 	cd "$pkg_name"
 	if [ "$(git rev-parse HEAD)" != "$(cat gitStat"$AUDK_CONFIG")" ]; then
 		msg "Building $pkg_name ... "
-		if [ "$pkg_name" = "Lilu" ]; then
+		if [ "$pkg_name" = "Lilu" ] && [ "$AUDK_CONFIG" != "DEBUG" ]; then
 			if [ "$(git rev-parse HEAD)" != "$(cat gitStatDEBUG)" ]; then
 				msg "DEBUG ... "
 				xcodebuild -config Debug build #special case, always build DEBUG lilu
 				git rev-parse HEAD > gitStatDEBUG
-				fin; msg "Building Lilu ... RELEASE ... "
+				fin
+				msg "Building Lilu ... RELEASE ... "
 			fi
 		else
 			if [ -d "Lilu.kext" ]; then #remove Lilu from repos that contain it
@@ -185,7 +195,7 @@ build_driver() {
 				fi
 				cd ..
 				msg "Building $pkg_name ... "
-				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc
+				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||return 1
 				cd "$pkg_name"
 				git rev-parse HEAD > gitStat"$AUDK_CONFIG"
 				fin
@@ -216,7 +226,7 @@ build_resources() {
 					build_shell_tool #store Shell.efi in extras folder for now
 					eval arr$((i+2))="$dest"
 				else
-					build_driver
+					build_driver||build_failed
 					eval arr$((i+2))="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 				fi
 				;;
@@ -419,14 +429,22 @@ while :
 do
 	case  "$1" in
 	-h)
-		msg "$(cat "$TOOL_FILES"/usage.txt)\n"
+		msg "$(cat "$TOOL_FILES"/help.txt)\n"
 		exit 0;;
+	-s)
+		SILENT=true
+		shift;;
 	-v)
 		msg "OpenCore-tool version $VER\n"
 		exit 0;;
 	-A)
 		BUILD_ALL="true"
 		shift;;
+	-V)
+		VERBOSE=true
+		exec 1>&6 6>&- 2>&1 #stop logfile
+		shift;;
+
 	-X)
 		msg "Deleting $BASE_DIR/resources ... "
 		rm -rf "$BASE_DIR"/resources
@@ -493,6 +511,8 @@ check_if_Sample_plist_updated
 
 build_vault #todo - before or after copy?
 
-exec 1>&6 6>&- 2>&1 #stop logfile
+if [ "$VERBOSE" != "true" ];then
+	exec 1>&6 6>&- 2>&1 #stop logfile
+fi
 
 msg "\n${GREEN}Finished building ${YELLOW}$BUILD_DIR${NC}\n"
