@@ -7,7 +7,7 @@ BASE_TOOLS="unbuilt"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="0.1p(0903) last checked with OpenCore version DBG-050-2019-08-31"
+VER="1.0p(0904) last checked with OpenCore version DBG-050-2019-09-03"
 SILENT=false
 VERBOSE=false
 BUILD_ALL="false"
@@ -139,15 +139,24 @@ build_failed() {
 }
 
 xcode_build_loop() {
+	tries=5
+	s="s"
 	failed="true"
 	while [ "$failed" = "true" ]
 	do
 		failed="false"
-		xcodebuild -config $1 build||failed="true"
+		xcodebuild -config "$1" build||failed="true"
 		if [ "$failed" = "true" ]; then
-			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit and trying again\n"
-			git checkout $( git log --oneline -2|cat|tail -1|cut -f1 -d" ")
+			if [ "$tries" = "0" ]; then
+				build_failed
+			fi
+			if [ "$tries" = "1" ]; then
+				s=""
+			fi
+			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
+			tries=$((tries-1))
 		fi
 	done
 	git checkout master
@@ -212,6 +221,8 @@ build_driver() {
 					BASE_TOOLS="built"
 				fi
 				passed="false"
+				tries=5
+				s="s"
 				while [ "$passed" = "false" ]
 				do
 					passed="true"
@@ -220,8 +231,15 @@ build_driver() {
 					build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed="false"
 					cd "$pkg_name"
 					if [ "$passed" = "false" ]; then
-						msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit and trying again\n"
-						git checkout $( git log --oneline -2|cat|tail -1|cut -f1 -d" ")
+						if [ "$tries" = "0" ]; then
+							build_failed
+						fi
+						if [ "$tries" = "1" ]; then
+							s=""
+						fi
+						msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+						git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+						tries=$((tries-1))
 					fi
 				done
 				git rev-parse HEAD > gitStat"$AUDK_CONFIG"
