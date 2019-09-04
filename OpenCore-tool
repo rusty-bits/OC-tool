@@ -138,29 +138,29 @@ build_failed() {
 	exit 1
 }
 
-xcode_build_loop() {
-	tries=5
-	s="s"
-	failed="true"
-	while [ "$failed" = "true" ]
-	do
-		failed="false"
-		xcodebuild -config "$1" build||failed="true"
-		if [ "$failed" = "true" ]; then
-			if [ "$tries" = "0" ]; then
-				build_failed
-			fi
-			if [ "$tries" = "1" ]; then
-				s=""
-			fi
-			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
-			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
-			msg "Building $pkg_name ... "
-			tries=$((tries-1))
-		fi
-	done
-	git checkout master
-}
+#xcode_build_driver_loop() {
+#	tries=5
+#	s="s"
+#	failed="true"
+#	while [ "$failed" = "true" ]
+#	do
+#		failed="false"
+#		xcodebuild -config "$1" build||failed="true"
+#		if [ "$failed" = "true" ]; then
+#			if [ "$tries" = "0" ]; then
+#				build_failed
+#			fi
+#			if [ "$tries" = "1" ]; then
+#				s=""
+#			fi
+#			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+#			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+#			msg "Building $pkg_name ... "
+#			tries=$((tries-1))
+#		fi
+#	done
+#	git checkout master
+#}
 
 build_kext() {
 	mkdir -p "$RES_DIR"/Kext_builds
@@ -232,7 +232,7 @@ build_driver() {
 					cd "$pkg_name"
 					if [ "$passed" = "false" ]; then
 						if [ "$tries" = "0" ]; then
-							build_failed
+							return 1
 						fi
 						if [ "$tries" = "1" ]; then
 							s=""
@@ -243,7 +243,9 @@ build_driver() {
 					fi
 				done
 				git rev-parse HEAD > gitStat"$AUDK_CONFIG"
-				git checkout master #return to tracking
+				if [ "$tries" -lt "5" ];then
+					git checkout master #return to tracking
+				fi
 				fin
 			fi
 		fi
@@ -277,7 +279,7 @@ build_resources() {
 				fi
 				;;
 			"kext" )
-				build_kext
+				build_kext||build_failed
 				eval arr$((i+2))="$RES_DIR/Kext_builds/$pkg_name/build/$XCODE_CONFIG"
 				;;
 			esac
@@ -344,6 +346,15 @@ build_vault() {
 
 res_not_found() {
 	msg "\n${RED}ERROR:${NC}\t$1 - repo was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+}
+
+clear_array() {
+	n=1
+	while [ "$n" -lt "$res_num" ]
+	do
+		unset arr$n
+		n=$((n+1))
+	done
 }
 
 add_res_array() {
@@ -508,10 +519,11 @@ case $ARG1 in
 		;;
 	d|debug|r|release)
 		if [ "$BUILD_ALL" = "true" ]; then
+			if [ "$ARG2" = "" ]; then
+				BUILD_ALL="only"
+			fi
 			ARG2=$ARG1
 			set_build_type
-			build_all_repos
-			exit 0 #exit for now, getting loop if try to build right after
 		else
 			msg "${YELLOW}Usage:${NC} must specify \033[4mcommand\033[0m or \033[1m-A\033[0m before $ARG1\n"
 			exit 1
@@ -543,6 +555,13 @@ if [ "$VERBOSE" != "true" ]; then
 fi
 
 check_requirements
+if [ "$BUILD_ALL" != "false" ];then
+	build_all_repos
+	clear_array
+fi
+if [ "$BUILD_ALL" = "only" ]; then
+	exit 0
+fi
 check_config
 
 init_res_list
