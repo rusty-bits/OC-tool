@@ -78,15 +78,18 @@ missing() {
 
 check_requirements() {
 	msg "\nChecking if required tools and files exist ..."
-	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
-		msg "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
-		exit 1
-	fi
 	command -v xcodebuild||missing "xcodebuild"
 	command -v nasm||missing "nasm"
 	command -v mtoc||missing "mtoc"
 	command -v git||missing "git"
 	fin
+}
+
+check_config() {
+	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
+		msg "\n${RED}ERROR: ${NC}$BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
+		exit 1
+	fi
 }
 
 check_for_updates() {
@@ -135,6 +138,21 @@ build_failed() {
 	exit 1
 }
 
+xcode_build_loop() {
+	failed="true"
+	while [ "$failed" = "true" ]
+	do
+		failed="false"
+		xcodebuild -config $1 build||failed="true"
+		if [ "$failed" = "true" ]; then
+			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit and trying again\n"
+			git checkout $( git log --oneline -2|cat|tail -1|cut -f1 -d" ")
+			msg "Building $pkg_name ... "
+		fi
+	done
+	git checkout master
+}
+
 build_kext() {
 	mkdir -p "$RES_DIR"/Kext_builds
 	cd "$RES_DIR"/Kext_builds
@@ -145,7 +163,7 @@ build_kext() {
 		if [ "$pkg_name" = "Lilu" ] && [ "$AUDK_CONFIG" != "DEBUG" ]; then
 			if [ "$(git rev-parse HEAD)" != "$(cat gitStatDEBUG)" ]; then
 				msg "DEBUG ... "
-				xcodebuild -config Debug build #special case, always build DEBUG lilu
+				xcode_build_loop "Debug" #special case, always build DEBUG lilu
 				git rev-parse HEAD > gitStatDEBUG
 				fin
 				msg "Building Lilu ... RELEASE ... "
@@ -158,7 +176,7 @@ build_kext() {
 				ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 			fi
 		fi
-		xcodebuild -config "$XCODE_CONFIG" build
+		xcode_build_loop "$XCODE_CONFIG"
 		git rev-parse HEAD > gitStat"$AUDK_CONFIG"
 		if [ -d "build/Products" ]; then #copy Products contents back to build level
 			cp -r build/Products/* build
@@ -193,11 +211,21 @@ build_driver() {
 					cd "$pkg_name"
 					BASE_TOOLS="built"
 				fi
-				cd ..
-				msg "Building $pkg_name ... "
-				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||return 1
-				cd "$pkg_name"
+				passed="false"
+				while [ "$passed" = "false" ]
+				do
+					passed="true"
+					cd ..
+					msg "Building $pkg_name ... "
+					build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed="false"
+					cd "$pkg_name"
+					if [ "$passed" = "false" ]; then
+						msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit and trying again\n"
+						git checkout $( git log --oneline -2|cat|tail -1|cut -f1 -d" ")
+					fi
+				done
 				git rev-parse HEAD > gitStat"$AUDK_CONFIG"
+				git checkout master #return to tracking
 				fin
 			fi
 		fi
@@ -392,7 +420,6 @@ build_all_repos() {
 		done
 
 		build_resources
-		exit 0 #just build all and exit for now
 	else
 		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
 		exit 1
@@ -421,10 +448,6 @@ set_build_type() {
 
 
 #****** Start build ***************
-exec 6>&1 #start logging
-exec > $LOGFILE
-exec 2>&1
-
 while :
 do
 	case  "$1" in
@@ -442,7 +465,6 @@ do
 		shift;;
 	-V)
 		VERBOSE=true
-		exec 1>&6 6>&- 2>&1 #stop logfile
 		shift;;
 
 	-X)
@@ -455,6 +477,7 @@ do
 		shift; break;;
 	esac
 done
+
 ARG1=$1; ARG2=$2
 
 case $ARG1 in
@@ -470,7 +493,7 @@ case $ARG1 in
 			ARG2=$ARG1
 			set_build_type
 			build_all_repos
-			exit 0
+			exit 0 #exit for now, getting loop if try to build right after
 		else
 			msg "${YELLOW}Usage:${NC} must specify \033[4mcommand\033[0m or \033[1m-A\033[0m before $ARG1\n"
 			exit 1
@@ -495,7 +518,14 @@ case $ARG1 in
 		;;
 esac
 
+if [ "$VERBOSE" != "true" ]; then
+	exec 6>&1 #start logging
+	exec > $LOGFILE
+	exec 2>&1
+fi
+
 check_requirements
+check_config
 
 init_res_list
 add_drivers_res_list

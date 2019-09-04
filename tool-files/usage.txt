@@ -1,1 +1,1 @@
-Usage: ./OpenCore-tool [-hsvAVX] [\033[4mcommand\033[0m] [\033[4mtype\033[0m]  (use option -h for help)
+Usage: ./OpenCore-tool [-hsvAVX] [\033[4mcommand\033[0m] [\033[4mtype\033[0m]    (use ./OpenCore-tool -h for help)
