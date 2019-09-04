@@ -7,7 +7,7 @@ BASE_TOOLS="unbuilt"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="1.0p(0904) last checked with OpenCore version DBG-050-2019-09-03"
+VER="1.1p(0904) last checked with OpenCore version DBG-050-2019-09-03"
 SILENT=false
 VERBOSE=false
 UPDATE=false
@@ -96,9 +96,9 @@ check_config() {
 check_for_updates() {
 	msg "\nChecking for updates ... \n"
 	cd "$BASE_DIR"
-	OLDSHA=$(cat .gitHEADsha)
+	OLDVER=$(cat .toolVER)
 	git pull # pull only tool in case tool changed
-	if [ "$OLDSHA" != "$(cat .gitHEADsha)" ]; then
+	if [ "$OLDVER" != "$(cat .toolVER)" ]; then
 		msg "${YELLOW}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
