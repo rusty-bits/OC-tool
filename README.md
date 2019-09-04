@@ -46,8 +46,6 @@ This will create a `RELEASE/EFI` directory with all the required files, this can
 
 **Usage**: (*for building debug configuration*)
 
-to create a debug version...
-
 edit `DEBUG/config.plist` as needed.  
 
 `./OpenCore-tool build debug`
