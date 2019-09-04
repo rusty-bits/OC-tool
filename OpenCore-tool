@@ -10,10 +10,11 @@ NC='\033[0m' # No Color
 VER="1.0p(0904) last checked with OpenCore version DBG-050-2019-09-03"
 SILENT=false
 VERBOSE=false
+UPDATE=false
 BUILD_ALL="false"
 REMOVE_ALL="false"
 
-args=$(getopt hsvAVX "$@")
+args=$(getopt hsuvAVX "$@")
 set -- $args
 
 msg() {
@@ -66,8 +67,8 @@ clone() {
 	if [ ! -d "$pkg_name" ]; then
 		msg "Cloning $1 into $pkg_name ... "
 		git clone "$1" "$pkg_name"; fin
-		echo "new" > "$pkg_name"/gitStatDEBUG
-		echo "new" > "$pkg_name"/gitStatRELEASE
+		echo "new" > "$pkg_name"/gitDEBUGsha
+		echo "new" > "$pkg_name"/gitRELEASEsha
 	fi
 }
 
@@ -96,12 +97,12 @@ check_for_updates() {
 	msg "\nChecking for updates ... \n"
 	cd "$BASE_DIR"
 	OLDSHA=$(cat .gitHEADsha)
-	git pull
+	git pull # pull only tool in case tool changed
 	if [ "$OLDSHA" != "$(cat .gitHEADsha)" ]; then
 		msg "${YELLOW}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
-	cd $RES_DIR
+	cd $RES_DIR # now check all resourced
 	find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
 }
 
@@ -495,6 +496,9 @@ do
 	-s)
 		SILENT=true
 		shift;;
+	-u)
+		UPDATE=true
+		shift;;
 	-v)
 		msg "OpenCore-tool version $VER\n"
 		exit 0;;
@@ -544,6 +548,10 @@ case $ARG1 in
 		;;
 
 	*)
+		if [ "$UPDATE" = "true" ]; then
+			msg "${YELLOW}Usage:${NC} must use \033[4mbuild\033[0m command after \033[1m-u\033[0m\n"
+			exit 1
+		fi
 		if [ "$BUILD_ALL" = "true" ]; then
 			msg "${YELLOW}Usage:${NC} must specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after \033[1m-A\033[0m\n"
 			exit 1
@@ -556,6 +564,10 @@ case $ARG1 in
 		exit 0
 		;;
 esac
+
+if [ "$UPDATE" = "true" ]; then
+	check_for_updates
+fi
 
 if [ "$VERBOSE" != "true" ]; then
 	exec 6>&1 #start logging
