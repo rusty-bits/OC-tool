@@ -3,28 +3,30 @@
 BASE_DIR=$(pwd)
 RES_DIR="$BASE_DIR"/resources
 TOOL_FILES="$BASE_DIR"/.tool-files
-BASE_TOOLS="unbuilt"
 LOGFILE="tool.log"
-RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
+RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
-VER="1.1p(0904) last checked with OpenCore version DBG-050-2019-09-03"
-SILENT=false
-VERBOSE=false
-UPDATE=false
-BUILD_ALL="false"
-REMOVE_ALL="false"
+B='\033[1m'; U='\033[4m'
+VER="1.1p(0904 last checked with OpenCore version DBG-050-2019-09-03"
+SILENT=""
+VERBOSE=""
+UPDATE=""
+BUILD_ALL=""
+REMOVE_ALL=""
+BASE_TOOLS=""
+
 
 args=$(getopt hsuvAVX "$@")
 set -- $args
 
 msg() {
-	if [ "$SILENT" != "true" ]; then
+	if [ -z "$SILENT" ]; then
 		echo "$1\c" >"$(tty)"
 	fi
 }
 
 fin() {
-	msg "${GREEN}done${NC}\n"
+	msg "${GRN}done${NC}\n"
 }
 
 set_up_dest_dir() {
@@ -59,7 +61,7 @@ init_res_list() {
 }
 
 clone() {
-	if [ "$2" = "" ]; then
+	if [ -z "$2" ]; then
 		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
 	else
 		pkg_name="$2"
@@ -96,21 +98,21 @@ check_config() {
 check_for_updates() {
 	msg "\nChecking for updates ... \n"
 	cd "$BASE_DIR"
-	OLDVER=$(cat .toolVER)
-	git pull # pull only tool in case tool changed
-	if [ "$OLDVER" != "$(cat .toolVER)" ]; then
-		msg "${YELLOW}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
+	OLDVER=$(git rev-parse HEAD)
+	git pull $VERBOSE # pull only tool in case tool changed
+	if [ "$OLDVER" != "$(git rev-parse HEAD)" ]; then
+		msg "${YEL}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
-	cd $RES_DIR # now check all resourced
-	find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull
+	if [ -d "$RES_DIR" ]; then
+		cd "$RES_DIR" # now check all resourced
+		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE
+	fi
 }
 
 build_shell_tool() {
-	if [ ! -d "$BASE_DIR/resources" ]; then
-		mkdir "$BASE_DIR"/resources
-	fi
-	cd "$BASE_DIR"/resources
+	mkdir -p "$RES_DIR"
+	cd "$RES_DIR"
 	clone "https://github.com/acidanthera/OpenCoreShell"
 	cd OpenCoreShell
 	if [ ! -d "UDK" ]; then
@@ -161,7 +163,7 @@ xcode_build_loop() {
 			if [ "$tries" = "1" ]; then
 				s=""
 			fi
-			msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+			msg "\n${YEL}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
 			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
 			tries=$((tries-1))
@@ -207,7 +209,7 @@ build_kext() {
 build_driver() {
 	cd "$RES_DIR"/UDK
 	clone "$git_url"
-	need_build="true"
+	need_build=""
 	IFS=","
 	for pkg in $built
 	do
@@ -215,11 +217,11 @@ build_driver() {
 			need_build="false"
 		fi
 	done
-	if [ "$need_build" = "true" ]; then
+	if [ -z "$need_build" ]; then
 		cd "$pkg_name"
 		if [ -f "$pkg_name.dsc" ]; then
 			if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ]; then
-				if [ "$BASE_TOOLS" = "unbuilt" ]; then
+				if [ -z "$BASE_TOOLS" ]; then
 					msg "Making base tools ... "
 					cd ..
 					unset WORKSPACE
@@ -230,24 +232,25 @@ build_driver() {
 					cd "$pkg_name"
 					BASE_TOOLS="built"
 				fi
-				passed="false"
+				passed=""
 				tries=5
 				s="s"
-				while [ "$passed" = "false" ]
+				while [ -z "$passed" ]
 				do
 					passed="true"
 					cd ..
 					msg "Building $pkg_name ... "
-					build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed="false"
+					build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed=""
 					cd "$pkg_name"
-					if [ "$passed" = "false" ]; then
+					if [ -z "$passed" ]; then
 						if [ "$tries" = "0" ]; then
+							git checkout master
 							return 1
 						fi
 						if [ "$tries" = "1" ]; then
 							s=""
 						fi
-						msg "\n${YELLOW}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+						msg "\n${YEL}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
 						git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 						tries=$((tries-1))
 					fi
@@ -265,9 +268,9 @@ build_driver() {
 
 
 build_resources() {
-	msg "\n${GREEN}Building resources${NC}\n"
-	mkdir -p "$BASE_DIR"/resources
-	cd "$BASE_DIR"/resources
+	msg "\n${GRN}Building resources${NC}\n"
+	mkdir -p "$RES_DIR"
+	cd "$RES_DIR"
 	built=""
 
 	clone "https://github.com/acidanthera/audk" "UDK"
@@ -277,7 +280,7 @@ build_resources() {
 		res_name=$(eval echo "\$arr$((i))")
 		git_url=$(eval echo "\$arr$((i+1))")
 		srce=$(eval echo "\$arr$((i+2))")
-		if [ "$srce" = "" ]; then
+		if [ -z "$srce" ]; then
 			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
 			"base" | "efi" )
 				if [ "$res_name" = "Shell.efi" ]; then #special case
@@ -300,14 +303,14 @@ build_resources() {
 }
 
 copy_resources() {
-	msg "\n${GREEN}Moving resources into place${NC}\n"
+	msg "\n${GRN}Moving resources into place${NC}\n"
 	n=1
 	while [ "$n" -lt "$res_num" ]
 	do
 		res_name=$(eval echo "\$arr$n"); n=$((n+2))
 		srce=$(eval echo "\$arr$n"); n=$((n+1))
 		dest=$(eval echo "\$arr$n"); n=$((n+1))
-		if [ "$dest" != "" ]; then
+		if [ -n "$dest" ]; then
 			msg "Copying $res_name to $dest ... "
 			mkdir -p "$BUILD_DIR"/"$dest"
 			cp -r "$srce"/"$res_name" "$BUILD_DIR"/"$dest"
@@ -320,17 +323,17 @@ config_changed() {
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${YELLOW}WARNING:${NC} Sample$1.plist has been updated\n${YELLOW}!!!${NC} Make sure $BASE_DIR/$CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
+	msg "\n${YEL}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $BASE_DIR/$CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
 	cfg_ok="false"
 }
 
 
 check_if_Sample_plist_updated() {
-	cfg_ok="true"
+	cfg_ok=""
 	msg "\nChecking if config.plist format has changed ... "
 	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist||config_changed
 	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist||config_changed "Full"
-	if [ "$cfg_ok" = "true" ]; then
+	if [ -z "$cfg_ok" ]; then
 		fin
 	fi
 }
@@ -369,12 +372,12 @@ clear_array() {
 
 add_res_array() {
 	git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
-	if [ "$git_url" != "" ]; then
+	if [ -n "$git_url" ]; then
 		srce=""
-	elif [ -d "$BASE_DIR/extras/$res_name" ]; then #found directory (kext)
+	elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext)
 		srce="$BASE_DIR/extras"
-	elif [ -f "$BASE_DIR/extras/$res_name" ]; then #found file (driver)
-		srce="$BASE_DIR/extras"
+#	elif [ -f "$BASE_DIR/extras/$res_name" ]; then #found file (driver)
+#		srce="$BASE_DIR/extras"
 	else
 		res_not_found "$res_name"
 		exit 1
@@ -389,7 +392,7 @@ add_res_array() {
 add_drivers_res_list() {
 	n=0
 	res_name="start"
-	until [ "$res_name" = "" ]
+	until [ -z "$res_name" ]
 	do
 		res_name=$(/usr/libexec/PlistBuddy -c "print :UEFI:Drivers:$n" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
 		if [ "$res_name" != "" ]; then
@@ -403,7 +406,7 @@ add_drivers_res_list() {
 add_kexts_res_list() {
 	n=0
 	res_name="start"
-	until [ "$res_name" = "" ]
+	until [ -z "$res_name" ]
 	do
 		res_name=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:BundlePath" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
 		Enabled=$(/usr/libexec/PlistBuddy -c "print :Kernel:Add:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
@@ -418,7 +421,7 @@ add_kexts_res_list() {
 add_tools_res_list() {
 	n=0
 	res_name="start"
-	until [ "$res_name" = "" ]
+	until [ -z "$res_name" ]
 	do
 		res_name=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Path" "$BASE_DIR"/"$CONFIG_PLIST")||res_name=""
 		Enabled=$(/usr/libexec/PlistBuddy -c "print :Misc:Tools:$n:Enabled" "$BASE_DIR"/"$CONFIG_PLIST")||Enabled=""
@@ -431,8 +434,11 @@ add_tools_res_list() {
 }
 
 build_all_repos() {
+	if [ -z "$BUILD_ALL" ]; then
+		return 0
+	fi
 	Repos=$(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist)||Repos=""
-	if [ "$Repos" != "" ]; then
+	if [ -n "$Repos" ]; then
 		n=1
 		Repos=$(echo $Repos|tr -d "\n")
 		init_res_list
@@ -459,9 +465,13 @@ build_all_repos() {
 		done
 
 		build_resources
+		clear_array
 	else
 		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
 		exit 1
+	fi
+	if [ "$BUILD_ALL" = "only" ]; then
+		exit 0
 	fi
 }
 
@@ -474,7 +484,7 @@ set_build_type() {
 			XCODE_CONFIG="Release"
 			;;
 		*)
-			msg "need to specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after $ARG1 command\n"
+			msg "need to specify ${U}debug\033[0m or ${U}release\033[0m after $ARG1 command\n"
 			exit 1
 			;;
 	esac
@@ -482,7 +492,7 @@ set_build_type() {
 	BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 	CONFIG_PLIST="$AUDK_CONFIG/config.plist"
 	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
-	msg "\n${GREEN}Setting up ${YELLOW}$AUDK_CONFIG${GREEN} environment${NC}\n"
+	msg "\n${GRN}Setting up ${YEL}$AUDK_CONFIG${GRN} environment${NC}\n"
 }
 
 
@@ -494,10 +504,10 @@ do
 		msg "$(cat "$TOOL_FILES"/help.txt)\n"
 		exit 0;;
 	-s)
-		SILENT=true
+		SILENT="true"
 		shift;;
 	-u)
-		UPDATE=true
+		UPDATE="true"
 		shift;;
 	-v)
 		msg "OpenCore-tool version $VER\n"
@@ -506,7 +516,7 @@ do
 		BUILD_ALL="true"
 		shift;;
 	-V)
-		VERBOSE=true
+		VERBOSE="-v"
 		shift;;
 
 	-X)
@@ -527,18 +537,18 @@ case $ARG1 in
 		set_build_type
 		;;
 	c|copy) #copy from extras first if exists, else build from repo
-		msg "\n${YELLOW}copy mode not implemented yet${NC}\n"
+		msg "\n${YEL}copy mode not implemented yet${NC}\n"
 		exit 0
 		;;
 	d|debug|r|release)
 		if [ "$BUILD_ALL" = "true" ]; then
-			if [ "$ARG2" = "" ]; then
+			if [ -z "$ARG2" ]; then
 				BUILD_ALL="only"
 			fi
 			ARG2=$ARG1
 			set_build_type
 		else
-			msg "${YELLOW}Usage:${NC} must specify \033[4mcommand\033[0m or \033[1m-A\033[0m before $ARG1\n"
+			msg "${YEL}Usage:${NC} must specify ${U}command\033[0m or ${B}-A\033[0m before $ARG1\n"
 			exit 1
 		fi
 		;;
@@ -549,11 +559,11 @@ case $ARG1 in
 
 	*)
 		if [ "$UPDATE" = "true" ]; then
-			msg "${YELLOW}Usage:${NC} must use \033[4mbuild\033[0m command after \033[1m-u\033[0m\n"
+			msg "${YEL}Usage:${NC} must use ${U}build\033[0m command after ${B}-u\033[0m\n"
 			exit 1
 		fi
 		if [ "$BUILD_ALL" = "true" ]; then
-			msg "${YELLOW}Usage:${NC} must specify \033[4mdebug\033[0m or \033[4mrelease\033[0m after \033[1m-A\033[0m\n"
+			msg "${YEL}Usage:${NC} must specify ${U}debug\033[0m or ${U}release\033[0m after ${B}-A\033[0m\n"
 			exit 1
 		fi
 		if [ "$REMOVE_ALL" = "true" ]; then #removed resources no command
@@ -565,24 +575,19 @@ case $ARG1 in
 		;;
 esac
 
-if [ "$UPDATE" = "true" ]; then
+if [ -n "$UPDATE" ]; then
 	check_for_updates
 fi
 
-if [ "$VERBOSE" != "true" ]; then
+if [ -z "$VERBOSE" ]; then
 	exec 6>&1 #start logging
 	exec > $LOGFILE
 	exec 2>&1
 fi
 
 check_requirements
-if [ "$BUILD_ALL" != "false" ];then
-	build_all_repos
-	clear_array
-fi
-if [ "$BUILD_ALL" = "only" ]; then
-	exit 0
-fi
+build_all_repos
+
 check_config
 
 init_res_list
@@ -599,8 +604,8 @@ check_if_Sample_plist_updated
 
 build_vault #todo - before or after copy?
 
-if [ "$VERBOSE" != "true" ];then
+if [ -z "$VERBOSE" ];then
 	exec 1>&6 6>&- 2>&1 #stop logfile
 fi
 
-msg "\n${GREEN}Finished building ${YELLOW}$BUILD_DIR${NC}\n"
+msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
