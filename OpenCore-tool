@@ -44,7 +44,7 @@ inc_res_num() {
 	res_num=$((res_num+1))
 }
 
-init_res_list() {
+init_res_array() {
 	res_list="base,https://github.com/acidanthera/EfiPkg,,,"
 	res_list="${res_list}base,https://github.com/acidanthera/MacInfoPkg,,,"
 	res_list="${res_list}base,https://github.com/acidanthera/OcSupportPkg,,,"
@@ -53,11 +53,13 @@ init_res_list() {
 	res_list="${res_list}config.plist,,$BASE_DIR/$AUDK_CONFIG,OC,"
 	res_num=0
 	IFS=","
-	for line in $res_list
+	for line in $res_list # $(echo $res_list|tr ',' '\n')
 	do
 		inc_res_num
 		eval arr$res_num="$line"
 	done
+	unset IFS
+	unset res_list
 }
 
 clone() {
@@ -68,7 +70,7 @@ clone() {
 	fi
 	if [ ! -d "$pkg_name" ]; then
 		msg "Cloning $1 into $pkg_name ... "
-		git clone "$1" "$pkg_name"; fin
+		git clone $1 "$pkg_name"; fin
 		echo "new" > "$pkg_name"/gitDEBUGsha
 		echo "new" > "$pkg_name"/gitRELEASEsha
 	fi
@@ -99,48 +101,45 @@ check_for_updates() {
 	msg "\nChecking for updates ... \n"
 	cd "$BASE_DIR"
 	OLDVER=$(git rev-parse HEAD)
-	git pull $VERBOSE # pull only tool in case tool changed
-	if [ "$OLDVER" != "$(git rev-parse HEAD)" ]; then
+	git pull $VERBOSE
+	if [ "$OLDVER" != "$(git rev-parse HEAD)" ]; then # new version of OpenCore-tool
 		msg "${YEL}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
 	if [ -d "$RES_DIR" ]; then
-		cd "$RES_DIR" # now check all resourced
+		cd "$RES_DIR" # now check all resources
 		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE
 	fi
 }
 
-build_shell_tool() {
-	mkdir -p "$RES_DIR"
-	cd "$RES_DIR"
-	clone "https://github.com/acidanthera/OpenCoreShell"
-	cd OpenCoreShell
-	if [ ! -d "UDK" ]; then
-		msg "Cloning UDK2018 ... "
-		git clone https://github.com/tianocore/edk2 -b UDK2018 --depth=1 UDK
-		fin
-	fi
-	cd UDK
-	msg "Making UDK2018 BaseTools ... "
+make_base_tools() {
 	unset WORKSPACE
 	unset EDK_TOOLS_PATH
 	unset CONF_PATH
 	. edksetup.sh
 	make -C BaseTools
-	fin
+}
+
+build_shell_tool() {
+	mkdir -p "$RES_DIR"
+	cd "$RES_DIR"
+	clone "$git_url"
+	cd "$pkg_name"
+	srce="$(pwd)/UDK/Build/Shell/DEBUG_XCODE5/X64"
+	if [ -f "$srce/Shell.efi" ]; then return 0; fi
+	clone "https://github.com/tianocore/edk2 -b UDK2018 --depth=1" "UDK"
+	cd UDK
+	msg "Making UDK2018 BaseTools ... "
+	make_base_tools; fin
 
 	msg "Patching UDK2018 ... "
 	for p in ../Patches/* ; do
 		git apply "$p"||echo "$p ignored, does not apply or alread done"
-	done
-	fin
+	done; fin
 
 	msg "Building Shell.efi (OpenCoreShell.efi) ... "
 	build -a X64 -b DEBUG -t XCODE5 -p ShellPkg/ShellPkg.dsc
 	fin
-	srce="$(pwd)/Build/Shell/DEBUG_XCODE5/X64"; dest="$BASE_DIR"/extras
-	mkdir -p "$dest"
-	cp "$srce"/Shell.efi "$dest"
 }
 
 build_failed() {
@@ -149,27 +148,23 @@ build_failed() {
 }
 
 xcode_build_loop() {
-	tries=5
-	s="s"
-	failed="true"
-	while [ "$failed" = "true" ]
+	a=1
+	passed=""
+	while [ -z "$passed" ]
 	do
-		failed="false"
-		xcodebuild -config "$1" build||failed="true"
-		if [ "$failed" = "true" ]; then
-			if [ "$tries" = "0" ]; then
+		passed="true"
+		xcodebuild -config "$1" build||passed=""
+		if [ -z "$passed" ]; then
+			if [ "$a" -eq "6" ]; then
 				build_failed
 			fi
-			if [ "$tries" = "1" ]; then
-				s=""
-			fi
-			msg "\n${YEL}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
+			msg "\n${YEL}$pkg_name BUILD $a FAILED:${NC} backing up one commit, trying again\n"
 			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
-			tries=$((tries-1))
+			a=$((a+1))
 		fi
 	done
-	if [ "$tries" -ne "5" ]; then
+	if [ "$a" -ne "1" ]; then
 		git checkout master
 	fi
 }
@@ -190,9 +185,7 @@ build_kext() {
 				msg "Building Lilu ... RELEASE ... "
 			fi
 		else
-			if [ -d "Lilu.kext" ]; then #remove Lilu from repos that contain it
-				rm -rf Lilu.kext
-			fi
+			rm -rf Lilu.kext # remove Lilu if it came from repo
 			if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
 				ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 			fi
@@ -209,69 +202,43 @@ build_kext() {
 build_driver() {
 	cd "$RES_DIR"/UDK
 	clone "$git_url"
-	need_build=""
-	IFS=","
-	for pkg in $built
-	do
-		if [ "$pkg_name" = "$pkg" ]; then
-			need_build="false"
-		fi
-	done
-	if [ -z "$need_build" ]; then
-		cd "$pkg_name"
+	cd "$pkg_name"
+	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ]; then
 		if [ -f "$pkg_name.dsc" ]; then
-			if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ]; then
-				if [ -z "$BASE_TOOLS" ]; then
-					msg "Making base tools ... "
-					cd ..
-					unset WORKSPACE
-					unset EDK_TOOLS_PATH
-					unset CONF_PATH
-					. edksetup.sh
-					make -C BaseTools; fin
-					cd "$pkg_name"
-					BASE_TOOLS="built"
+			if [ -z "$BASE_TOOLS" ]; then
+				msg "Making base tools ... "
+				cd ..
+				make_base_tools
+				fin
+				cd "$pkg_name"
+				BASE_TOOLS="built"
+			fi
+			a=0
+			while :
+			do
+				a=$((a+1))
+				if [ "$a" -eq "6" ]; then
+					git checkout master
+					return 1
 				fi
 				passed=""
-				tries=5
-				s="s"
-				while [ -z "$passed" ]
-				do
-					passed="true"
-					cd ..
-					msg "Building $pkg_name ... "
-					build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed=""
-					cd "$pkg_name"
-					if [ -z "$passed" ]; then
-						if [ "$tries" = "0" ]; then
-							git checkout master
-							return 1
-						fi
-						if [ "$tries" = "1" ]; then
-							s=""
-						fi
-						msg "\n${YEL}$pkg_name BUILD FAILED:${NC} backing up one commit, $tries attempt$s remaining\n"
-						git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
-						tries=$((tries-1))
-					fi
-				done
-				git rev-parse HEAD > git"$AUDK_CONFIG"sha
-				if [ "$tries" -lt "5" ];then
-					git checkout master #return to tracking
-				fi
-				fin
-			fi
+				msg "Building $pkg_name ... "
+				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc||passed="false"
+				if [ -z "$passed" ]; then break; fi
+				msg "${YEL}BUILD $a FAILED:${NC} backing up one commit and trying again\n"
+				git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+			done
+			if [ "$a" -ne "1" ];then git checkout master; fi
+			fin
 		fi
-		built="${built},$pkg_name,"
+		git rev-parse HEAD > git"$AUDK_CONFIG"sha
 	fi
 }
 
-
 build_resources() {
-	msg "\n${GRN}Building resources${NC}\n"
+	msg "\n${GRN}Building needed or updated ${YEL}${AUDK_CONFIG}${GRN} resources${NC}\n"
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
-	built=""
 
 	clone "https://github.com/acidanthera/audk" "UDK"
 	i=1
@@ -284,8 +251,8 @@ build_resources() {
 			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
 			"base" | "efi" )
 				if [ "$res_name" = "Shell.efi" ]; then #special case
-					build_shell_tool #store Shell.efi in extras folder for now
-					eval arr$((i+2))="$dest"
+					build_shell_tool||build_failed
+					eval arr$((i+2))="$srce"
 				else
 					build_driver||build_failed
 					eval arr$((i+2))="$RES_DIR/UDK/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
@@ -374,10 +341,8 @@ add_res_array() {
 	git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
 	if [ -n "$git_url" ]; then
 		srce=""
-	elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext)
+	elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 		srce="$BASE_DIR/extras"
-#	elif [ -f "$BASE_DIR/extras/$res_name" ]; then #found file (driver)
-#		srce="$BASE_DIR/extras"
 	else
 		res_not_found "$res_name"
 		exit 1
@@ -434,34 +399,17 @@ add_tools_res_list() {
 }
 
 build_all_repos() {
-	if [ -z "$BUILD_ALL" ]; then
-		return 0
-	fi
-	Repos=$(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist)||Repos=""
-	if [ -n "$Repos" ]; then
-		n=1
-		Repos=$(echo $Repos|tr -d "\n")
-		init_res_list
+	if [ -e "$TOOL_FILES/repo.plist" ]; then
+		init_res_array
 		res_name="Lilu.kext" #add Lilu before other kexts
-		git_url="https://github.com/acidanthera/Lilu"
-		srce=""
 		dest=""
 		add_res_array
 
-		while :
+		for res_name in $(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist|tr -d ' '|cut -s -f1 -d=)
 		do
-			res_name=$(echo "$Repos"|cut -f$((n*3)) -d" ")
-			if [ "$res_name" != "}" ]; then
-				git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
-				if [ "$res_name" != "Lilu.kext" ]; then #Lilu alread added first, don't add it again
-					srce=""
-					dest=""
-					add_res_array
-				fi
-			else
-				break
+			if [ "$res_name" != "Lilu.kext" ]; then #Lilu already added, don't add it again
+				add_res_array
 			fi
-			n=$((n+1))
 		done
 
 		build_resources
@@ -470,8 +418,14 @@ build_all_repos() {
 		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
 		exit 1
 	fi
-	if [ "$BUILD_ALL" = "only" ]; then
+	if [ "$BUILD_ALL" = "then exit" ]; then
 		exit 0
+	elif [ "$BUILD_ALL" = "both" ]; then
+		ARG1="release"
+		ARG2="release"
+		BUILD_ALL="then exit"
+		set_build_type
+		build_all_repos # the magic of recursion
 	fi
 }
 
@@ -484,7 +438,7 @@ set_build_type() {
 			XCODE_CONFIG="Release"
 			;;
 		*)
-			msg "need to specify ${U}debug\033[0m or ${U}release\033[0m after $ARG1 command\n"
+			msg "need to specify ${U}debug${NC} or ${U}release${NC} after $ARG1 command\n"
 			exit 1
 			;;
 	esac
@@ -541,14 +495,14 @@ case $ARG1 in
 		exit 0
 		;;
 	d|debug|r|release)
-		if [ "$BUILD_ALL" = "true" ]; then
+		if [ -n "$BUILD_ALL" ]; then
 			if [ -z "$ARG2" ]; then
-				BUILD_ALL="only"
+				BUILD_ALL="then exit"
 			fi
 			ARG2=$ARG1
 			set_build_type
 		else
-			msg "${YEL}Usage:${NC} must specify ${U}command\033[0m or ${B}-A\033[0m before $ARG1\n"
+			msg "${YEL}Usage:${NC} must specify ${U}command${NC} or ${B}-A${NC} before $ARG1\n"
 			exit 1
 		fi
 		;;
@@ -557,21 +511,23 @@ case $ARG1 in
 		exit 0
 		;;
 
-	*)
-		if [ "$UPDATE" = "true" ]; then
-			msg "${YEL}Usage:${NC} must use ${U}build\033[0m command after ${B}-u\033[0m\n"
-			exit 1
+	*) #fallthrough - check for options with no command or type
+		if [ -n "$UPDATE" ]; then # -u option with no following command
+			check_for_updates
+			exit 0
 		fi
-		if [ "$BUILD_ALL" = "true" ]; then
-			msg "${YEL}Usage:${NC} must specify ${U}debug\033[0m or ${U}release\033[0m after ${B}-A\033[0m\n"
-			exit 1
+		if [ -n "$BUILD_ALL" ]; then # no type given - build DEBUG and RELEASE
+			ARG1="debug"
+			ARG2="debug"
+			set_build_type
+			BUILD_ALL="both"
 		fi
-		if [ "$REMOVE_ALL" = "true" ]; then #removed resources no command
+		if [ -n "$REMOVE_ALL" ]; then #removed resources no command
 			exit 0
 		fi
 
 		msg "$(cat "$TOOL_FILES"/usage.txt)\n"
-		exit 0
+#		exit 0
 		;;
 esac
 
@@ -586,23 +542,26 @@ if [ -z "$VERBOSE" ]; then
 fi
 
 check_requirements
-build_all_repos
+
+if [ -n "$BUILD_ALL" ];then
+	build_all_repos
+fi
 
 check_config
 
-init_res_list
+init_res_array
 add_drivers_res_list
 add_kexts_res_list
 add_tools_res_list
 
 build_resources
 
-set_up_dest_dir #todo - change to tmp folder and set up dest dir only if build succeds?
-copy_resources #todo - copy from tmp folder?
+set_up_dest_dir
+copy_resources
 
 check_if_Sample_plist_updated
 
-build_vault #todo - before or after copy?
+build_vault
 
 if [ -z "$VERBOSE" ];then
 	exec 1>&6 6>&- 2>&1 #stop logfile

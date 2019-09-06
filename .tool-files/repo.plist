@@ -65,6 +65,6 @@
 	<key>WhateverGreen.kext</key>
 	<string>https://github.com/acidanthera/WhateverGreen</string>
 	<key>Shell.efi</key>
-	<string>shell/special-case</string>
+	<string>https://github.com/acidanthera/OpenCoreShell</string>
 </dict>
 </plist>
