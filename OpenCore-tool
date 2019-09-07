@@ -15,7 +15,7 @@ BUILD_ALL=""
 REMOVE_ALL=""
 BASE_TOOLS=""
 
-eval set -- "$(getopt hsuvAVX "$@")"
+eval set -- "$(getopt hrsuvAVX "$@")"
 
 msg() {
 	if [ -z "$SILENT" ]; then
@@ -387,7 +387,7 @@ add_tools_res_list() {
 	done
 }
 
-build_all_repos() {
+gather_all_repos() {
 	if [ -e "$TOOL_FILES/repo.plist" ]; then
 		init_res_array
 		res_name="Lilu.kext" #add Lilu before other kexts
@@ -400,13 +400,16 @@ build_all_repos() {
 				add_res_array
 			fi
 		done
-
-		build_resources
-		clear_array
 	else
 		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
 		exit 1
 	fi
+}
+
+build_all_repos() {
+	gather_all_repos
+	build_resources
+	clear_array
 	if [ "$BUILD_ALL" = "then exit" ]; then
 		exit 0
 	elif [ "$BUILD_ALL" = "both" ]; then
@@ -416,6 +419,23 @@ build_all_repos() {
 		set_build_type
 		build_all_repos # the magic of recursion
 	fi
+}
+
+list_all_repos() {
+	gather_all_repos
+	i=1
+	l=1
+	a=""
+	echo "\033[2J" >$(tty)
+	while [ "$i" -lt "$res_num" ]
+	do
+		res_name=$(eval echo "\$arr$((i))")
+		git_url=$(eval echo "\$arr$((i+1))")
+		echo "$res_name\033[$l;30H $git_url\n"
+		i=$((i+4))
+		l=$((l+1))
+	done
+	exit 0
 }
 
 set_build_type() {
@@ -446,6 +466,10 @@ do
 	-h)
 		msg "$(cat "$TOOL_FILES"/help.txt)\n"
 		exit 0;;
+	-r)
+		list_all_repos
+		exit 0
+		;;
 	-s)
 		SILENT="true"
 		shift;;
