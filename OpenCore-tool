@@ -8,17 +8,17 @@ RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
 VER="1.0p(0907) last checked with OpenCore version DBG-050-2019-09-07"
-SILENT=""
+QUIET=""
 VERBOSE=""
 UPDATE=""
 BUILD_ALL=""
 REMOVE_ALL=""
 BASE_TOOLS=""
 
-eval set -- "$(getopt hrsuvAVX "$@")"
+eval set -- "$(getopt hrquvAVX "$@")"
 
 msg() {
-	if [ -z "$SILENT" ]; then
+	if [ -z "$QUIET" ]; then
 		echo "$1\c" >"$(tty)"
 	fi
 }
@@ -431,7 +431,7 @@ list_all_repos() {
 	do
 		res_name=$(eval echo "\$arr$((i))")
 		git_url=$(eval echo "\$arr$((i+1))")
-		echo "$res_name\033[$l;30H $git_url\n"
+		echo "\033[$l;1H$res_name\033[$l;30H $git_url\n"
 		i=$((i+4))
 		l=$((l+1))
 	done
@@ -463,15 +463,15 @@ set_build_type() {
 while :
 do
 	case  "$1" in
-	-h)
+	-h) # help
 		msg "$(cat "$TOOL_FILES"/help.txt)\n"
 		exit 0;;
 	-r)
 		list_all_repos
 		exit 0
 		;;
-	-s)
-		SILENT="true"
+	-q)
+		QUIET="true"
 		shift;;
 	-u)
 		UPDATE="true"
