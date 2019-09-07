@@ -183,6 +183,9 @@ build_kext() {
 			if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
 				ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 			fi
+			if [ "$res_name" = "AsusSMC.kext" ] && [ ! -L "VirtualSMC.kext" ]; then # AsusSMC needs link to Virtual SMC
+				ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
+			fi
 		fi
 		xcode_build_loop "$XCODE_CONFIG"||return 1
 		git rev-parse HEAD > git"$AUDK_CONFIG"sha
@@ -199,7 +202,7 @@ build_driver() {
 	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 	cd "$pkg_name"
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		[ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; then
+		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
 		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
 		if [ -f "$pkg_name.dsc" ]; then
 			if [ -z "$BASE_TOOLS" ]; then
@@ -424,16 +427,12 @@ build_all_repos() {
 list_all_repos() {
 	gather_all_repos
 	i=1
-	l=1
-	a=""
-	echo "\033[2J" >$(tty)
 	while [ "$i" -lt "$res_num" ]
 	do
 		res_name=$(eval echo "\$arr$((i))")
 		git_url=$(eval echo "\$arr$((i+1))")
-		echo "\033[$l;1H$res_name\033[$l;30H $git_url\n"
+		printf %-30s%-s\\n "$res_name" "$git_url"
 		i=$((i+4))
-		l=$((l+1))
 	done
 	exit 0
 }
