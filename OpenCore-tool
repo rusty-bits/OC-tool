@@ -38,26 +38,15 @@ set_up_dest_dir() {
 	fin
 }
 
-inc_res_num() {
-	res_num=$((res_num+1))
-}
-
 init_res_array() {
-	res_list='base,https://github.com/acidanthera/EfiPkg,,,'
-	res_list="${res_list}base,https://github.com/acidanthera/MacInfoPkg,,,"
-	res_list="${res_list}base,https://github.com/acidanthera/OcSupportPkg,,,"
-	res_list="${res_list}BOOTx64.efi,https://github.com/acidanthera/OpenCorePkg,,BOOT,"
-	res_list="${res_list}OpenCore.efi,https://github.com/acidanthera/OpenCorePkg,,OC,"
-	res_list="${res_list}config.plist,,$BASE_DIR/$AUDK_CONFIG,OC,"
-	res_num=0
-	IFS=,
-	for res in $res_list
-	do
-		inc_res_num
-		eval arr$res_num="$res"
-	done
-	unset IFS
-	unset res_list
+	res1="base,https://github.com/acidanthera/EfiPkg,,"
+	res2="base,https://github.com/acidanthera/MacInfoPkg,,"
+	res3="base,https://github.com/acidanthera/OcSupportPkg,,"
+	res4="BOOTx64.efi,https://github.com/acidanthera/OpenCorePkg,,BOOT"
+	res5="OpenCore.efi,https://github.com/acidanthera/OpenCorePkg,,OC"
+	res6="config.plist,,$BASE_DIR/$AUDK_CONFIG,OC"
+	res_num=6
+	echo $res1
 }
 
 clone() {
@@ -229,6 +218,18 @@ build_driver() {
 	fi
 }
 
+get_res() {
+	res=$(eval echo \$res$1)
+	res_name=$(echo $res|cut -f1 -d,)
+	git_url=$(echo $res|cut -f2 -d,)
+	srce=$(echo $res|cut -f3 -d,)
+	dest=$(echo $res|cut -f4 -d,)
+}
+
+set_res() {
+	eval res$1="$res_name,$git_url,$srce,$dest"
+}
+
 build_resources() {
 	msg "\n${GRN}Building needed or updated ${YEL}${AUDK_CONFIG}${GRN} resources${NC}\n"
 	mkdir -p "$RES_DIR"
@@ -238,23 +239,21 @@ build_resources() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
 	do
-		res_name=$(eval echo "\$arr$((i))")
-		git_url=$(eval echo "\$arr$((i+1))")
-		srce=$(eval echo "\$arr$((i+2))")
+		get_res "$i"
 		if [ -z "$srce" ]; then
 			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
 			"base" | "efi" )
 				if [ "$res_name" = "Shell.efi" ]; then #special case
 					build_shell_tool||build_failed
-					eval arr$((i+2))="$srce"
+					set_res "$i"
 				else
 					build_driver||build_failed
-					eval arr$((i+2))="$srce"
+					set_res "$i"
 				fi
 				;;
 			"kext" )
 				build_kext||build_failed
-				eval arr$((i+2))="$srce"
+				set_res "$i"
 				;;
 			esac
 		fi
@@ -268,9 +267,7 @@ copy_resources() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
 	do
-		res_name=$(eval echo "\$arr$i"); i=$((i+2))
-		srce=$(eval echo "\$arr$i"); i=$((i+1))
-		dest=$(eval echo "\$arr$i"); i=$((i+1))
+		get_res "$i"
 		if [ -n "$dest" ]; then
 			msg "Copying $res_name to $dest ... "
 			mkdir -p "$BUILD_DIR"/"$dest"
@@ -324,7 +321,7 @@ clear_array() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
 	do
-		unset arr$i
+		unset res$i
 		i=$((i+1))
 	done
 }
@@ -339,11 +336,8 @@ add_res_array() {
 		res_not_found "$res_name"
 		exit 1
 	fi
-	inc_res_num
-	eval arr$res_num="$res_name"; inc_res_num
-	eval arr$res_num="$git_url"; inc_res_num
-	eval arr$res_num="$srce"; inc_res_num
-	eval arr$res_num="$dest"
+	res_num=$((res_num+1))
+	set_res "$res_num"
 }
 
 add_drivers_res_list() {
@@ -429,10 +423,9 @@ list_all_repos() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
 	do
-		res_name=$(eval echo "\$arr$((i))")
-		git_url=$(eval echo "\$arr$((i+1))")
+		get_res "$i"
 		printf %-30s%-s\\n "$res_name" "$git_url"
-		i=$((i+4))
+		i=$((i+1))
 	done
 	exit 0
 }
