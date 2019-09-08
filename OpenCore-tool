@@ -39,14 +39,12 @@ set_up_dest_dir() {
 }
 
 init_res_array() {
-	res1="base,https://github.com/acidanthera/EfiPkg,,"
-	res2="base,https://github.com/acidanthera/MacInfoPkg,,"
-	res3="base,https://github.com/acidanthera/OcSupportPkg,,"
-	res4="BOOTx64.efi,https://github.com/acidanthera/OpenCorePkg,,BOOT"
-	res5="OpenCore.efi,https://github.com/acidanthera/OpenCorePkg,,OC"
-	res6="config.plist,,$BASE_DIR/$AUDK_CONFIG,OC"
-	res_num=6
-	echo $res1
+	res_num=0
+	while read -r line
+	do
+		res_num=$((res_num+1))
+		eval "res$res_num=$line"
+	done < "$TOOL_FILES"/base-resources
 }
 
 clone() {
@@ -95,7 +93,7 @@ check_for_updates() {
 		exit 0
 	fi
 	if [ -d "$RES_DIR" ]; then
-		cd "$RES_DIR" # now check all resources
+		cd "$RES_DIR" # now check all other resources
 		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE
 	fi
 }
@@ -104,6 +102,7 @@ make_base_tools() {
 	unset WORKSPACE
 	unset EDK_TOOLS_PATH
 	unset CONF_PATH
+# shellcheck disable=SC1091
 	. edksetup.sh
 	make -C BaseTools
 }
@@ -204,7 +203,7 @@ build_driver() {
 			a=1
 			while :
 			do
-				msg "Building $pkg_name ... "
+				msg "Building $pkg_name for $res_name ... "
 				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
 				if [ "$a" -eq "5" ]; then return 1; fi
 				msg "\n${YEL}$pkg_name TRY $a FAILED:${NC} backing up one commit and trying again\n"
@@ -219,15 +218,22 @@ build_driver() {
 }
 
 get_res() {
-	res=$(eval echo \$res$1)
-	res_name=$(echo $res|cut -f1 -d,)
-	git_url=$(echo $res|cut -f2 -d,)
-	srce=$(echo $res|cut -f3 -d,)
-	dest=$(echo $res|cut -f4 -d,)
+	res=$(eval echo "\$res$1")
+	res_name=$(echo "$res"|cut -f1 -d,)
+	git_url=$(echo "$res"|cut -f2 -d,)
+	srce=$(echo "$res"|cut -f3 -d,)
+	dest=${res##*,} # special case POSIX compliant - matching the end of res
+#	dest=$(echo "$res"|cut -f4 -d,)
+#	res_name=${res/,*}  # these work, and are faster, but not POSIX compliant
+#	git_url=${res#*,}
+#	git_url=${git_url/,*}
+#	srce=${res%,*}
+#	srce=${srce/*,}
+#	dest=${res/*,}
 }
 
 set_res() {
-	eval res$1="$res_name,$git_url,$srce,$dest"
+	eval "res$1=$res_name,$git_url,$srce,$dest"
 }
 
 build_resources() {
@@ -236,12 +242,13 @@ build_resources() {
 	cd "$RES_DIR"
 
 	clone "https://github.com/acidanthera/audk" "UDK"
-	i=1
+	i=0
 	while [ "$i" -lt "$res_num" ]
 	do
+		i=$((i+1))
 		get_res "$i"
 		if [ -z "$srce" ]; then
-			case "$(echo "$res_name"|rev|cut -f 1 -d .|rev)" in
+			case ${res_name##*.} in
 			"base" | "efi" )
 				if [ "$res_name" = "Shell.efi" ]; then #special case
 					build_shell_tool||build_failed
@@ -257,16 +264,16 @@ build_resources() {
 				;;
 			esac
 		fi
-		i=$((i+4))
 	done
 	msg "\n"
 }
 
 copy_resources() {
 	msg "\n${GRN}Moving resources into place${NC}\n"
-	i=1
+	i=0
 	while [ "$i" -lt "$res_num" ]
 	do
+		i=$((i+1))
 		get_res "$i"
 		if [ -n "$dest" ]; then
 			msg "Copying $res_name to $dest ... "
@@ -318,11 +325,11 @@ res_not_found() {
 }
 
 clear_array() {
-	i=1
+	i=0
 	while [ "$i" -lt "$res_num" ]
 	do
-		unset res$i
 		i=$((i+1))
+		unset res$i
 	done
 }
 
@@ -420,12 +427,12 @@ build_all_repos() {
 
 list_all_repos() {
 	gather_all_repos
-	i=1
+	i=0
 	while [ "$i" -lt "$res_num" ]
 	do
+		i=$((i+1))
 		get_res "$i"
 		printf %-30s%-s\\n "$res_name" "$git_url"
-		i=$((i+1))
 	done
 	exit 0
 }
@@ -456,7 +463,7 @@ while :
 do
 	case  "$1" in
 	-h) # help
-		msg "$(cat "$TOOL_FILES"/help.txt)\n"
+		msg "$(cat "$TOOL_FILES"/help.msg)\n"
 		exit 0;;
 	-r)
 		list_all_repos
@@ -538,7 +545,7 @@ case $ARG1 in
 			exit 0
 		fi
 
-		msg "$(cat "$TOOL_FILES"/usage.txt)\n"
+		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 		exit 0
 		;;
 esac
