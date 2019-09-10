@@ -7,13 +7,13 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
-VER="1.0p(0907) last checked with OpenCore version DBG-050-2019-09-07"
-QUIET=""
-VERBOSE=""
+VER="1.0p(0910) last checked with OpenCore version DBG-050-2019-09-07"
+COPY=""
+QUIET=""; VERBOSE=""
 UPDATE=""
-BUILD_ALL=""
-REMOVE_ALL=""
+REMOVE_ALL=""; BUILD_ALL=""
 BASE_TOOLS=""
+LILU_NUM=""; VIRT_NUM=""; SHELL_NUM=""
 
 eval set -- "$(getopt hrquvAVX "$@")"
 
@@ -45,6 +45,32 @@ init_res_array() {
 		res_num=$((res_num+1))
 		eval "res$res_num=$line"
 	done < "$TOOL_FILES"/base-resources
+	base_num=$res_num
+}
+
+swap_res() {
+	s_res=$1; s_num=$2
+	i=1
+	while [ "$i" -lt "$res_num" ]
+	do
+		get_res "$i"
+		if [ "$res_name" = "$s_res" ]; then
+			eval temp_res=\$res$s_num
+			eval res$s_num=\$res$i
+			eval res$i="\$temp_res"
+			unset temp_res
+			unset s_res; unset s_num
+			return 1
+		fi
+		i=$((i+1))
+	done
+}
+
+swap_res_array() {
+	base_num=$((base_num+1))
+	swap_res "Lilu.kext" "$base_num"||base_num=$((base_num+1))
+	swap_res "VirtualSMC.kext" "$base_num"||base_num=$((base_num+1))
+	swap_res "Shell.efi" "$res_num"||echo "shell swapped to end"
 }
 
 clone() {
@@ -203,7 +229,7 @@ build_driver() {
 			a=1
 			while :
 			do
-				msg "Building $pkg_name for $res_name ... "
+				msg "Building $pkg_name ... "
 				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
 				if [ "$a" -eq "5" ]; then return 1; fi
 				msg "\n${YEL}$pkg_name TRY $a FAILED:${NC} backing up one commit and trying again\n"
@@ -335,13 +361,24 @@ clear_array() {
 
 add_res_array() {
 	git_url=$(/usr/libexec/PlistBuddy -c "print :$res_name" "$TOOL_FILES"/repo.plist)||git_url=""
-	if [ -n "$git_url" ]; then
-		srce=""
-	elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-		srce="$BASE_DIR/extras"
-	else
-		res_not_found "$res_name"
-		exit 1
+	if [ -z "$COPY" ];then
+		if [ -n "$git_url" ]; then
+			srce=""
+		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+			srce="$BASE_DIR/extras"
+		else
+			res_not_found "$res_name"
+			exit 1
+		fi
+	else # copy mode, check extras folder first
+		if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+			srce="$BASE_DIR/extras"
+		elif [ -n "$git_url" ]; then
+			srce=""
+		else
+			res_not_found "$res_name"
+			exit 1
+		fi
 	fi
 	res_num=$((res_num+1))
 	set_res "$res_num"
@@ -391,18 +428,13 @@ add_tools_res_list() {
 	done
 }
 
-gather_all_repos() {
+gather_all_repos() { # todo: no need to put lilu first once sort is finished
 	if [ -e "$TOOL_FILES/repo.plist" ]; then
 		init_res_array
-		res_name="Lilu.kext" #add Lilu before other kexts
-		dest=""
-		add_res_array
 
 		for res_name in $(/usr/libexec/PlistBuddy -c "print" "$TOOL_FILES"/repo.plist|tr -d ' '|cut -s -f1 -d=)
 		do
-			if [ "$res_name" != "Lilu.kext" ]; then #Lilu already added, don't add it again
-				add_res_array
-			fi
+			add_res_array
 		done
 	else
 		msg "${RED}ERROR:${NC} tool-files/repo.plist not found or invalid format\n"
@@ -412,6 +444,7 @@ gather_all_repos() {
 
 build_all_repos() {
 	gather_all_repos
+	swap_res_array
 	build_resources
 	clear_array
 	if [ "$BUILD_ALL" = "then exit" ]; then
@@ -436,6 +469,18 @@ list_all_repos() {
 	done
 	exit 0
 }
+
+list_repo_array() {
+	i=0
+	msg "\n"
+	while [ "$i" -lt "$res_num" ]
+	do
+		i=$((i+1))
+		get_res "$i"
+		msg "$i $res_name $git_url $srce $dest\n"
+	done
+}
+
 
 set_build_type() {
 	case $ARG2 in
@@ -503,8 +548,8 @@ case $ARG1 in
 		set_build_type
 		;;
 	c|copy) #copy from extras first if exists, else build from repo
-		msg "\n${YEL}copy mode not implemented yet${NC}\n"
-		exit 0
+		set_build_type
+		COPY="true"
 		;;
 	d|debug|r|release)
 		if [ -n "$BUILD_ALL" ]; then
@@ -569,9 +614,11 @@ fi
 check_config
 
 init_res_array
+add_tools_res_list
 add_drivers_res_list
 add_kexts_res_list
-add_tools_res_list
+
+swap_res_array
 
 build_resources
 
