@@ -240,7 +240,7 @@ build_acpi() {
 	elif [ -e "$RES_DIR/$git_url" ];then
 		command -v iasl||missing_iasl
 		msg "Building $res_name ... "
-		iasl $RES_DIR/$git_url||return 1
+		iasl "$RES_DIR/$git_url"||return 1
 		fin
 	else
 		return 1
