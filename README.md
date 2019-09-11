@@ -1,12 +1,12 @@
 # OC-tool
-command line tool for building OpenCore EFI folder
+Command line tool for building OpenCore EFI folder
 
-Builds a working EFI folder based on the list of drivers, kexts , acpi and options that your config.plist specifies.
+Builds a working EFI folder based on the list of drivers, kexts, acpi and options that your config.plist specifies.
 
 Note: This tool makes certain assumptions, such as:  
--git is installed
--xcode, nasm, and mtoc required to build EFI files are correctly installed and configured to run from the command line  
--iasl is installed if you want the tool to compile .dsl files into .aml on the fly, but I recommend you compile them yourself and place them in the extras directory. The tool will copy whats needed to the EFI directory.  
+- git is installed  
+- xcode, nasm, and mtoc required to build EFI files are correctly installed and configured to run from the command line  
+- iasl is installed if you want the tool to compile .dsl files into .aml on the fly, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
 
 ---
 
@@ -94,7 +94,8 @@ The one exception is ACPI files, the tool will always use an ACPI file found in 
 
 **Notes:**
 
--code needs cleaning, I'm working on it   
--unsure if macOS Catalina will support bash commands right out of the box  
+- code needs cleaning, I'm working on it   
+- ACPI files are always copied from `extras` if they exist, even for build command  
+- unsure if macOS Catalina will support bash commands right out of the box  
 ....rewrote code to be POSIX compliant so it will run without issue in sh  
 ....this may break on the fly Shell.efi building if edksetup.sh is not POSIX compliant  
