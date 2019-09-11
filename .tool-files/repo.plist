@@ -94,6 +94,20 @@
 	<string>https://github.com/acidanthera/VirtualSMC</string>
 	<key>SMCSuperIO.kext</key>
 	<string>https://github.com/acidanthera/VirtualSMC</string>
+	<key>SSDT-AWAC.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-AWAC.dsl</string>
+	<key>SSDT-EC-USBX.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-EC-USBX.dsl</string>
+	<key>SSDT-EC.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-EC.dsl</string>
+	<key>SSDT-EHCx_OFF.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-EHCx_OFF.dsl</string>
+	<key>SSDT-PLUG.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-PLUG.dsl</string>
+	<key>SSDT-RTC0.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-RTC0.dsl</string>
+	<key>SSDT-SBUS-MCHC.aml</key>
+	<string>UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-SBUS-MCHC.dsl</string>
 	<key>SystemProfilerMemoryFixup.kext</key>
 	<string>https://github.com/Goldfish64/SystemProfilerMemoryFixup</string>
 	<key>TSCAdjustReset.kext</key>
