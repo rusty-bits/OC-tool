@@ -98,5 +98,3 @@ The one exception is ACPI files, the tool will always use an ACPI file found in 
 -unsure if macOS Catalina will support bash commands right out of the box  
 ....rewrote code to be POSIX compliant so it will run without issue in sh  
 ....this may break on the fly Shell.efi building if edksetup.sh is not POSIX compliant  
--basic Tools folder support is done for Shell.efi - needs improvement  
--planning on adding ACPI folder support if I get around to it  
