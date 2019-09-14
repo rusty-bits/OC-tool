@@ -38,7 +38,7 @@ then place your config.plist file in the appropriate directory, or copy and edit
 
 edit `RELEASE/config.plist` as appropriate.  
 
-`./OpenCore-tool build release`
+`./OC-tool build release`
 
 This will create a `RELEASE/EFI` directory with all the required files, this can be copied to an EFI partition
 
@@ -48,7 +48,7 @@ This will create a `RELEASE/EFI` directory with all the required files, this can
 
 edit `DEBUG/config.plist` as needed.  
 
-`./OpenCore-tool build debug`
+`./OC-tool build debug`
 
 This will create a `DEBUG/EFI` directory with all the required files, this can be copied to an EFI partition
 
@@ -68,6 +68,8 @@ The tool will automatically build the required vault files based on the setting 
 **Descriprion of files in `DEBUG` and `RELEASE` directories:**
 
 `config.plist` is the config file that is used to see which drivers and kexts will be built, it is then copied to `EFI/OC/config.plist`  
+
+The completed `EFI` folder will be placed in this directory.  
 
 ---
 
@@ -95,7 +97,8 @@ The one exception is ACPI files, the tool will always use an ACPI file found in 
 **Notes:**
 
 - code needs cleaning, I'm working on it   
-- ACPI files are always copied from `extras` if they exist, even for build command  
+- ACPI files are always copied from `extras` if they exist there, and are enabled in `config.plist`  
+- working on removing need for PlistBuddy and plutil, will parse `config.plist` in the tool  
 - unsure if macOS Catalina will support bash commands right out of the box  
 ....rewrote code to be POSIX compliant so it will run without issue in sh  
 ....this may break on the fly Shell.efi building if edksetup.sh is not POSIX compliant  
