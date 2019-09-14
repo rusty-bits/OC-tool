@@ -94,8 +94,6 @@ clone() {
 		msg "Cloning $1 into $pkg_name ... "
 		eval git clone "$1" "$pkg_name"
 		fin
-		echo "new" > "$pkg_name"/gitDEBUGsha
-		echo "new" > "$pkg_name"/gitRELEASEsha
 	fi
 }
 
@@ -470,8 +468,8 @@ add_tools_res_list() {
 	do
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		Enabled=$(parse "Misc" "Tools" "$i" "Enabled")
+		res_name=$(parse "Misc" "Tools" "$i" "Path")
 		if [ "$Enabled" = "true" ]; then
-			res_name=$(parse "Misc" "Tools" "$i" "Path")
 			dest="OC/Tools"
 			build_type=$ARG2
 			add_res_array
@@ -487,8 +485,8 @@ add_acpi_res_list() {
 	do
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		Enabled=$(parse "ACPI" "Add" "$i" "Enabled")
+		res_name=$(parse "ACPI" "Add" "$i" "Path")
 		if [ "$Enabled" = "true" ]; then
-			res_name=$(parse "ACPI" "Add" "$i" "Path")
 			dest="OC/ACPI"
 			build_type=$ARG2
 			USE_EXTRAS="true"
@@ -619,6 +617,7 @@ if [ -z "$VERBOSE" ]; then
 	exec > $LOGFILE
 	exec 2>&1
 fi
+
 check_requirements
 check_config
 
@@ -631,8 +630,6 @@ add_kexts_res_list
 swap_res_array
 
 build_resources
-
-print_res_array
 
 set_up_dest_dir
 copy_resources
