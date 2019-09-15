@@ -82,6 +82,8 @@
 	<string>https://github.com/Mieze/RTL8111_driver_for_OS_X</string>
 	<key>SerialMouse.kext</key>
 	<string>https://github.com/Goldfish64/SerialMouse</string>
+	<key>Shell.efi</key>
+	<string>https://github.com/acidanthera/OpenCoreShell</string>
 	<key>SmbiosTest.efi</key>
 	<string>https://github.com/acidanthera/OcSupportPkg</string>
 	<key>SmbiosTestApp.efi</key>
@@ -130,7 +132,5 @@
 	<string>https://github.com/RehabMan/VoodooTSCSync</string>
 	<key>WhateverGreen.kext</key>
 	<string>https://github.com/acidanthera/WhateverGreen</string>
-	<key>Shell.efi</key>
-	<string>https://github.com/acidanthera/OpenCoreShell</string>
 </dict>
 </plist>

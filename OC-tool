@@ -11,7 +11,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
-VER="1.2p(0915) last checked with OpenCore version REL-051-2019-09-12"
+VER="1.2p(0915) last checked with OpenCore version REL-051-2019-09-14"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""
