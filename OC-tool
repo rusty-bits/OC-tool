@@ -1,8 +1,5 @@
 #!/bin/sh -e
 
-CMD=$(echo "$0"|rev|cut -f1 -d/|rev) # temp warning if old tool name is used
-
-
 BASE_DIR=$(pwd)
 FINDER=""
 RES_DIR="$BASE_DIR/resources"
@@ -325,7 +322,7 @@ config_changed() {
 
 check_if_Sample_plist_updated() {
 	cfg_ok=""
-	msg "\nChecking if config.plist format has changed ... "
+	msg "\nChecking if Sample.plist or SampleFull.plist format has changed ... "
 	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist||config_changed
 	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist||config_changed "Full"
 	if [ -z "$cfg_ok" ]; then fin; fi
@@ -515,12 +512,6 @@ set_build_type() {
 	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
 }
 
-new_name() {
-	if [ "$CMD" = "OpenCore-tool" ];then
-		msg "\n${YEL}INFO:${NC} tool name has been changed to ${YEL}OC-tool${NC}\n\tPlease use ./OC-tool in the future\n"
-	fi
-}
-
 print_res_array() {
 	i=1
 	while [ "$i" -lt "$res_num" ]
@@ -591,16 +582,13 @@ case $ARG1 in
 	*) #fallthrough - check for options with no command or type
 		if [ -n "$UPDATE" ]; then # -u option with no following command
 			check_for_updates
-			new_name
 			exit 0
 		fi
 		if [ -n "$REMOVE_ALL" ]; then #removed resources no command
-			new_name
 			exit 0
 		fi
 
 		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
-		new_name
 		exit 0
 		;;
 esac
@@ -646,5 +634,3 @@ fi
 if [ -n "$FINDER" ];then open "$FINDER"; fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
-
-new_name # temp warning of old name is used
