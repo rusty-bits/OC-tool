@@ -528,7 +528,6 @@ do
 	case  "$1" in
 	-h) # help
 		msg "$(cat "$TOOL_FILES"/help.msg)\n"
-		new_name
 		exit 0;;
 	-o)
 		FINDER="true"
