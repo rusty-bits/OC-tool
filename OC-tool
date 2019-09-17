@@ -15,7 +15,7 @@ UPDATE=""
 REMOVE_ALL=""
 BASE_TOOLS=""
 
-eval set -- "$(getopt hoquvVX "$@")"
+eval set -- "$(getopt hoquvUVX "$@")"
 
 msg() {
 	if [ -z "$QUIET" ]; then
@@ -103,17 +103,25 @@ check_config() {
 }
 
 check_for_updates() {
-	msg "\nChecking for updates ... \n"
+	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
-	OLDVER=$(git rev-parse HEAD)
-	git pull $VERBOSE $QUIET
-	if [ "$OLDVER" != "$(git rev-parse HEAD)" ]; then # new version of OpenCore-tool
+	git remote $VERBOSE update
+	if [ "$(git rev-parse @)" != "$(git rev-parse @{u})" ];then
+		git pull $VERBOSE $QUIET
 		msg "${YEL}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
+#		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	if [ -d "$RES_DIR" ]; then
 		cd "$RES_DIR" # now check all other resources
-		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
+		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
+		do
+			git -C "$git_dir" remote $VERBOSE update
+			if [ "$(git -C $git_dir rev-parse @)" != "$(git -C $git_dir rev-parse @{u})" ];then
+				git -C "$git_dir" pull $VERBOSE $QUIET
+				UPDATE="true"
+			fi
+		done
 	fi
 }
 
@@ -541,6 +549,9 @@ do
 	-v)
 		msg "OpenCore-tool version $VER\n"
 		exit 0;;
+	-U)
+		UPDATE="stop"
+		shift;;
 	-V)
 		VERBOSE="-v"
 		shift;;
@@ -597,6 +608,9 @@ if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
+	if [ "$UPDATE" = "stop" ];then
+		msg "${GRN}All resources are up to date.${NC}\n"
+		exit 0; fi
 fi
 
 if [ -z "$VERBOSE" ]; then
