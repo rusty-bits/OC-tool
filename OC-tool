@@ -8,7 +8,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
-VER="1.2p(0916) last checked with OpenCore version REL-051-2019-09-14"
+VER="1.3p(0918) last checked with OpenCore version REL-051-2019-09-14"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""
@@ -33,9 +33,15 @@ missing() {
 }
 
 check_requirements() {
-	command -v xcodebuild||missing "xcodebuild"
-	command -v nasm||missing "nasm"
-	command -v mtoc||missing "mtoc"
+	res=""
+	while read -r line
+	do
+		res="$res $line"
+	done < "$TOOL_FILES/requirements"
+	for req in $res #why can't this be done in the read loop?
+	do
+		command -v "$req"||missing "$req"
+	done
 }
 
 set_up_dest_dir() {
@@ -105,8 +111,8 @@ check_config() {
 check_for_updates() {
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
-	git remote $VERBOSE update
-	if [ "$(git rev-parse @)" != "$(git rev-parse @{u})" ];then
+	git fetch --all $VERBOSE $QUIET
+	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
 		msg "${YEL}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
 		exit 0
@@ -116,8 +122,8 @@ check_for_updates() {
 		cd "$RES_DIR" # now check all other resources
 		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
-			git -C "$git_dir" remote $VERBOSE update
-			if [ "$(git -C $git_dir rev-parse @)" != "$(git -C $git_dir rev-parse @{u})" ];then
+			git -C "$git_dir" fetch --all $VERBOSE $QUIET
+			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
 				git -C "$git_dir" pull $VERBOSE $QUIET
 				UPDATE="true"
 			fi
