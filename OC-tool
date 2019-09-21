@@ -14,8 +14,9 @@ QUIET=""; VERBOSE=""
 UPDATE=""
 REMOVE_ALL=""
 BASE_TOOLS=""
+TEXT=""
 
-eval set -- "$(getopt hoquvUVX "$@")"
+eval set -- "$(getopt hoquvTUVX "$@")"
 
 msg() {
 	if [ -z "$QUIET" ]; then
@@ -512,9 +513,11 @@ set_build_type() {
 	if [ -z "$build_type" ]; then build_type=$ARG2; fi;
 	case $build_type in
 		d|debug)
+			ARG2="debug"
 			XCODE_CONFIG="Debug"
 			;;
 		r|release)
+			ARG2="release"
 			XCODE_CONFIG="Release"
 			;;
 		*)
@@ -533,6 +536,164 @@ print_res_array() {
 		get_res "$i"
 		msg "$i $res_name $git_url $srce $dest\n"
 		i=$((i+1))
+	done
+}
+
+set_ROW_COL(){
+	if [ "$G" -eq "0" ];then
+		ROW=1
+		case "$S" in
+			1)
+				MSG="$ARG1"
+				COL=5
+				;;
+			2)
+				MSG="$ARG2"
+				COL=15
+				;;
+			3)
+				MSG="Finder"
+				COL=30
+				;;
+			4)
+				MSG="Update"
+				COL=50
+				;;
+			5)
+				MSG="Something"
+				COL=80
+				;;
+			6)
+				MSG="Else"
+				COL=100
+				;;
+		esac
+	else
+		ROW=$((S+2))
+		case "$G" in
+			1)
+				MSG="ACPI"
+				COL=2
+				;;
+			2)
+				MSG="Drivers"
+				COL=30
+				;;
+			3)
+				MSG="Kexts"
+				COL=60
+				;;
+		esac
+	fi
+}
+
+draw_screen() {
+	G=0
+	S=1
+	while [ "$S" -lt "7" ]
+	do
+		set_ROW_COL
+		msg "\033[${ROW};${COL}H$MSG $G $S"
+		S=$((S+1))
+	done
+	G=1
+	while [ "$G" -lt "4" ]
+	do
+		S=1
+		while [ "$S" -lt "$R" ]
+		do
+			set_ROW_COL
+			msg "\033[${ROW};${COL}H$MSG $G $S"
+			S=$((S+1))
+		done
+		G=$((G+1))
+	done
+}
+
+select_MSG() {
+	msg "\033[${ROW};${COL}H\033[7m$MSG\033[0m"
+}
+
+unselect_MSG() {
+	msg "\033[${ROW};${COL}H$MSG"
+}
+
+text_user_interface() {
+	msg "\033[2J\033[H"
+	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+	stty -echo
+	asc=""
+	draw_screen
+	G=0; S=1
+	set_ROW_COL
+	select_MSG
+	while [ "$asc" != "no" ]
+	do
+		read -d'' -s -n1
+		asc=$(echo "$REPLY\c" | od -A n -a|tr -d ' ')
+		unselect_MSG
+		case $asc in
+			q)
+				msg "\n"
+				exit 0
+				;;
+			A|k)
+				if [ -n "$esc" ] || [ "$asc" = "k" ]; then
+					if [ "$G" -ne "0" ];then
+						S=$((S-1))
+						if [ "$S" -eq "0" ];then
+							S=$G
+							G=0
+						fi
+					fi
+					esc=""
+				else
+					msg "AAAAA"
+				fi
+				;;
+			B|j)
+				if [ -n "$esc" ] || [ "$asc" = "j" ]; then
+					if [ "$G" -eq "0" ];then
+						G=$S
+						if [ "$G" -gt "3" ];then G=3;fi
+						S=1
+					else
+						S=$((S+1))
+						if [ "$S" -gt "$R" ];then S=$R; fi
+					fi
+				else
+					msg "BBBBBBB"
+				fi
+				esc=""
+				;;
+			C|l)
+				if [ "$G" -eq "0" ];then
+					S=$((S+1))
+					if [ "$S" -gt "6" ];then S=6;fi
+				else
+					G=$((G+1))
+					if [ "$G" -gt "3" ];then G=3;fi
+				fi
+				esc=""
+				;;
+			D|h)
+				if [ "$G" -eq "0" ];then
+					S=$((S-1))
+					if [ "$S" -eq "0" ];then S=1;fi
+				else
+					G=$((G-1))
+					if [ "$G" -eq "0" ];then G=1;fi
+				fi
+				esc=""
+				;;
+			esc)
+				esc="true"
+				;;
+			*)
+				;;
+		esac
+		set_ROW_COL
+		select_MSG
 	done
 }
 
@@ -555,6 +716,9 @@ do
 	-v)
 		msg "OpenCore-tool version $VER\n"
 		exit 0;;
+	-T)
+		TEXT="true"
+		shift;;
 	-U)
 		UPDATE="stop"
 		shift;;
@@ -576,18 +740,16 @@ do
 	esac
 done
 
-ARG1=$1; ARG2=$2
-if [ "$ARG1" = "d" ];then ARG1="debug"; fi # ensure Lilu prerec is met
-if [ "$ARG2" = "d" ];then ARG2="debug"; fi # and make move output look nice
-if [ "$ARG1" = "r" ];then ARG1="release"; fi
-if [ "$ARG2" = "r" ]; then ARG2="release"; fi
+ARG1="$1"; ARG2="$2"; NOP=""
 
 case $ARG1 in
 	b|build) #build first if repo exists, else copy from extras folder
+		ARG1="build"
 		set_build_type "$ARG2"
 		;;
 	c|copy) #copy from extras first if exists, else build from repo
 		set_build_type "$ARG2"
+		ARG1="copy"
 		COPY="true"
 		;;
 	d|debug|r|release)
@@ -595,22 +757,34 @@ case $ARG1 in
 		exit 1
 		;;
 	*) #fallthrough - check for options with no command or type
-		if [ -n "$UPDATE" ]; then # -u option with no following command
-			check_for_updates
-			exit 0
-		fi
-		if [ -n "$REMOVE_ALL" ]; then #removed resources no command
-			exit 0
-		fi
-
-		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
-		exit 0
-		;;
+		NOP="true"
 esac
+
+if [ -n "$NOP" ];then
+	if [ -n "$UPDATE" ]; then # -u option with no following command
+		check_for_updates
+		exit 0
+	fi
+	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
+		exit 0
+	fi
+	if [ -n "$TEXT" ];then
+		ARG1="build"; ARG2="release"; NOP=""
+	fi
+fi
+
+if [ -n "$NOP" ];then
+	msg "$(cat "$TOOL_FILES"/usage.msg)\n"
+	exit 0
+fi
 
 BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$AUDK_CONFIG/config.plist"
 if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
+
+if [ -n "$TEXT" ]; then
+	text_user_interface
+fi
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
