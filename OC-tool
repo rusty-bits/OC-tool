@@ -8,7 +8,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
-VER="1.3pt(0921) last checked with OpenCore version REL-051-2019-09-19"
+VER="1.5pt(0921) last checked with OpenCore version REL-051-2019-09-19"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""
@@ -112,6 +112,7 @@ clone() {
 }
 
 check_for_updates() {
+	UPDATED=""
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
 	git fetch --all $VERBOSE $QUIET
@@ -127,8 +128,9 @@ check_for_updates() {
 		do
 			git -C "$git_dir" fetch --all $VERBOSE $QUIET
 			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
+				msg "\ngit_dir is $git_dir -\n"
 				git -C "$git_dir" pull $VERBOSE $QUIET
-				UPDATE="true"
+				UPDATED="changed"
 			fi
 		done
 	fi
@@ -798,8 +800,7 @@ esac
 
 if [ -n "$NOP" ];then
 	if [ -n "$UPDATE" ]; then # -u option with no following command
-		check_for_updates
-		exit 0
+		UPDATE="stop"; NOP=""
 	fi
 	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
 		exit 0
@@ -819,6 +820,16 @@ BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$AUDK_CONFIG/config.plist"
 if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
+if [ -n "$UPDATE" ]; then
+	check_for_updates
+	if [ "$UPDATE" = "stop" ];then
+		if [ -z "$UPDATED" ];then
+			msg "${GRN}All resources are up to date.${NC}\n"
+		fi
+		exit 0
+	fi
+fi
+
 if [ -z "$VERBOSE" ]; then
 	exec 6>&1 #start logging
 	exec > $LOGFILE
@@ -827,13 +838,6 @@ fi
 
 check_requirements
 check_config
-
-if [ -n "$UPDATE" ]; then
-	check_for_updates
-	if [ "$UPDATE" = "stop" ];then
-		msg "${GRN}All resources are up to date.${NC}\n"
-		exit 0; fi
-fi
 
 init_res_array
 add_acpi_res_list
