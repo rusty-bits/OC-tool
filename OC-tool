@@ -8,13 +8,14 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
-VER="1.3p(0918) last checked with OpenCore version REL-051-2019-09-14"
+VER="1.3pt(0921) last checked with OpenCore version REL-051-2019-09-19"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""
 REMOVE_ALL=""
 BASE_TOOLS=""
 TEXT=""
+G0_NUM=4; G1_NUM=0; G2_NUM=0; G3_NUM=0; G4_NUM=0
 
 eval set -- "$(getopt hoquvTUVX "$@")"
 
@@ -45,6 +46,13 @@ check_requirements() {
 	done
 }
 
+check_config() {
+	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
+		msg "\n${RED}ERROR:${NC} $BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
+		exit 1
+	fi
+}
+
 set_up_dest_dir() {
 	if [ -d "$BUILD_DIR" ]; then
 		msg "Removing old $BUILD_DIR ... "
@@ -57,37 +65,38 @@ set_up_dest_dir() {
 }
 
 init_res_array() {
-	res_num=0
+	G=0
+	S=0
 	while read -r line
 	do
-		res_num=$((res_num+1))
-		eval "res$res_num=$line"
+		S=$((S+1))
+		eval "res$G$S=$line"
 	done < "$TOOL_FILES/base-resources"
-	base_num=$res_num
+	G0_NUM=$S
 }
 
-swap_res() {
-	i=1
-	while [ "$i" -lt "$res_num" ]
-	do
-		get_res "$i"
-		if [ "$res_name" = "$1" ]; then
-			eval temp_res=\$res"$2"
-			eval res"$2"=\$res$i
-			eval res$i="\$temp_res"
-			unset temp_res
-			return 1
-		fi
-		i=$((i+1))
-	done
-}
+#swap_res() {
+#	S=1
+#	while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
+#	do
+#		get_res "$2$S"
+#		if [ "$res_name" = "$1" ]; then
+#			eval temp_res=\$res"$2$S"
+#			eval res$2$S=\$res"$2$S"
+#			eval res$2$S="\$temp_res"
+#			unset temp_res
+#			return 1
+#		fi
+#		S=$((S+1))
+#	done
+#}
 
-swap_res_array() {
-	base_num=$((base_num+1))
-	swap_res "Lilu.kext" "$base_num"||base_num=$((base_num+1)) #keep Lilu first, must compile before other kexts
-	swap_res "VirtualSMC.kext" "$base_num"||base_num=$((base_num+1)) #VirtualSMC must compile before AsusSMC
-	swap_res "Shell.efi" "$res_num"||echo "shell swapped to end" #keep Shell last, uses UDK2018
-}
+#swap_res_array() {
+#	base_num=$((base_num+1))
+#	swap_res "Lilu.kext" "2"||base_num=$((base_num+1)) #keep Lilu first, must compile before other kexts
+#	swap_res "VirtualSMC.kext" "2"||base_num=$((base_num+1)) #VirtualSMC must compile before AsusSMC
+#	swap_res "Shell.efi" "4"||echo "shell swapped to end" #keep Shell last, uses UDK2018
+#}
 
 clone() {
 	if [ -z "$2" ]; then
@@ -99,13 +108,6 @@ clone() {
 		msg "Cloning $1 into $pkg_name ... "
 		eval git clone "$1" "$pkg_name"
 		fin
-	fi
-}
-
-check_config() {
-	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
-		msg "\n${RED}ERROR:${NC} $BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
-		exit 1
 	fi
 }
 
@@ -280,49 +282,58 @@ build_resources() {
 	cd "$RES_DIR"
 
 	clone "https://github.com/acidanthera/audk" "UDK"
-	i=0
-	while [ "$i" -lt "$res_num" ]
+	G=0
+	while [ "$G" -lt "5" ]
 	do
-		i=$((i+1))
-		get_res "$i"
-		if [ -z "$srce" ]; then
-			case ${res_name##*.} in
-			"base" | "efi" )
-				if [ "$res_name" = "Shell.efi" ]; then #special case
-					build_shell_tool||build_failed
-					set_res "$i"
-				else
-					build_driver||build_failed
-					set_res "$i"
-				fi
-				;;
-			"kext" )
-				build_kext||build_failed
-				set_res "$i"
-				;;
-			"aml" )
-				build_acpi||build_failed
-				set_res "$i"
-				;;
-			esac
-		fi
+		S=1
+		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
+		do
+			get_res "$G$S"
+			if [ -z "$srce" ]; then
+				case ${res_name##*.} in
+				"base" | "efi" )
+					if [ "$res_name" = "Shell.efi" ]; then #special case
+						build_shell_tool||build_failed
+					else
+						build_driver||build_failed
+					fi
+					set_res "$G$S"
+					;;
+				"kext" )
+					build_kext||build_failed
+					set_res "$G$S"
+					;;
+				"aml" )
+					build_acpi||build_failed
+					set_res "$G$S"
+					;;
+				esac
+			fi
+			S=$((S+1))
+		done
+		G=$((G+1))
 	done
 	msg "\n"
 }
 
 copy_resources() {
 	msg "\n${GRN}Moving ${YEL}$ARG2${GRN} resources into place${NC}\n"
-	i=0
-	while [ "$i" -lt "$res_num" ]
+	G=0
+	while [ "$G" -lt "5" ]
 	do
-		i=$((i+1))
-		get_res "$i"
-		if [ -n "$dest" ]; then
-			msg "Copying $res_name to $dest ... "
-			mkdir -p "$BUILD_DIR/$dest"
-			cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
-			fin
-		fi
+		S=1
+		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
+		do
+			get_res "$G$S"
+			if [ -n "$dest" ]; then
+				msg "Copying $res_name to $dest ... "
+				mkdir -p "$BUILD_DIR/$dest"
+				cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
+				fin
+			fi
+			S=$((S+1))
+		done
+		G=$((G+1))
 	done
 }
 
@@ -429,12 +440,13 @@ add_res_array() {
 		fi
 		USE_EXTRAS=""
 	fi
-	res_num=$((res_num+1))
-	set_res "$res_num"
+	set_res "$G$S"
 }
 
 add_drivers_res_list() {
 	i=0
+	G=3
+	S=1
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
@@ -444,13 +456,17 @@ add_drivers_res_list() {
 			dest="/OC/Drivers"
 			build_type=$ARG2
 			add_res_array
+			S=$((S+1))
 		fi
 		i=$((i+1))
 	done
+	G3_NUM=$((S-1))
 }
 
 add_kexts_res_list() {
 	i=0
+	G=2
+	S=1
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
@@ -461,6 +477,8 @@ add_kexts_res_list() {
 				build_type="debug"
 				dest=""
 				add_res_array
+				S=$((S+1))
+				KEXTS=$((KEXTS+1))
 			fi
 		fi
 		FILE="$BASE_DIR/$CONFIG_PLIST"
@@ -469,13 +487,17 @@ add_kexts_res_list() {
 			build_type=$ARG2
 			dest="OC/Kexts"
 			add_res_array
+			S=$((S+1))
 		fi
 		i=$((i+1))
 	done
+	G2_NUM=$((S-1))
 }
 
 add_tools_res_list() {
 	i=0
+	G=4
+	S=1
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
@@ -486,13 +508,17 @@ add_tools_res_list() {
 			dest="OC/Tools"
 			build_type=$ARG2
 			add_res_array
+			S=$((S+1))
 		fi
 		i=$((i+1))
 	done
+	G4_NUM=$((S-1))
 }
 
 add_acpi_res_list() {
 	i=0
+	G=1
+	S=1
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
@@ -504,9 +530,11 @@ add_acpi_res_list() {
 			build_type=$ARG2
 			USE_EXTRAS="true"
 			add_res_array
+			S=$((S+1))
 		fi
 		i=$((i+1))
 	done
+	G1_NUM=$((S-1))
 }
 
 set_build_type() {
@@ -530,12 +558,17 @@ set_build_type() {
 }
 
 print_res_array() {
-	i=1
-	while [ "$i" -lt "$res_num" ]
+	G=0
+	while [ "$G" -lt "5" ]
 	do
-		get_res "$i"
-		msg "$i $res_name $git_url $srce $dest\n"
-		i=$((i+1))
+		S=1
+		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
+		do
+			get_res "$G$S"
+			msg "$G$S $res_name $git_url $srce $dest\n"
+			S=$((S+1))
+		done
+		G=$((G+1))
 	done
 }
 
@@ -545,43 +578,35 @@ set_ROW_COL(){
 		case "$S" in
 			1)
 				MSG="$ARG1"
-				COL=5
+				COL=2
 				;;
 			2)
 				MSG="$ARG2"
-				COL=15
+				COL=30
 				;;
 			3)
 				MSG="Finder"
-				COL=30
+				COL=60
 				;;
-			4)
+			*)
 				MSG="Update"
-				COL=50
-				;;
-			5)
-				MSG="Something"
-				COL=80
-				;;
-			6)
-				MSG="Else"
-				COL=100
+				COL=90
 				;;
 		esac
 	else
 		ROW=$((S+2))
 		case "$G" in
 			1)
-				MSG="ACPI"
 				COL=2
 				;;
 			2)
-				MSG="Drivers"
 				COL=30
 				;;
 			3)
-				MSG="Kexts"
 				COL=60
+				;;
+			4)
+				COL=90
 				;;
 		esac
 	fi
@@ -589,25 +614,33 @@ set_ROW_COL(){
 
 draw_screen() {
 	G=0
-	S=1
-	while [ "$S" -lt "7" ]
-	do
-		set_ROW_COL
-		msg "\033[${ROW};${COL}H$MSG $G $S"
-		S=$((S+1))
-	done
-	G=1
-	while [ "$G" -lt "4" ]
+#	S=1
+#	while [ "$S" -lt "5" ]
+#	do
+#		set_ROW_COL
+#		msg "\033[${ROW};${COL}H$MSG $G $S"
+#		S=$((S+1))
+#	done
+#	G=1
+	while [ "$G" -lt "5" ]
 	do
 		S=1
-		while [ "$S" -lt "$R" ]
+		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
 		do
+			get_res "$G$S"
+			MSG="$res_name"
 			set_ROW_COL
 			msg "\033[${ROW};${COL}H$MSG $G $S"
 			S=$((S+1))
 		done
 		G=$((G+1))
 	done
+}
+
+get_CHAR() {
+	stty -icanon
+	CHAR=$(dd bs=1 count=1 2>/dev/null|od -A n -a|tr -d ' ')
+	stty icanon
 }
 
 select_MSG() {
@@ -622,23 +655,22 @@ text_user_interface() {
 	msg "\033[2J\033[H"
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	stty -echo
-	asc=""
+	CHAR=""
 	draw_screen
 	G=0; S=1
 	set_ROW_COL
 	select_MSG
-	while [ "$asc" != "no" ]
+	while [ "$CHAR" != "g" ]
 	do
-		read -d'' -s -n1
-		asc=$(echo "$REPLY\c" | od -A n -a|tr -d ' ')
+		get_CHAR
 		unselect_MSG
-		case $asc in
+		case $CHAR in
 			q)
 				msg "\n"
 				exit 0
 				;;
 			A|k)
-				if [ -n "$esc" ] || [ "$asc" = "k" ]; then
+				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					if [ "$G" -ne "0" ];then
 						S=$((S-1))
 						if [ "$S" -eq "0" ];then
@@ -652,10 +684,9 @@ text_user_interface() {
 				fi
 				;;
 			B|j)
-				if [ -n "$esc" ] || [ "$asc" = "j" ]; then
+				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
 					if [ "$G" -eq "0" ];then
 						G=$S
-						if [ "$G" -gt "3" ];then G=3;fi
 						S=1
 					else
 						S=$((S+1))
@@ -669,10 +700,10 @@ text_user_interface() {
 			C|l)
 				if [ "$G" -eq "0" ];then
 					S=$((S+1))
-					if [ "$S" -gt "6" ];then S=6;fi
+					if [ "$S" -gt "4" ];then S=4;fi
 				else
 					G=$((G+1))
-					if [ "$G" -gt "3" ];then G=3;fi
+					if [ "$G" -gt "4" ];then G=4;fi
 				fi
 				esc=""
 				;;
@@ -692,6 +723,11 @@ text_user_interface() {
 			*)
 				;;
 		esac
+		if [ "$S" -gt "$(eval echo \$G${G}_NUM)" ];then
+			S=$(eval echo \$G${G}_NUM)
+		fi
+		get_res "$G$S"
+		MSG="$res_name"
 		set_ROW_COL
 		select_MSG
 	done
@@ -770,6 +806,7 @@ if [ -n "$NOP" ];then
 	fi
 	if [ -n "$TEXT" ];then
 		ARG1="build"; ARG2="release"; NOP=""
+		set_build_type "release"
 	fi
 fi
 
@@ -782,17 +819,6 @@ BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$AUDK_CONFIG/config.plist"
 if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
-if [ -n "$TEXT" ]; then
-	text_user_interface
-fi
-
-if [ -n "$UPDATE" ]; then
-	check_for_updates
-	if [ "$UPDATE" = "stop" ];then
-		msg "${GRN}All resources are up to date.${NC}\n"
-		exit 0; fi
-fi
-
 if [ -z "$VERBOSE" ]; then
 	exec 6>&1 #start logging
 	exec > $LOGFILE
@@ -802,13 +828,27 @@ fi
 check_requirements
 check_config
 
+if [ -n "$UPDATE" ]; then
+	check_for_updates
+	if [ "$UPDATE" = "stop" ];then
+		msg "${GRN}All resources are up to date.${NC}\n"
+		exit 0; fi
+fi
+
 init_res_array
 add_acpi_res_list
 add_tools_res_list
 add_drivers_res_list
 add_kexts_res_list
 
-swap_res_array
+if [ -n "$TEXT" ]; then
+	text_user_interface
+	msg "\033[2J\033[H"
+	print_res_array
+	exit 0
+fi
+
+#swap_res_array
 
 build_resources
 
