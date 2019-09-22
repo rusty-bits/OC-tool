@@ -271,11 +271,12 @@ get_res() {
 	git_url=$(echo "$res"|cut -f2 -d,)
 	build_type=$(echo "$res"|cut -f3 -d,)
 	srce=$(echo "$res"|cut -f4 -d,)
-	dest=${res##*,} # special case POSIX compliant - matching the end of res
+	dest=$(echo "$res"|cut -f5 -d,)
+	Enabled=${res##*,}
 }
 
 set_res() {
-	eval "res$1=$res_name,$git_url,$build_type,$srce,$dest"
+	eval "res$1=$res_name,$git_url,$build_type,$srce,$dest,$Enabled"
 }
 
 build_resources() {
@@ -291,31 +292,38 @@ build_resources() {
 		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
 		do
 			get_res "$G$S"
-			if [ -z "$srce" ]; then
-				case ${res_name##*.} in
-				"base" | "efi" )
-					if [ "$res_name" = "Shell.efi" ]; then #special case
-						build_shell_tool||build_failed
-					else
-						build_driver||build_failed
-					fi
-					set_res "$G$S"
-					;;
-				"kext" )
-					build_kext||build_failed
-					set_res "$G$S"
-					;;
-				"aml" )
-					build_acpi||build_failed
-					set_res "$G$S"
-					;;
-				esac
+			if [ "$Enabled" != "false" ];then
+				if [ -z "$srce" ]; then
+					case ${res_name##*.} in
+					"base" | "efi" )
+						if [ "$res_name" = "Shell.efi" ]; then #special case
+							build_shell_tool||build_failed
+						else
+							build_driver||build_failed
+						fi
+						set_res "$G$S"
+						;;
+					"kext" )
+						build_kext||build_failed
+						set_res "$G$S"
+						;;
+					"aml" )
+						build_acpi||build_failed
+						set_res "$G$S"
+						;;
+					esac
+				fi
 			fi
 			S=$((S+1))
 		done
 		G=$((G+1))
 	done
 	msg "\n"
+}
+
+res_not_found() {
+	msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+	exit 1
 }
 
 copy_resources() {
@@ -327,11 +335,14 @@ copy_resources() {
 		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
 		do
 			get_res "$G$S"
-			if [ -n "$dest" ]; then
-				msg "Copying $res_name to $dest ... "
-				mkdir -p "$BUILD_DIR/$dest"
-				cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
-				fin
+			if [ "$Enabled" != "false" ];then
+				if [ -n "$dest" ]; then
+					if [ "$srce" = "unknown" ];then res_not_found "$res_name";fi
+					msg "Copying $res_name to $dest ... "
+					mkdir -p "$BUILD_DIR/$dest"
+					cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
+					fin
+				fi
 			fi
 			S=$((S+1))
 		done
@@ -416,11 +427,6 @@ build_vault() {
 	fi
 }
 
-res_not_found() {
-	msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
-	exit 1
-}
-
 add_res_array() {
 	FILE="$TOOL_FILES/repo.plist"
 	git_url=$(parse "$res_name")
@@ -429,6 +435,8 @@ add_res_array() {
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
+		elif [ "$Enabled" = "false" ]; then
+			srce="unknown"
 		else
 			res_not_found "$res_name"
 		fi
@@ -437,6 +445,8 @@ add_res_array() {
 			srce="$BASE_DIR/extras"
 		elif [ -n "$git_url" ]; then
 			srce=""
+		elif [ "$Enabled" = "false" ];then
+			srce="unknown"
 		else
 			res_not_found "$res_name"
 		fi
@@ -454,6 +464,7 @@ add_drivers_res_list() {
 	do
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		res_name=$(parse "UEFI" "Drivers" "$i")
+		Enabled="true"
 		if [ -n "$res_name" ]; then
 			dest="/OC/Drivers"
 			build_type=$ARG2
@@ -476,6 +487,7 @@ add_kexts_res_list() {
 		res_name=$(parse "Kernel" "Add" "$i" "BundlePath")
 		if [ "$ARG2" != "debug" ];then #need DEBUG dependencies
 			if [ "$res_name" = "Lilu.kext" ] || [ "$res_name" = "VirtualSMC.kext" ];then
+				Enabled="dep"
 				build_type="debug"
 				dest=""
 				add_res_array
@@ -485,7 +497,7 @@ add_kexts_res_list() {
 		fi
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		Enabled=$(parse "Kernel" "Add" "$i" "Enabled")
-		if [ "$Enabled" = "true" ]; then
+		if [ -n "$Enabled" ]; then
 			build_type=$ARG2
 			dest="OC/Kexts"
 			add_res_array
@@ -506,7 +518,7 @@ add_tools_res_list() {
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		Enabled=$(parse "Misc" "Tools" "$i" "Enabled")
 		res_name=$(parse "Misc" "Tools" "$i" "Path")
-		if [ "$Enabled" = "true" ]; then
+		if [ -n "$Enabled" ]; then
 			dest="OC/Tools"
 			build_type=$ARG2
 			add_res_array
@@ -527,7 +539,7 @@ add_acpi_res_list() {
 		FILE="$BASE_DIR/$CONFIG_PLIST"
 		Enabled=$(parse "ACPI" "Add" "$i" "Enabled")
 		res_name=$(parse "ACPI" "Add" "$i" "Path")
-		if [ "$Enabled" = "true" ]; then
+		if [ -n "$Enabled" ]; then
 			dest="OC/ACPI"
 			build_type=$ARG2
 			USE_EXTRAS="true"
@@ -561,82 +573,130 @@ set_build_type() {
 
 print_res_array() {
 	G=0
-	while [ "$G" -lt "5" ]
+	while [ "$G" -lt "10" ]
 	do
 		S=1
 		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
 		do
 			get_res "$G$S"
-			msg "$G$S $res_name $git_url $srce $dest\n"
+			msg "$G$S $res_name $git_url $srce $dest $Enabled\n"
 			S=$((S+1))
 		done
 		G=$((G+1))
 	done
+}
+
+add_quirks() {
+	i=0
+	G="$2"
+	S=1
+	res_name="start"
+	until [ -z "$res_name" ]
+	do
+		res_name=$(parse "$1" "Quirks" "$i")
+		if [ -n "$res_name" ];then
+			Enabled=$(parse "$1" "Quirks" "$res_name")
+			set_res "$G$S"
+			S=$((S+1))
+		fi
+		i=$((i+2))
+	done
+	eval G${G}_NUM=$((S-1))
+}
+
+add_quirk_list() {
+	FILE="$BASE_DIR/$CONFIG_PLIST"
+	git_url=""
+	srce=""
+	dest=""
+	add_quirks "ACPI" "5"
+	add_quirks "Kernel" "6"
+	add_quirks "UEFI" "7"
+	add_quirks "Booter" "8"
 }
 
 set_ROW_COL(){
-	if [ "$G" -eq "0" ];then
-		ROW=1
-		case "$S" in
-			1)
-				MSG="$ARG1"
-				COL=2
-				;;
-			2)
-				MSG="$ARG2"
-				COL=30
-				;;
-			3)
-				MSG="Finder"
-				COL=60
-				;;
-			*)
-				MSG="Update"
-				COL=90
-				;;
-		esac
-	else
-		ROW=$((S+2))
-		case "$G" in
-			1)
-				COL=2
-				;;
-			2)
-				COL=30
-				;;
-			3)
-				COL=60
-				;;
-			4)
-				COL=90
-				;;
-		esac
-	fi
+	case "$G" in
+		1|2|3|4)
+			ROW=$((S+3))
+			COL=$(((G-1)*C+2))
+			;;
+		5|6|7|8)
+			ROW=$((S+BOT+4))
+			COL=$(((G-5)*C+2))
+			;;
+		9)
+			ROW=3
+			COL=$(((S-1)*C+2))
+			;;
+	esac
+}
+
+set_text_header() {
+	res91="ACPI,"
+	res92="Kexts/Kernel,"
+	res93="Drivers/UEFI,"
+	res94="Tools/Booter,"
+	G9_NUM="4"
+}
+
+set_color() {
+	case "$Enabled" in
+		true)
+			color="$GRN"
+			;;
+		false)
+			color="$RED"
+			;;
+		dep)
+			color="$YEL"
+	esac
+	if [ "$G" = "9" ];then color="$NC";fi
+}
+
+select_MSG() {
+	msg "\033[${ROW};${COL}H$color\033[7m$res_name\033[0m"
+}
+
+unselect_MSG() {
+	msg "\033[${ROW};${COL}H$color$res_name"
 }
 
 draw_screen() {
-	G=0
-#	S=1
-#	while [ "$S" -lt "5" ]
-#	do
-#		set_ROW_COL
-#		msg "\033[${ROW};${COL}H$MSG $G $S"
-#		S=$((S+1))
-#	done
-#	G=1
-	while [ "$G" -lt "5" ]
+	msg "\033[H$0 $ARG1 $ARG2"
+	G=9
+	S=1
+	BOT=0
+	while [ "$S" -lt "5" ]
+	do
+		get_res "$G$S"
+		set_ROW_COL
+		msg "\033[${ROW};${COL}H$res_name"
+		S=$((S+1))
+	done
+
+	G=1
+	while [ "$G" -le "8" ]
 	do
 		S=1
-		while [ "$S" -le "$(eval echo \$G${G}_NUM)" ]
+		len="$(eval echo \$G${G}_NUM)"
+		if [ "$G" -lt "5" ];then
+			if [ "$BOT" -lt "$len" ];then BOT="$len";fi
+		fi
+		while [ "$S" -le "$len" ]
 		do
 			get_res "$G$S"
-			MSG="$res_name"
 			set_ROW_COL
-			msg "\033[${ROW};${COL}H$MSG $G $S"
+			set_color
+			msg "\033[${ROW};${COL}H$color$res_name$NC"
 			S=$((S+1))
 		done
 		G=$((G+1))
 	done
+	G=9; S=1; color="$NC"
+	set_ROW_COL
+	get_res "$G$S"
+	select_MSG
 }
 
 get_CHAR() {
@@ -645,54 +705,73 @@ get_CHAR() {
 	stty icanon
 }
 
-select_MSG() {
-	msg "\033[${ROW};${COL}H\033[7m$MSG\033[0m"
-}
-
-unselect_MSG() {
-	msg "\033[${ROW};${COL}H$MSG"
-}
-
 text_user_interface() {
 	msg "\033[2J\033[H"
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+	C=$((C/4))
 	stty -echo
 	CHAR=""
+	set_text_header
 	draw_screen
-	G=0; S=1
-	set_ROW_COL
-	select_MSG
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
 		unselect_MSG
 		case $CHAR in
+			b)
+				S=$(eval echo \$G${G}_NUM)
+				if [ "$G" = "9" ];then S=4;fi
+				;;
 			q)
 				msg "\n"
 				exit 0
 				;;
+			t)
+				S=1
+				;;
+			sp|nl)
+				if [ "$Enabled" = "true" ];then
+					Enabled="false"
+				elif [ "$Enabled" = "false" ];then
+					Enabled="true"
+				fi
+				set_res "$G$S"
+				;;
 			A|k)
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
-					if [ "$G" -ne "0" ];then
+					if [ "$G" -ne "9" ];then
 						S=$((S-1))
 						if [ "$S" -eq "0" ];then
-							S=$G
-							G=0
+							if [ "$G" -gt "4" ];then
+								G=$((G-4))
+								S="$(eval echo \$G${G}_NUM)"
+							else
+								S=$G
+								G=9
+							fi
 						fi
 					fi
 					esc=""
 				else
-					msg "AAAAA"
+					G=1
 				fi
 				;;
 			B|j)
 				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
-					if [ "$G" -eq "0" ];then
+					if [ "$G" -eq "9" ];then
 						G=$S
 						S=1
 					else
 						S=$((S+1))
-						if [ "$S" -gt "$R" ];then S=$R; fi
+						len="$(eval echo \$G${G}_NUM)"
+						if [ "$S" -gt "$len" ];then
+							if [ "$G" -lt "5" ];then
+								G=$((G+4))
+								S=1
+							else
+								S=$len
+							fi
+						fi
 					fi
 				else
 					msg "BBBBBBB"
@@ -700,17 +779,22 @@ text_user_interface() {
 				esc=""
 				;;
 			C|l)
-				if [ "$G" -eq "0" ];then
+				if [ "$G" -eq "9" ];then
 					S=$((S+1))
 					if [ "$S" -gt "4" ];then S=4;fi
 				else
-					G=$((G+1))
-					if [ "$G" -gt "4" ];then G=4;fi
+					if [ "$G" -lt "5" ];then
+						G=$((G+1))
+						if [ "$G" -gt "4" ];then G=4;fi
+					else
+						G=$((G+1))
+						if [ "$G" -gt "8" ];then G=8;fi
+					fi
 				fi
 				esc=""
 				;;
 			D|h)
-				if [ "$G" -eq "0" ];then
+				if [ "$G" -eq "9" ];then
 					S=$((S-1))
 					if [ "$S" -eq "0" ];then S=1;fi
 				else
@@ -728,9 +812,10 @@ text_user_interface() {
 		if [ "$S" -gt "$(eval echo \$G${G}_NUM)" ];then
 			S=$(eval echo \$G${G}_NUM)
 		fi
+		if [ "$S" -eq "0" ];then S=1; fi
 		get_res "$G$S"
-		MSG="$res_name"
 		set_ROW_COL
+		set_color
 		select_MSG
 	done
 }
@@ -836,6 +921,14 @@ if [ -z "$VERBOSE" ]; then
 	exec 2>&1
 fi
 
+#FILE="$BASE_DIR/$CONFIG_PLIST"
+#msg "$(parse "ACPI" "Quirks" "0")\n"
+#msg "$(parse "ACPI" "Quirks" "1")\n"
+#msg "$(parse "ACPI" "Quirks" "2")\n"
+#msg "$(parse "ACPI" "Quirks" "3")\n"
+#msg "$(parse "ACPI" "Quirks" "4")\n"
+#exit 0
+
 check_requirements
 check_config
 
@@ -846,6 +939,7 @@ add_drivers_res_list
 add_kexts_res_list
 
 if [ -n "$TEXT" ]; then
+	add_quirk_list
 	text_user_interface
 	msg "\033[2J\033[H"
 	print_res_array
