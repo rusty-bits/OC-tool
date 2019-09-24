@@ -5,7 +5,7 @@ FINDER=""
 RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
 LOGFILE="tool.log"
-RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
+RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m' # No Color
 B='\033[1m'; U='\033[4m'
 INV='\033[7m'
