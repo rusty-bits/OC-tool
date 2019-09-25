@@ -838,9 +838,9 @@ check_config
 
 init_res_array
 add_resource "1" "ACPI" "Add" "Path"
-add_resource "4" "Misc" "Tools" "Path"
-add_resource "3" "UEFI" "Drivers"
 add_resource "2" "Kernel" "Add" "BundlePath"
+add_resource "3" "UEFI" "Drivers"
+add_resource "4" "Misc" "Tools" "Path"
 
 swap_res "Lilu.kext" "1" "2"
 swap_res "VirtualSMC.kext" "$P" "2"
