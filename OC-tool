@@ -1,21 +1,21 @@
 #!/bin/sh -e
+ini=$(pwd)
+cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
-FINDER=""
+
+if [ "$ini" != "$BASE_DIR" ];then FINDER="true"; fi
+
 RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
-NC='\033[0m' # No Color
-B='\033[1m'; U='\033[4m'
+NC='\033[0m'; B='\033[1m'; U='\033[4m'
 INV='\033[7m'
-VER="1.5pt(0921) last checked with OpenCore version REL-051-2019-09-19"
+VER="1.5pt(0925) last checked with OpenCore version REL-051-2019-09-19"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
-UPDATE=""
-REMOVE_ALL=""
-BASE_TOOLS=""
-TEXT=""
+UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
 eval G0_NUM=4
 
 eval set -- "$(getopt hoquvTUVX "$@")"
@@ -75,28 +75,20 @@ init_res_array() {
 	eval G0_NUM=$S
 }
 
-#swap_res() {
-#	S=1
-#	while [ "$S" -le "$(eval echo \$G"$G"_NUM)" ]
-#	do
-#		get_res "$2$S"
-#		if [ "$res_name" = "$1" ]; then
-#			eval temp_res=\$res"$2$S"
-#			eval res$2$S=\$res"$2$S"
-#			eval res$2$S="\$temp_res"
-#			unset temp_res
-#			return 1
-#		fi
-#		S=$((S+1))
-#	done
-#}
-
-#swap_res_array() {
-#	base_num=$((base_num+1))
-#	swap_res "Lilu.kext" "2"||base_num=$((base_num+1)) #keep Lilu first, must compile before other kexts
-#	swap_res "VirtualSMC.kext" "2"||base_num=$((base_num+1)) #VirtualSMC must compile before AsusSMC
-#	swap_res "Shell.efi" "4"||echo "shell swapped to end" #keep Shell last, uses UDK2018
-#}
+swap_res() {
+	for S in $(seq "$2" "$(eval echo \$G"$3"_NUM)")
+	do
+		get_res "$3$S"
+		if [ "$res_name" = "$1" ]; then
+			eval temp_res=\$res"$3$2"
+			eval res"${3}""${2}"=\$res"${3}""${S}"
+			eval res"$3""$S"=\$temp_res
+			unset temp_res
+			P=$(($2+1))
+			return 0
+		fi
+	done
+}
 
 clone() {
 	if [ -z "$2" ]; then
@@ -455,24 +447,32 @@ add_resource() {
 		if [ -n "$res_name" ];then
 			case "$1" in
 				1)
+					Enabled=$(parse "$2" "$3" "$i" "Enabled")
 					dest="OC/ACPI"
 					USE_EXTRAS="true";;
 				2)
+					if [ "$build_type" = "release" ];then #need DEBUG dependencies
+						if [ "$res_name" = "Lilu.kext" ] || [ "$res_name" = "VirtualSMC.kext" ];then
+							Enabled="dep"; build_type="debug"; dest=""
+							add_res_array
+							S=$((S+1)); build_type="$ARG2"
+							FILE="$BASE_DIR/$CONFIG_PLIST"
+						fi
+					fi
+					Enabled=$(parse "$2" "$3" "$i" "Enabled")
 					dest="OC/Kexts";;
 				3)
 					Enabled="true"
 					dest="OC/Drivers";;
 				4)
+					Enabled=$(parse "$2" "$3" "$i" "Enabled")
 					dest="OC/Tools";;
+				5|6|7|8)
+					Enabled=$(parse "$2" "$3" "$res_name")
+					set_res "$G$S"
+					i=$((i+1));;
 			esac
-			if [ "$G" -lt "5" ];then
-				if [ "$1" -ne "3" ];then Enabled=$(parse "$2" "$3" "$i" "Enabled");fi
-				add_res_array
-			else
-				Enabled=$(parse "$2" "$3" "$res_name")
-				set_res "$G$S"
-				i=$((i+1))
-			fi
+			if [ "$G" -lt "5" ];then add_res_array;fi
 			S=$((S+1))
 		fi
 		i=$((i+1))
@@ -480,58 +480,23 @@ add_resource() {
 	eval G"$G"_NUM=$((S-1))
 }
 
-add_kexts_res_list() {
-	i=0; G=2; S=1
-	res_name="start"
-	until [ -z "$res_name" ]
-	do
-		FILE="$BASE_DIR/$CONFIG_PLIST"
-		res_name=$(parse "Kernel" "Add" "$i" "BundlePath")
-		if [ "$ARG2" != "debug" ];then #need DEBUG dependencies
-			if [ "$res_name" = "Lilu.kext" ] || [ "$res_name" = "VirtualSMC.kext" ];then
-				Enabled="dep"
-				build_type="debug"
-				dest=""
-				add_res_array
-				S=$((S+1))
-				KEXTS=$((KEXTS+1))
-			fi
-		fi
-		FILE="$BASE_DIR/$CONFIG_PLIST"
-		Enabled=$(parse "Kernel" "Add" "$i" "Enabled")
-		if [ -n "$Enabled" ]; then
-			build_type=$ARG2
-			dest="OC/Kexts"
-			add_res_array
-			S=$((S+1))
-		fi
-		i=$((i+1))
-	done
-	eval G2_NUM=$((S-1))
-}
-
 set_build_type() {
 	if [ -z "$build_type" ]; then build_type=$ARG2; fi;
 	case $build_type in
 		d|debug)
-			ARG2="debug"
-			XCODE_CONFIG="Debug"
-			;;
+			ARG2="debug"; XCODE_CONFIG="Debug";;
 		r|release)
-			ARG2="release"
-			XCODE_CONFIG="Release"
-			;;
+			ARG2="release"; XCODE_CONFIG="Release";;
 		*)
 			msg "need to specify ${U}debug${NC} or ${U}release${NC} after $ARG1 command\n"
-			exit 1
-			;;
+			exit 1;;
 	esac
 	AUDK_CONFIG=$(echo $XCODE_CONFIG|tr "[:lower:]" "[:upper:]")
 	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
 }
 
 print_res_array() {
-	for G in $(seq 0 9)
+	for G in $(seq 0 5)
 	do
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
@@ -569,20 +534,16 @@ set_text_header() {
 set_color() {
 	case "$Enabled" in
 		true)
-			color="$GRN"
-			MSG="+"
+			color="$GRN"; MSG="+"
 			;;
 		false)
-			color="$RED"
-			MSG="-"
+			color="$RED"; MSG="-"
 			;;
 		dep)
-			color="$YEL"
-			MSG="$build_type"
+			color="$YEL"; MSG="$build_type"
 			;;
 		*)
-			color="$BLU"
-			MSG="$Enabled"
+			color="$BLU"; MSG="$Enabled"
 			;;
 	esac
 	if [ "$G" = "9" ];then color="$NC";fi
@@ -729,13 +690,9 @@ text_user_interface() {
 					S=$((S+1))
 					if [ "$S" -gt "4" ];then S=4;fi
 				else
-					if [ "$G" -lt "5" ];then
-						G=$((G+1))
-						if [ "$G" -gt "4" ];then G=4;fi
-					else
-						G=$((G+1))
-						if [ "$G" -gt "8" ];then G=8;fi
-					fi
+					G=$((G+1))
+					if [ "$G" -eq "5" ];then G=4;fi
+					if [ "$G" -eq "9" ];then G=8;fi
 				fi
 				esc=""
 				;;
@@ -746,6 +703,7 @@ text_user_interface() {
 				else
 					G=$((G-1))
 					if [ "$G" -eq "0" ];then G=1;fi
+					if [ "$G" -eq "4" ];then G=5;fi
 				fi
 				esc=""
 				;;
@@ -809,7 +767,15 @@ do
 	esac
 done
 
-ARG1="$1"; ARG2="$2"; NOP=""
+if [ -n "$FINDER" ];then
+	ARG1="build"
+	ARG2="release"
+	UPDATE="true"
+else
+	ARG1="$1"; ARG2="$2"
+fi
+
+NOP=""
 
 case $ARG1 in
 	b|build) #build first if repo exists, else copy from extras folder
@@ -874,11 +840,11 @@ init_res_array
 add_resource "1" "ACPI" "Add" "Path"
 add_resource "4" "Misc" "Tools" "Path"
 add_resource "3" "UEFI" "Drivers"
-#add_resource "2" "Kernel" "Add" "BundlePath"
-add_kexts_res_list
+add_resource "2" "Kernel" "Add" "BundlePath"
 
-#print_res_array
-#exit 0
+swap_res "Lilu.kext" "1" "2"
+swap_res "VirtualSMC.kext" "$P" "2"
+#swap_res "Shell.efi" "4"||echo "shell swapped to end" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
 	text_user_interface
@@ -886,8 +852,6 @@ if [ -n "$TEXT" ]; then
 	print_res_array
 	exit 0
 fi
-
-#swap_res_array
 
 build_resources
 
