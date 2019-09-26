@@ -8,6 +8,7 @@ if [ "$ini" != "$BASE_DIR" ];then FINDER="true"; fi
 
 RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
+REPO_PLIST="$TOOL_FILES/repo.plist"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'
@@ -48,8 +49,8 @@ check_requirements() {
 }
 
 check_config() {
-	if [ ! -f "$BASE_DIR/$CONFIG_PLIST" ]; then
-		msg "\n${RED}ERROR:${NC} $BASE_DIR/$CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
+	if [ ! -f "$CONFIG_PLIST" ]; then
+		msg "\n${RED}ERROR:${NC} $CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
 		exit 1
 	fi
 }
@@ -104,7 +105,6 @@ clone() {
 }
 
 check_for_updates() {
-	UPDATED=""
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
 	git fetch --all $VERBOSE $QUIET
@@ -122,7 +122,6 @@ check_for_updates() {
 			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
 				msg "\ngit_dir is $git_dir -\n"
 				git -C "$git_dir" pull $VERBOSE $QUIET
-				UPDATED="changed"
 			fi
 		done
 	fi
@@ -308,7 +307,7 @@ build_resources() {
 }
 
 res_not_found() {
-	msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+	msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
 	exit 1
 }
 
@@ -336,7 +335,7 @@ config_changed() {
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${YEL}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $BASE_DIR/$CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
+	msg "\n${YEL}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
 	cfg_ok="false"
 }
 
@@ -388,7 +387,7 @@ parse() {
 }
 
 build_vault() {
-	FILE="$BASE_DIR/$CONFIG_PLIST"
+	FILE="$CONFIG_PLIST"
 	use_vault=$(parse "Misc" "Security" "RequireVault")
 	if [ "$use_vault" = "true" ]; then
 		msg "\nBuilding vault files for $BUILD_DIR ... "
@@ -408,7 +407,7 @@ build_vault() {
 }
 
 add_res_array() {
-	FILE="$TOOL_FILES/repo.plist"
+	FILE="$REPO_PLIST"
 	git_url=$(parse "$res_name")
 	if [ -z "$COPY" ] && [ -z "$USE_EXTRAS" ];then
 		if [ -n "$git_url" ]; then
@@ -442,7 +441,7 @@ add_resource() {
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
-		FILE="$BASE_DIR/$CONFIG_PLIST"
+		FILE="$CONFIG_PLIST"
 		res_name=$(parse "$2" "$3" "$i" "$4")
 		if [ -n "$res_name" ];then
 			case "$1" in
@@ -456,7 +455,7 @@ add_resource() {
 							Enabled="dep"; build_type="debug"; dest=""
 							add_res_array
 							S=$((S+1)); build_type="$ARG2"
-							FILE="$BASE_DIR/$CONFIG_PLIST"
+							FILE="$CONFIG_PLIST"
 						fi
 					fi
 					Enabled=$(parse "$2" "$3" "$i" "Enabled")
@@ -814,15 +813,13 @@ if [ -n "$NOP" ];then
 fi
 
 BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
-CONFIG_PLIST="$AUDK_CONFIG/config.plist"
+CONFIG_PLIST="$BASE_DIR/$AUDK_CONFIG/config.plist"
 if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
 	if [ "$UPDATE" = "stop" ];then
-		if [ -z "$UPDATED" ];then
-			msg "${GRN}All resources are up to date.${NC}\n"
-		fi
+		msg "${GRN}All resources are up to date.${NC}\n"
 		exit 0
 	fi
 fi
