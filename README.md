@@ -14,7 +14,7 @@ Note: This tool makes certain assumptions, such as:
 **Installation**:
 
 `git clone https://github.com/rusty-bits/OC-tool`   
-`cd OC-tool`
+`cd OC-tool`  
 
 then place your config.plist file in the appropriate directory, or copy and edit one of the sample plist files. eg.    
 `cp Docs/SampleFull.plist RELEASE/config.plist` for making a release version
@@ -22,6 +22,11 @@ then place your config.plist file in the appropriate directory, or copy and edit
 `cp Docs/SampleFull.plist DEBUG/config.plist` for making a debug version
 
 see the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more information  
+
+### Note:  
+The tool can be double clicked in the Finder if you would rather use it that way.  
+It will function as if you had run `./OC-tool -uo build release` from the command line.  
+More detailed instructions can be found [here in the OC-tool wiki pages.](https://github.com/rusty-bits/OC-tool/wiki/OC-tool-from-the-Finder)  
 
 ---
 
