@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'
 INV='\033[7m'
-VER="1.5pt(0925) last checked with OpenCore version REL-051-2019-09-19"
+VER="1.5pt(0925) last checked with OpenCore version REL-051-2019-09-25"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
@@ -122,6 +122,7 @@ check_for_updates() {
 			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
 				msg "\ngit_dir is $git_dir -\n"
 				git -C "$git_dir" pull $VERBOSE $QUIET
+				UPDATE="true"
 			fi
 		done
 	fi
@@ -841,7 +842,7 @@ add_resource "4" "Misc" "Tools" "Path"
 
 swap_res "Lilu.kext" "1" "2"
 swap_res "VirtualSMC.kext" "$P" "2"
-#swap_res "Shell.efi" "4"||echo "shell swapped to end" #keep Shell last, uses UDK2018
+#swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
 	text_user_interface
