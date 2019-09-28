@@ -11,7 +11,7 @@ TOOL_FILES="$BASE_DIR/.tool-files"
 REPO_PLIST="$TOOL_FILES/repo.plist"
 LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
-NC='\033[0m'; B='\033[1m'; U='\033[4m'
+NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.5pt(0925) last checked with OpenCore version REL-051-2019-09-25"
 COPY=""; USE_EXTRAS=""
@@ -524,10 +524,10 @@ set_ROW_COL(){
 }
 
 set_text_header() {
-	eval res91="ACPI,"
-	eval res92="Kexts/Kernel,"
-	eval res93="Drivers/UEFI,"
-	eval res94="Tools/Booter,"
+	eval res91="\\${U}A\\${UO}CPI,"
+	eval res92="\\${U}K\\${UO}exts/K\\${U}e\\${UO}rnel,"
+	eval res93="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI,"
+	eval res94="\\${U}T\\${UO}ools/\\${U}B\\${UO}ooter,"
 	eval G9_NUM="4"
 }
 
@@ -617,8 +617,11 @@ text_user_interface() {
 				S=$(eval echo \$G"$G"_NUM)
 				if [ "$G" = "9" ];then S=4;fi
 				;;
+			e)
+				G=6; S=1;;
 			q)
-				msg "\n"
+				stty echo
+				msg "\033[J${NC}\n"
 				exit 0
 				;;
 			t)
@@ -660,7 +663,7 @@ text_user_interface() {
 					fi
 					esc=""
 				else
-					G=1
+					G=9; S=1
 				fi
 				;;
 			B|j)
@@ -681,7 +684,7 @@ text_user_interface() {
 						fi
 					fi
 				else
-					msg "BBBBBBB"
+					G=8; S=1
 				fi
 				esc=""
 				;;
@@ -697,16 +700,28 @@ text_user_interface() {
 				esc=""
 				;;
 			D|h)
-				if [ "$G" -eq "9" ];then
-					S=$((S-1))
-					if [ "$S" -eq "0" ];then S=1;fi
+				if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
+					if [ "$G" -eq "9" ];then
+						S=$((S-1))
+						if [ "$S" -eq "0" ];then S=1;fi
+					else
+						G=$((G-1))
+						if [ "$G" -eq "0" ];then G=1;fi
+						if [ "$G" -eq "4" ];then G=5;fi
+					fi
+					esc=""
 				else
-					G=$((G-1))
-					if [ "$G" -eq "0" ];then G=1;fi
-					if [ "$G" -eq "4" ];then G=5;fi
+					G=9; S=3
 				fi
-				esc=""
 				;;
+			K)
+				G=9; S=2;;
+			T)
+				G=9; S=4;;
+			U)
+				G=7; S=1;;
+			Q)
+				G=5; S=1;;
 			esc)
 				esc="true"
 				;;
