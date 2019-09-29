@@ -785,7 +785,6 @@ done
 if [ -n "$FINDER" ];then
 	ARG1="build"
 	ARG2="release"
-	UPDATE="true"
 else
 	ARG1="$1"; ARG2="$2"
 fi
