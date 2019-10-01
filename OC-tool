@@ -388,23 +388,19 @@ parse() {
 }
 
 build_vault() {
-	FILE="$CONFIG_PLIST"
-	use_vault=$(parse "Misc" "Security" "RequireVault")
-	if [ "$use_vault" = "true" ]; then
-		msg "\nBuilding vault files for $BUILD_DIR ... "
-		cd "$BUILD_DIR"/OC
-		if ls vault* 1> /dev/null 2>&1; then
-			rm vault.*
-		fi
-		"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .
-		make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool
-		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
-		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
-		off=$((str+16))
-		dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=520 conv=notrunc
-		rm vault.pub
-		fin
+	msg "\nBuilding vault files for $BUILD_DIR ... "
+	cd "$BUILD_DIR"/OC
+	if ls vault* 1> /dev/null 2>&1; then
+		rm vault.*
 	fi
+	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .
+	make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool
+	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
+	str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
+	off=$((str+16))
+	dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=520 conv=notrunc
+	rm vault.pub
+	fin
 }
 
 add_res_array() {
@@ -506,6 +502,116 @@ print_res_array() {
 	done
 }
 
+write_new_array() {
+	while [ "$line" != "</array>" ]
+	do
+		get_res "$G$S"
+		while [ "$Enabled" = "dep" ]
+		do
+			S=$((S+1))
+			get_res "$G$S"
+		done
+		while [ "$line" != "</dict>" ]
+		do
+			read -r line
+			echo $line >> $OUT
+			key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+			if [ "$key" = "Enabled" ];then
+				read -r line
+				echo "<"$Enabled"/>" >> $OUT
+			fi
+		done
+		S=$((S+1))
+		read -r line
+		echo $line >> $OUT
+	done
+}
+
+find_quirks() {
+	key=""
+	while [ "$key" != "Quirks" ];
+	do
+		read -r line
+		echo $line >> $OUT
+		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+	done
+}
+
+write_new_dict() {
+	get_res "$G$S"
+	read -r line
+	echo $line >> $OUT
+	while [ "$line" != "</dict>" ]
+	do
+		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+		if [ "$key" = "$res_name" ];then
+			read -r line
+			case $Enabled in
+				true|false)
+					echo "<"$Enabled"/>" >> $OUT
+					;;
+				[0-9])
+					echo "<integer>$Enabled</integer>" >> $OUT
+					;;
+				*)
+					echo $line >> $OUT
+					;;
+			esac
+			S=$((S+1))
+			get_res "$G$S"
+		fi
+		read -r line
+		echo $line >> $OUT
+	done
+}
+
+write_new_conf() {
+	OUT=$BASE_DIR/Docs/config.plist
+	msg "\033[J\nWriting new config.plist\n"
+	rm -rf $OUT
+	while read -r line
+	do
+		echo $line >> $OUT
+		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+		case $key in
+			ACPI)
+				G=1; S=1;
+				write_new_array
+				G=5; S=1;
+				find_quirks
+				write_new_dict
+				;;
+			Kernel)
+				G=2; S=1;
+				write_new_array
+				G=6; S=1;
+				find_quirks
+				write_new_dict
+				;;
+			UEFI)
+#				G=3; S=1;
+#				write_new_array
+				G=7; S=1;
+				find_quirks
+				write_new_dict
+				;;
+			Tools)
+				G=4; S=1;
+				write_new_array
+				;;
+			Booter)
+				G=8; S=1;
+				find_quirks
+				write_new_dict
+				;;
+			RequireVault)
+				read -r line
+				echo "<"$USE_VAULT"/>" >> $OUT
+				;;
+		esac
+	done < $CONFIG_PLIST
+}
+
 set_ROW_COL(){
 	case "$G" in
 		1|2|3|4)
@@ -558,14 +664,31 @@ unselect_MSG() {
 	MSG=""
 }
 
+draw_key() {
+	msg "$NC\033[$((BOT+KEY+5))H\n"
+	msg "$(cat $TOOL_FILES/key.msg)\n"
+}
+
+draw_header() {
+	msg "$NC\033[H$0 $ARG1 $ARG2 Vault="
+	if [ "$USE_VAULT" = "true" ];then
+		msg "$GRN"
+	else
+		msg "$RED"
+	fi
+	msg "$INV$USE_VAULT$NC "
+}
+
 draw_screen() {
-	msg "\033[H$0 $ARG1 $ARG2"
-	BOT=0
+	draw_header
+	BOT=0; KEY=0
 	for G in $(seq 1 8)
 	do
 		len="$(eval echo \$G"$G"_NUM)"
 		if [ "$G" -le "4" ];then
 			if [ "$BOT" -lt "$len" ];then BOT="$len";fi
+		else
+			if [ "$KEY" -lt "$len" ]; then KEY="$len";fi
 		fi
 		for S in $(seq 1 "$len")
 		do
@@ -584,10 +707,11 @@ draw_screen() {
 		unselect_MSG
 	done
 	select_MSG
+	draw_key
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC    $RED$INV disabled $NC    $YEL$INV dependency $NC    $BLU$INV numeric $NC    q - to quit"
+	msg "\033[$((R-1));2H$GRN$INV enabled $NC   $RED$INV disabled $NC   $YEL$INV dependency $NC   $BLU$INV numeric $NC  q - to quit"
 }
 
 get_CHAR() {
@@ -619,6 +743,9 @@ text_user_interface() {
 				;;
 			e)
 				G=6; S=1;;
+			p)
+				print_res_array
+				exit 0;;
 			q)
 				stty echo
 				msg "\033[J${NC}\n"
@@ -626,6 +753,14 @@ text_user_interface() {
 				;;
 			t)
 				S=1
+				;;
+			v)
+				if [ "$USE_VAULT" = "true" ];then
+					USE_VAULT="false"
+				else
+					USE_VAULT="true"
+				fi
+				draw_header
 				;;
 			sp|nl)
 				if [ "$Enabled" = "true" ];then
@@ -737,6 +872,8 @@ text_user_interface() {
 		set_color
 		select_MSG
 	done
+	stty echo
+	msg "${NC}"
 }
 
 #****** Start build ***************
@@ -853,6 +990,8 @@ add_resource "1" "ACPI" "Add" "Path"
 add_resource "2" "Kernel" "Add" "BundlePath"
 add_resource "3" "UEFI" "Drivers"
 add_resource "4" "Misc" "Tools" "Path"
+FILE="$CONFIG_PLIST"
+USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 
 swap_res "Lilu.kext" "1" "2"
 swap_res "VirtualSMC.kext" "$P" "2"
@@ -861,8 +1000,10 @@ swap_res "VirtualSMC.kext" "$P" "2"
 if [ -n "$TEXT" ]; then
 	text_user_interface
 	msg "\033[2J\033[H"
-	print_res_array
-	exit 0
+	write_new_conf
+	get_res "06"
+	srce="$BASE_DIR/Docs"
+	set_res "06"
 fi
 
 build_resources
@@ -872,7 +1013,7 @@ copy_resources
 
 check_if_Sample_plist_updated
 
-build_vault
+if [ "$USE_VAULT" = "true" ];then build_vault; fi
 
 if [ -z "$VERBOSE" ];then
 	exec 1>&6 6>&- 2>&1 #stop logfile
