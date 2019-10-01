@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.6pt(0930) last checked with OpenCore version REL-051-2019-09-28"
+VER="1.6pt(0930) last checked with OpenCore version REL-051-2019-09-30"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
@@ -188,7 +188,7 @@ build_kext() {
 		while :
 		do
 		xcodebuild -config "$XCODE_CONFIG" build && break
-			if [ "$a" -eq "6" ]; then return 1; fi
+			if [ "$a" -eq "5" ]; then return 1; fi
 			msg "\n${YEL}$pkg_name TRY $a FAILED:${NC} backing up one commit and trying again\n"
 			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
