@@ -515,8 +515,8 @@ write_new_array() {
 		do
 			read -r line
 			echo "$line" >> "$OUT"
-			key=$(echo "$line"|sed -e 's/<[^>]*>//g')
-			if [ "$key" = "Enabled" ];then
+	#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
 				echo "<$Enabled/>" >> "$OUT"
 			fi
@@ -549,24 +549,17 @@ write_new_drivers() {
 	done
 }
 
-find_quirks() {
-	key=""
-	while [ "$key" != "Quirks" ];
+write_new_quirks() {
+	get_res "$G$S"
+	while [ "$line" != "<key>Quirks</key>" ];
 	do
 		read -r line
 		echo "$line" >> "$OUT"
-		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 	done
-}
-
-write_new_dict() {
-	get_res "$G$S"
-	read -r line
-	echo "$line" >> "$OUT"
 	while [ "$line" != "</dict>" ]
 	do
-		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
-		if [ "$key" = "$res_name" ];then
+#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
+		if [ "$line" = "<key>$res_name</key>" ];then
 			read -r line
 			case "$Enabled" in
 				true|false)
@@ -600,22 +593,19 @@ write_new_conf() {
 				G=1; S=1;
 				write_new_array
 				G=5; S=1;
-				find_quirks
-				write_new_dict
+				write_new_quirks
 				;;
 			"<key>Kernel</key>")
 				G=2; S=1;
 				write_new_array
 				G=6; S=1;
-				find_quirks
-				write_new_dict
+				write_new_quirks
 				;;
 			"<key>UEFI</key>")
 				G=3; S=1;
 				write_new_drivers
 				G=7; S=1;
-				find_quirks
-				write_new_dict
+				write_new_quirks
 				;;
 			"<key>Tools</key>")
 				G=4; S=1;
@@ -623,8 +613,7 @@ write_new_conf() {
 				;;
 			"<key>Booter</key>")
 				G=8; S=1;
-				find_quirks
-				write_new_dict
+				write_new_quirks
 				;;
 			"<key>RequireVault</key>")
 				read -r line
