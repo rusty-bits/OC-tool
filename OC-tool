@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.5pt(0929) last checked with OpenCore version REL-051-2019-09-28"
+VER="1.6pt(0930) last checked with OpenCore version REL-051-2019-09-28"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
@@ -514,16 +514,16 @@ write_new_array() {
 		while [ "$line" != "</dict>" ]
 		do
 			read -r line
-			echo $line >> $OUT
+			echo "$line" >> "$OUT"
 			key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 			if [ "$key" = "Enabled" ];then
 				read -r line
-				echo "<"$Enabled"/>" >> $OUT
+				echo "<$Enabled/>" >> "$OUT"
 			fi
 		done
 		S=$((S+1))
 		read -r line
-		echo $line >> $OUT
+		echo "$line" >> "$OUT"
 	done
 }
 
@@ -532,7 +532,7 @@ find_quirks() {
 	while [ "$key" != "Quirks" ];
 	do
 		read -r line
-		echo $line >> $OUT
+		echo "$line" >> "$OUT"
 		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 	done
 }
@@ -540,38 +540,38 @@ find_quirks() {
 write_new_dict() {
 	get_res "$G$S"
 	read -r line
-	echo $line >> $OUT
+	echo "$line" >> "$OUT"
 	while [ "$line" != "</dict>" ]
 	do
 		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		if [ "$key" = "$res_name" ];then
 			read -r line
-			case $Enabled in
+			case "$Enabled" in
 				true|false)
-					echo "<"$Enabled"/>" >> $OUT
+					echo "<$Enabled/>" >> "$OUT"
 					;;
 				[0-9])
-					echo "<integer>$Enabled</integer>" >> $OUT
+					echo "<integer>$Enabled</integer>" >> "$OUT"
 					;;
 				*)
-					echo $line >> $OUT
+					echo "$line" >> "$OUT"
 					;;
 			esac
 			S=$((S+1))
 			get_res "$G$S"
 		fi
 		read -r line
-		echo $line >> $OUT
+		echo "$line" >> "$OUT"
 	done
 }
 
 write_new_conf() {
 	OUT=$BASE_DIR/Docs/config.plist
 	msg "\033[J\nWriting new config.plist\n"
-	rm -rf $OUT
+	rm -rf "$OUT"
 	while read -r line
 	do
-		echo $line >> $OUT
+		echo "$line" >> "$OUT"
 		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		case $key in
 			ACPI)
@@ -606,10 +606,10 @@ write_new_conf() {
 				;;
 			RequireVault)
 				read -r line
-				echo "<"$USE_VAULT"/>" >> $OUT
+				echo "<$USE_VAULT/>" >> "$OUT"
 				;;
 		esac
-	done < $CONFIG_PLIST
+	done < "$CONFIG_PLIST"
 }
 
 set_ROW_COL(){
@@ -666,7 +666,7 @@ unselect_MSG() {
 
 draw_key() {
 	msg "$NC\033[$((BOT+KEY+5))H\n"
-	msg "$(cat $TOOL_FILES/key.msg)\n"
+	msg "$(cat "$TOOL_FILES/key.msg")\n"
 }
 
 draw_header() {
