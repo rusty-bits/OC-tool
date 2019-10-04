@@ -492,7 +492,8 @@ set_build_type() {
 }
 
 print_res_array() {
-	for G in $(seq 0 5)
+	msg "\033[J\033[0m\n"
+	for G in $(seq 0 8)
 	do
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
@@ -627,15 +628,15 @@ write_new_conf() {
 set_ROW_COL(){
 	case "$G" in
 		1|2|3|4)
-			ROW=$((S+3))
+			ROW=$((S+2))
 			COL=$(((G-1)*C+1))
 			;;
 		5|6|7|8)
-			ROW=$((S+BOT+4))
+			ROW=$((S+BOT+3))
 			COL=$(((G-5)*C+1))
 			;;
 		9)
-			ROW=3
+			ROW=2
 			COL=$(((S-1)*C+1))
 			;;
 	esac
@@ -677,8 +678,10 @@ unselect_MSG() {
 }
 
 draw_key() {
-	msg "$NC\033[$((BOT+KEY+5))H\n"
-	msg "$(cat "$TOOL_FILES/key.msg")\n"
+	if [ "$R" -gt "30" ];then
+		msg "$NC\033[$((BOT+KEY+3))H\n"
+		msg "$(cat "$TOOL_FILES/key.msg")\n"
+	fi
 }
 
 draw_header() {
@@ -689,11 +692,39 @@ draw_header() {
 		msg "$RED"
 	fi
 	msg "$INV$USE_VAULT$NC "
+	G=9; color=${NC}
+	for S in $(seq 1 4)
+	do
+		get_res "$G$S"
+		set_ROW_COL
+		unselect_MSG
+	done
 }
 
+redraw_screen() {
+	OLD_G=$G; OLD_S=$S
+	if [ "$G" -lt "5" ];then SG=1; else SG=5; fi
+	for S in $(seq $((OLD_S)) $KEY); do
+		msg "\033[$((ROW+1))H\033[2K"
+		for G in $(seq $SG 8); do
+			get_res "$G$S"
+			set_ROW_COL
+			set_color
+			unselect_MSG
+		done
+	done
+	msg "\033[J"
+	draw_key
+	draw_footer
+	G=$OLD_G; S=$OLD_S
+}
+
+
 draw_screen() {
+	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+	C=$((C/4))
+	msg "\033[2J\033[H"
 	draw_header
-	BOT=0; KEY=0
 	for G in $(seq 1 8)
 	do
 		len="$(eval echo \$G"$G"_NUM)"
@@ -710,16 +741,11 @@ draw_screen() {
 			unselect_MSG
 		done
 	done
-
-	G=9; color=${NC}
-	for S in $(seq 4 1)
-	do
-		get_res "$G$S"
-		set_ROW_COL
-		unselect_MSG
-	done
+	G=1; S=1; get_res "$G$S"
+	set_ROW_COL; set_color
 	select_MSG
 	draw_key
+	draw_footer
 }
 
 draw_footer() {
@@ -736,14 +762,11 @@ text_user_interface() {
 	git_url=""; srce=""; dest=""
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
-	msg "\033[2J\033[H"
-	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
-	C=$((C/4))
+	BOT=0; KEY=0
 	stty -echo
 	CHAR=""
 	set_text_header
 	draw_screen
-	draw_footer
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
@@ -755,6 +778,25 @@ text_user_interface() {
 				;;
 			e)
 				G=6; S=1;;
+			i)
+#				select_MSG
+#				FILE=$TOOL_FILES/quirk.plist
+#				DESC=$(parse "$res_name")
+				DESC=""
+				while read -r line
+				do
+					if [ "$line" = $res_name ];then
+						read -r line
+						DESC=$line
+						break
+					fi
+				done < $TOOL_FILES/description.txt
+				if [ -z "$DESC" ];then DESC="No description found.";fi
+				msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
+				select_MSG
+				get_CHAR
+				redraw_screen
+				;;
 			p)
 				print_res_array
 				exit 0;;
@@ -762,6 +804,9 @@ text_user_interface() {
 				stty echo
 				msg "\033[J${NC}\n"
 				exit 0
+				;;
+			r)
+				draw_screen
 				;;
 			s)
 				CHAR='g'
@@ -800,38 +845,30 @@ text_user_interface() {
 				;;
 			A|k)
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
-					if [ "$G" -ne "9" ];then
-						S=$((S-1))
-						if [ "$S" -eq "0" ];then
-							if [ "$G" -gt "4" ];then
-								G=$((G-4))
-								S="$(eval echo \$G"$G"_NUM)"
-							else
-								S=$G
-								G=9
-							fi
+					S=$((S-1))
+					if [ "$S" -eq "0" ];then
+						if [ "$G" -gt "4" ];then
+							G=$((G-4))
+							S="$(eval echo \$G"$G"_NUM)"
+						else
+							S=1
 						fi
 					fi
-					esc=""
 				else
-					G=9; S=1
+					G=1; S=1
 				fi
+				esc=""
 				;;
 			B|j)
 				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
-					if [ "$G" -eq "9" ];then
-						G=$S
-						S=1
-					else
-						S=$((S+1))
-						len="$(eval echo \$G"$G"_NUM)"
-						if [ "$S" -gt "$len" ];then
-							if [ "$G" -lt "5" ];then
-								G=$((G+4))
-								S=1
-							else
-								S=$len
-							fi
+					S=$((S+1))
+					len="$(eval echo \$G"$G"_NUM)"
+					if [ "$S" -gt "$len" ];then
+						if [ "$G" -lt "5" ];then
+							G=$((G+4))
+							S=1
+						else
+							S=$len
 						fi
 					fi
 				else
@@ -840,40 +877,30 @@ text_user_interface() {
 				esc=""
 				;;
 			C|l)
-				if [ "$G" -eq "9" ];then
-					S=$((S+1))
-					if [ "$S" -gt "4" ];then S=4;fi
-				else
-					G=$((G+1))
-					if [ "$G" -eq "5" ];then G=4;fi
-					if [ "$G" -eq "9" ];then G=8;fi
-				fi
+				G=$((G+1))
+				if [ "$G" -eq "5" ];then G=4;fi
+				if [ "$G" -eq "9" ];then G=8;fi
 				esc=""
 				;;
 			D|h)
 				if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
-					if [ "$G" -eq "9" ];then
-						S=$((S-1))
-						if [ "$S" -eq "0" ];then S=1;fi
-					else
-						G=$((G-1))
-						if [ "$G" -eq "0" ];then G=1;fi
-						if [ "$G" -eq "4" ];then G=5;fi
-					fi
+					G=$((G-1))
+					if [ "$G" -eq "0" ];then G=1;fi
+					if [ "$G" -eq "4" ];then G=5;fi
 					esc=""
 				else
-					G=9; S=3
+					G=3; S=1
 				fi
 				;;
 			K)
-				G=9; S=2;;
+				G=2; S=1;;
 			T)
-				G=9; S=4;;
+				G=4; S=1;;
 			U)
 				G=7; S=1;;
 			Q)
 				G=5; S=1;;
-			esc)
+			esc|'[')
 				esc="true"
 				;;
 		esac

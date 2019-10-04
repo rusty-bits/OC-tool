@@ -1,0 +1,74 @@
+FadtEnableReset
+Provide reset register and flag in FADT table to enable reboot and shutdown on legacy hardware. Not recommended unless required.
+NormalizeHeaders
+Cleanup ACPI header fields to workaround macOS ACPI implementation bug causing boot crashes. Reference: Debugging AppleACPIPlatform on 10.13 by Alex James aka theracermaster. The issue is fixed in macOS Mojave (10.14).
+RebaseRegions
+Attempt to heuristically relocate ACPI memory regions. Not recommended. ACPI tables are often generated dynamically by underlying firmware implementation. Among the positionindependent code, ACPI tables may contain physical addresses of MMIO areas used for device configuration, usually grouped in regions (e.g. OperationRegion). Changing firmware settings or hardware configuration, upgrading or patching the firmware inevitably leads to changes in dynamically generated ACPI code, which sometimes lead to the shift of the addresses in aforementioned OperationRegion constructions. For this reason it is very dangerous to apply any kind of modifications to ACPI tables. The most reasonable approach is to make as few as possible changes to ACPI and try to not replace any tables, especially DSDT. When this is not possible, then at least attempt to ensure that custom DSDT is based on the most recent DSDT or remove writes and reads for the affected areas. When nothing else helps this option could be tried to avoid stalls at PCI Configuration Begin phase of macOS booting by attempting to fix the ACPI addresses. It does not do magic, and only works with most common cases. Do not use unless absolutely required.
+ResetHwSig
+Reset FACS table HardwareSignature value to 0. This works around firmwares that fail to maintain hardware signature across the reboots and cause issues with waking from hibernation.
+ResetLogoStatus
+Reset BGRT table Displayed status field to false. This works around firmwares that provide BGRT table but fail to handle screen updates afterwards.
+AvoidRuntimeDefrag
+Protect from boot.efi runtime memory defragmentation. This option fixes UEFI runtime services (date, time, NVRAM, power control, etc.) support on many firmwares using SMM backing for select services like variable storage. SMM may try to access physical addresses, but they get moved by boot.efi. Note : Most but Apple and VMware firmwares need this quirk.
+DevirtualiseMmio
+Remove runtime attribute from select MMIO regions. This option reduces stolen memory footprint from the memory map by removing runtime bit for known memory regions. This quirk may result in the increase of KASLR slides available, but is not necessarily compatible with the target board. Note : This option is generally useful on APTIO V firmwares (Broadwell and newer).
+DisableSingleUser
+Disable single user mode. This is a security option allowing one to restrict single user mode usage by ignoring CMD+S hotkey and -s boot argument. The behaviour with this quirk enabled is supposed to match T2-based model behaviour. Read this article to understand how to use single user mode with this quirk enabled.
+DisableVariableWrite
+Protect from macOS NVRAM write access. This is a security option allowing one to restrict NVRAM access in macOS. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : This quirk can also be used as an ugly workaround to buggy UEFI runtime services implementations that fail to write variables to NVRAM and break the rest of the operating system.
+DiscardHibernateMap
+Reuse original hibernate memory map. This option forces XNU kernel to ignore newly supplied memory map and assume that it did not change after waking from hibernation. This behaviour is required to work by Windows, which mandates to preserve runtime memory size and location after S4 wake. Note : This may be used to workaround buggy memory maps on older hardware, and is now considered rare legacy. Do not use this unless you fully understand the consequences.
+EnableSafeModeSlide
+Patch bootloader to have KASLR enabled in safe mode. This option is relevant to the users that have issues booting to safe mode (e.g. by holding shift or using -x boot argument). By default safe mode forces 0 slide as if the system was launched with slide=0 boot argument. This quirk tries to patch boot.efi to lift that limitation and let some other value (from 1 to 255) be used. This quirk requires ProvideCustomSlide to be enabled. Note : The necessity of this quirk is determined by safe mode availability. If booting to safe mode fails, this option can be tried to be enabled.
+EnableWriteUnprotector
+Permit write access to UEFI runtime services code. This option bypasses R^ X permissions in code pages of UEFI runtime services by removing write protection (WP) bit from CR0 register during their execution. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : The necessity of this quirk is determined by early boot crashes of the firmware.
+ForceExitBootServices
+Retry ExitBootServices with new memory map on failure. Try to ensure that ExitBootServices call succeeds even with outdated MemoryMap key argument by obtaining current memory map and retrying ExitBootServices call. Note : The necessity of this quirk is determined by early boot crashes of the firmware. Do not use this unless you fully understand the consequences.
+ProtectCsmRegion
+Protect CSM region areas from relocation. Ensure that CSM memory regions are marked as ACPI NVS to prevent boot.efi or XNU from relocating or using them. Note : The necessity of this quirk is determined by artifacts and sleep wake issues. As AvoidRuntimeDefrag resolves a similar problem, no known firmwares should need this quirk. Do not use this unless you fully understand the consequences.
+ProvideCustomSlide
+Provide custom KASLR slide on low memory. This option performs memory map analysis of your firmware and checks whether all slides (from 1 to 255) can be used. As boot.efi generates this value randomly with rdrand or pseudo randomly rdtsc, there is a chance of boot failure when it chooses a conflicting slide. In case potential conflicts exist, this option forces macOS to use a pseudo random value among the available ones. This also ensures that slide= argument is never passed to the operating system for security reasons. Note : The necessity of this quirk is determined by OCABC: Only N/256 slide values are usable! message in the debug log. If the message is present, this option is to be enabled.
+SetupVirtualMap
+Setup virtual memory at SetVirtualAddresses. Select firmwares access memory by virtual addresses after SetVirtualAddresses call, which results in early boot crashes. This quirk workarounds the problem by performing early boot identity mapping of assigned virtual addresses to physical memory. Note : The necessity of this quirk is determined by early boot failures.
+ShrinkMemoryMap
+Attempt to join similar memory map entries. Select firmwares have very large memory maps, which do not fit Apple kernel, permitting up to 64 slots for runtime memory. This quirk attempts to unify contiguous slots of similar types to prevent boot failures. Note : The necessity of this quirk is determined by early boot failures. It is rare to need this quirk on Haswell or newer. Do not use unless you fully understand the consequences.
+AppleCpuPmCfgLock
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in AppleIntelCPUPowerManagement.kext, commonly causing early kernel panic, when it is locked from writing. Note : This option should avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
+AppleXcpmCfgLock
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in XNU kernel, commonly causing early kernel panic, when it is locked from writing (XCPM power management). Note : This option should avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
+AppleXcpmExtraMsrs
+Disables multiple MSR access critical for select CPUs, which have no native XCPM support. This is normally used in conjunction with Emulate section on Haswell-E, Broadwell-E, Skylake-X, and similar CPUs. More details on the XCPM patches are outlined in acidanthera/bugtracker#365. Note : Additional not provided patches will be required for Ivy Bridge or Pentium CPUs. It is recommended to use AppleIntelCpuPowerManagement.kext for the former.
+CustomSMBIOSGuid
+Performs GUID patching for UpdateSMBIOSMode Custom mode. Usually relevant for Dell laptops.
+DisableIoMapper
+Disables IOMapper support in XNU (VT-d), which may conflict with the firmware implementation. Note : This option is a preferred alternative to dropping DMAR ACPI table and disabling VT-d in firmware preferences, which does not break VT-d support in other systems in case they need it.
+ExternalDiskIcons
+Apply icon type patches to AppleAHCIPort.kext to force internal disk icons for all AHCI disks. Note : This option should avoided whenever possible. Modern firmwares usually have compatible AHCI controllers.
+LapicKernelPanic
+Disables kernel panic on LAPIC interrupts.
+PanicNoKextDump
+Prevent kernel from printing kext dump in the panic log preventing from observing panic details. Affects 10.13 and above.
+ThirdPartyTrim
+Patch IOAHCIBlockStorage.kext to force TRIM command support on AHCI SSDs. Note : This option should avoided whenever possible. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
+XhciPortLimit
+Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
+AvoidHighAlloc
+Advises allocators to avoid allocations above first 4 GBs of RAM. This is a workaround for select board firmwares, namely GA-Z77P-D3 (rev. 1.1), failing to properly access higher memory in UEFI Boot Services. On these boards this quirk is required for booting entries that need to allocate large memory chunks, such as macOS DMG recovery entries. On unaffected boards it may cause boot failures, and thus strongly not recommended. For known issues refer to acidanthera/bugtracker#449.
+ExitBootServicesDelay
+Adds delay in microseconds after EXIT_BOOT_SERVICES event. This is a very ugly quirk to circumvent "Still waiting for root device" message on select APTIO IV firmwares, namely ASUS Z87-Pro, when using FileVault 2 in particular. It seems that for some reason they execute code in parallel to EXIT_BOOT_SERVICES, which results in SATA controller being inaccessible from macOS. A better approach should be found in some future. Expect 3-5 seconds to be enough in case the quirk is needed.
+IgnoreInvalidFlexRatio
+Select firmwares, namely APTIO IV, may contain invalid values in MSR_FLEX_RATIO (0x194) MSR register. These values may cause macOS boot failure on Intel platforms. Note : While the option is not supposed to induce harm on unaffected firmwares, its usage is not recommended when it is not required.
+IgnoreTextInGraphics
+Select firmwares output text onscreen in both graphics and text mode. This is normally unexpected, because random text may appear over graphical images and cause UI corruption. Setting this option to true will discard all text output when console control is in mode different from Text. Note : While the option is not supposed to induce harm on unaffected firmwares, its usage is not recommended when it is not required. This option may hide onscreen error messages. ConsoleControl may need to be set to true for this to work.
+ReplaceTabWithSpace
+Some firmwares do not print tab characters or even everything that follows them, causing difficulties or inability to use the UEFI Shell builtin text editor to edit property lists and other documents. This option makes the console output spaces instead of tabs. Note : ConsoleControl may need to be set to true for this to work.
+ProvideConsoleGop
+macOS bootloader requires GOP (Graphics Output Protocol) to be present on console handle. This option will install it if missing.
+ReleaseUsbOwnership
+Attempt to detach USB controller ownership from the firmware driver. While most firmwares manage to properly do that, or at least have an option for, select firmwares do not. As a result, operating system may freeze upon boot. Not recommended unless required.
+RequestBootVarRouting
+Request redirectBoot prefixed variables from EFI_GLOBAL_VARIABLE_GUID to OC_VENDOR_VARIABLE_GUID. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. The quirk lets default boot entry preservation at times when firmwares delete incompatible boot entries. Simply said, you are required to enable this quirk to be able to reliably use Startup Disk preference pane in a firmware that is not compatible with macOS boot entries by design.
+SanitiseClearScreen
+Some firmwares reset screen resolution to a failsafe value (like 1024x768) on the attempts to clear screen contents when large display (e.g. 2K or 4K) is used. This option attempts to apply a workaround. Note : ConsoleControl may need to be set to true for this to work. On all known affected systems ConsoleMode had to be set to empty string for this to work.
+ClearScreenOnModeSwitch
+Some firmwares clear only part of screen when switching from graphics to text mode, leaving a fragment of previously drawn image visible. This option fills the entire graphics screen with black color before switching to text mode. Note : ConsoleControl should be set to true for this to work.
