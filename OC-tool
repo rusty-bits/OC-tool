@@ -643,7 +643,7 @@ set_ROW_COL(){
 }
 
 set_text_header() {
-	eval res91="\\${U}A\\${UO}CPI,"
+	eval res91="\\${U}A\\${UO}CPI/\\${U}Q\\${UO}uirks,"
 	eval res92="\\${U}K\\${UO}exts/K\\${U}e\\${UO}rnel,"
 	eval res93="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI,"
 	eval res94="\\${U}T\\${UO}ools/\\${U}B\\${UO}ooter,"
@@ -692,6 +692,7 @@ draw_header() {
 		msg "$RED"
 	fi
 	msg "$INV$USE_VAULT$NC "
+	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
 	do
@@ -699,12 +700,13 @@ draw_header() {
 		set_ROW_COL
 		unselect_MSG
 	done
+	G=$OLD_G; S=$OLD_S
 }
 
 redraw_screen() {
 	OLD_G=$G; OLD_S=$S
 	if [ "$G" -lt "5" ];then SG=1; else SG=5; fi
-	for S in $(seq $((OLD_S)) $KEY); do
+	for S in $(seq $((OLD_S)) "$KEY"); do
 		msg "\033[$((ROW+1))H\033[2K"
 		for G in $(seq $SG 8); do
 			get_res "$G$S"
@@ -749,7 +751,7 @@ draw_screen() {
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC   $RED$INV disabled $NC   $YEL$INV dependency $NC   $BLU$INV numeric $NC  q - to quit"
+	msg "\033[$((R-1));2H$GRN$INV enabled $NC  $RED$INV disabled $NC  $YEL$INV dependency $NC  $BLU$INV numeric $NC  q - to quit   r - redraw screen"
 }
 
 get_CHAR() {
@@ -774,7 +776,6 @@ text_user_interface() {
 		case $CHAR in
 			b)
 				S=$(eval echo \$G"$G"_NUM)
-				if [ "$G" = "9" ];then S=4;fi
 				;;
 			e)
 				G=6; S=1;;
@@ -785,12 +786,12 @@ text_user_interface() {
 				DESC=""
 				while read -r line
 				do
-					if [ "$line" = $res_name ];then
+					if [ "$line" = "$res_name" ];then
 						read -r line
 						DESC=$line
 						break
 					fi
-				done < $TOOL_FILES/description.txt
+				done < "$TOOL_FILES/description.txt"
 				if [ -z "$DESC" ];then DESC="No description found.";fi
 				msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 				select_MSG
@@ -803,8 +804,7 @@ text_user_interface() {
 			q)
 				stty echo
 				msg "\033[J${NC}\n"
-				exit 0
-				;;
+				exit 0;;
 			r)
 				draw_screen
 				;;
