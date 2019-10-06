@@ -12,8 +12,6 @@
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AppleALC.kext</key>
 	<string>https://github.com/acidanthera/AppleALC</string>
-	<key>AppleGenericInput.efi</key>
-	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AppleImageLoader.efi</key>
 	<string>https://github.com/acidanthera/AppleSupportPkg</string>
 	<key>AppleIntelInfo.kext</key>

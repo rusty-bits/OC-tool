@@ -1,3 +1,29 @@
+ApfsDriverLoader.efi
+Needed for seeing APFS volumes.
+VboxHfs.efi 
+Needed for seeing HFS volumes.
+HfsPlus.efi
+Needed for seeing HFS volumes.
+FwRuntimeServices.efi
+Replacement for AptioMemoryFix.efi, used for patching boot.efi for NVRAM fixes and better memory management.
+AppleGenericInput.efi
+Used for Apple Hot keys and FileVault support, some firmwares may not register all the keys while booting so this can be substituted with UsbKbDxe.efi. 
+VirtualSmc.efi
+Used for proper FileVault support, cannot be used with FakeSMC
+SSDT-AWAC.aml
+This is the 300 series RTC patch, needed for certain Z390 systems.
+SSDT-RTC0.aml
+Alternative to SSDT-AWAC when not compatible with your system.
+SSDT-EC-USBX.aml
+Needed to setup USB power and such correctly, prefered option over renaming XHCI. This SSDT is meant for Skylake+ systems, please use SSDT-EC and SSDT-EHCx_OFF for older systems.
+SSDT-EC.aml
+Needed to setup USB power correctly on pre-skylake systems.
+SSDT-EHCx_OFF.aml
+Prefered alternative over renaming EHCI for setting up USB correctly on pre-skylake systems.
+SSDT-PLUG.aml
+Sets PluginType, Clover altrenative would be under Acpi -> GenerateOptions -> PluginType. Do note that this SSDT is made for systems where AppleACPICPU attaches CPU0, though some systems have theirs starting at PR00 so adjust accordingly.
+SSDT-SBUS-MCHC.aml
+Adds a SMbus device and fixes DeviceProperties injection via _DSM which is found in your DSDT table. Most can ignore.
 FadtEnableReset
 Provide reset register and flag in FADT table to enable reboot and shutdown on legacy hardware. Not recommended unless required.
 NormalizeHeaders
