@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.6pt(1005) last checked with OpenCore version REL-051-2019-10-05"
+VER="1.7pt(1006) last checked with OpenCore version REL-051-2019-10-06"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
