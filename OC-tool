@@ -175,7 +175,7 @@ build_kext() {
 	cd "$pkg_name"
 	if [ -n "$REMOVE_ALL" ];then
 		msg "Removing Xcode DerivedData for $pkg_name ... "
-		rm -rf "~/Library/Developer/Xcode/DerivedData/${pkg_name}*"
+		rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
 		fin
 	fi
 	srce="$(pwd)/build/$XCODE_CONFIG"
