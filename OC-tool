@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.7pt(1006) last checked with OpenCore version REL-051-2019-10-06"
+VER="1.7pt(1009) last checked with OpenCore version REL-051-2019-10-07"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
@@ -173,6 +173,11 @@ build_kext() {
 	cd "$RES_DIR"/Kext_builds
 	clone "$git_url"
 	cd "$pkg_name"
+	if [ -n "$REMOVE_ALL" ];then
+		msg "Removing Xcode DerivedData for $pkg_name ... "
+		rm -rf "~/Library/Developer/Xcode/DerivedData/${pkg_name}*"
+		fin
+	fi
 	srce="$(pwd)/build/$XCODE_CONFIG"
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		[ ! -e "$srce/$res_name" ]; then
@@ -786,9 +791,9 @@ text_user_interface() {
 				DESC=""
 				while read -r line
 				do
+					read -r desc
 					if [ "$line" = "$res_name" ];then
-						read -r line
-						DESC=$line
+						DESC=$desc
 						break
 					fi
 				done < "$TOOL_FILES/description.txt"

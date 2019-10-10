@@ -1,13 +1,11 @@
 ApfsDriverLoader.efi
 Needed for seeing APFS volumes.
-VboxHfs.efi 
+VboxHfs.efi
 Needed for seeing HFS volumes.
 HfsPlus.efi
 Needed for seeing HFS volumes.
 FwRuntimeServices.efi
 Replacement for AptioMemoryFix.efi, used for patching boot.efi for NVRAM fixes and better memory management.
-AppleGenericInput.efi
-Used for Apple Hot keys and FileVault support, some firmwares may not register all the keys while booting so this can be substituted with UsbKbDxe.efi. 
 VirtualSmc.efi
 Used for proper FileVault support, cannot be used with FakeSMC
 SSDT-AWAC.aml
