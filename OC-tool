@@ -122,7 +122,7 @@ check_for_updates() {
 			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
 				msg "\ngit_dir is $git_dir -\n"
 				git -C "$git_dir" pull $VERBOSE $QUIET
-				UPDATE="true"
+				if [ "$UPDATE" = "stop"];then UPDATE="true";fi
 			fi
 		done
 	fi
@@ -994,7 +994,7 @@ esac
 
 if [ -n "$NOP" ];then
 	if [ -n "$UPDATE" ]; then # -u option with no following command
-		UPDATE="stop"; NOP=""
+		UPDATE="only"; NOP=""
 	fi
 	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
 		exit 0
@@ -1016,7 +1016,7 @@ if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
-	if [ "$UPDATE" = "stop" ];then
+	if [ "$UPDATE" != "true" ];then
 		msg "${GRN}All resources are up to date.${NC}\n"
 		exit 0
 	fi
