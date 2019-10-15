@@ -107,6 +107,7 @@ clone() {
 check_for_updates() {
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
+	msg "OC-tool - "
 	git fetch --all $VERBOSE $QUIET
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
@@ -118,11 +119,11 @@ check_for_updates() {
 		cd "$RES_DIR" # now check all other resources
 		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
+			msg "$git_dir - "
 			git -C "$git_dir" fetch --all $VERBOSE $QUIET
 			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
-				msg "\ngit_dir is $git_dir -\n"
 				git -C "$git_dir" pull $VERBOSE $QUIET
-				if [ "$UPDATE" = "stop"];then UPDATE="true";fi
+				if [ "$UPDATE" = "stop" ];then UPDATE="true";fi
 			fi
 		done
 	fi
@@ -341,7 +342,7 @@ config_changed() {
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${YEL}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes.\n"
+	msg "\n${RED}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes. ${YEL}!!!${NC}\n"
 	cfg_ok="false"
 }
 
@@ -1013,6 +1014,7 @@ fi
 BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$BASE_DIR/$AUDK_CONFIG/config.plist"
 if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
+
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
