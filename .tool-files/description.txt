@@ -26,18 +26,22 @@ FadtEnableReset
 Provide reset register and flag in FADT table to enable reboot and shutdown on legacy hardware. Not recommended unless required.
 NormalizeHeaders
 Cleanup ACPI header fields to workaround macOS ACPI implementation bug causing boot crashes. Reference: Debugging AppleACPIPlatform on 10.13 by Alex James aka theracermaster. The issue is fixed in macOS Mojave (10.14).
+FadtEnableReset
+Provide reset register and flag in FADT table to enable reboot and shutdown on legacy hardware. Not recommended unless required.
+NormalizeHeaders
+Cleanup ACPI header fields to workaround macOS ACPI implementation bug causing boot crashes. Reference: Debugging AppleACPIPlatform on 10.13 by Alex James aka theracermaster. The issue is fixed in macOS Mojave (10.14).
 RebaseRegions
 Attempt to heuristically relocate ACPI memory regions. Not recommended. ACPI tables are often generated dynamically by underlying firmware implementation. Among the positionindependent code, ACPI tables may contain physical addresses of MMIO areas used for device configuration, usually grouped in regions (e.g. OperationRegion). Changing firmware settings or hardware configuration, upgrading or patching the firmware inevitably leads to changes in dynamically generated ACPI code, which sometimes lead to the shift of the addresses in aforementioned OperationRegion constructions. For this reason it is very dangerous to apply any kind of modifications to ACPI tables. The most reasonable approach is to make as few as possible changes to ACPI and try to not replace any tables, especially DSDT. When this is not possible, then at least attempt to ensure that custom DSDT is based on the most recent DSDT or remove writes and reads for the affected areas. When nothing else helps this option could be tried to avoid stalls at PCI Configuration Begin phase of macOS booting by attempting to fix the ACPI addresses. It does not do magic, and only works with most common cases. Do not use unless absolutely required.
 ResetHwSig
 Reset FACS table HardwareSignature value to 0. This works around firmwares that fail to maintain hardware signature across the reboots and cause issues with waking from hibernation.
 ResetLogoStatus
 Reset BGRT table Displayed status field to false. This works around firmwares that provide BGRT table but fail to handle screen updates afterwards.
-AvoidRuntimeDefrag
-Protect from boot.efi runtime memory defragmentation. This option fixes UEFI runtime services (date, time, NVRAM, power control, etc.) support on many firmwares using SMM backing for select services like variable storage. SMM may try to access physical addresses, but they get moved by boot.efi. Note : Most but Apple and VMware firmwares need this quirk.
-DevirtualiseMmio
-Remove runtime attribute from select MMIO regions. This option reduces stolen memory footprint from the memory map by removing runtime bit for known memory regions. This quirk may result in the increase of KASLR slides available, but is not necessarily compatible with the target board. Note : This option is generally useful on APTIO V firmwares (Broadwell and newer).
-DisableSingleUser
-Disable single user mode. This is a security option allowing one to restrict single user mode usage by ignoring CMD+S hotkey and -s boot argument. The behaviour with this quirk enabled is supposed to match T2-based model behaviour. Read this article to understand how to use single user mode with this quirk enabled.
+Address
+Exceptional MMIO address, which memory descriptor should be left virtualised (unchanged) by DevirtualiseMmio. This means that the firmware will be able to directly communicate with this memory region during operating system functioning, because the region this value is in will be assigned a virtual address. The addresses written here must be part of the memory map, have EfiMemoryMappedIO type and EFI_MEMORY_RUNTIME attribute (highest bit) set. To find the list of the candidates the debug log can be used.
+Comment
+Arbitrary ASCII string used to provide human readable reference for the entry. It is implementation defined whether this value is used.
+Enabled
+This address will be devirtualised unless set to true. 1. AvoidRuntimeDefrag Type: plist boolean Failsafe: false Description: Protect from boot.efi runtime memory defragmentation. This option fixes UEFI runtime services (date, time, NVRAM, power control, etc.) support on many firmwares using SMM backing for select services like variable storage. SMM may try to access physical addresses, but they get moved by boot.efi. Note : Most but Apple and VMware firmwares need this quirk. 2. DevirtualiseMmio Type: plist boolean Failsafe: false Description: Remove runtime attribute from select MMIO regions. This option reduces stolen memory footprint from the memory map by removing runtime bit for known memory regions. This quirk may result in the increase of KASLR slides available, but is not necessarily compatible with the target board. In general this frees from 64 to 256 megabytes of memory (present in the debug log), and on some platforms it is the only way to boot macOS, which otherwise fails with allocation error at bootloader stage. This option is generally useful on all firmwares except some very old ones, like Sandy Bridge. On select firmwares it may require a list of exceptional addresses that still need to get their virtual addresses for proper NVRAM and hibernation functioning. Use MmioWhitelist section to do this. 3. DisableSingleUser Type: plist boolean Failsafe: false Description: Disable single user mode. This is a security option allowing one to restrict single user mode usage by ignoring CMD+S hotkey and -s boot argument. The behaviour with this quirk enabled is supposed to match T2-based model behaviour. Read this article to understand how to use single user mode with this quirk enabled.
 DisableVariableWrite
 Protect from macOS NVRAM write access. This is a security option allowing one to restrict NVRAM access in macOS. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : This quirk can also be used as an ugly workaround to buggy UEFI runtime services implementations that fail to write variables to NVRAM and break the rest of the operating system.
 DiscardHibernateMap
@@ -72,6 +76,8 @@ LapicKernelPanic
 Disables kernel panic on LAPIC interrupts.
 PanicNoKextDump
 Prevent kernel from printing kext dump in the panic log preventing from observing panic details. Affects 10.13 and above.
+PowerTimeoutKernelPanic
+Disables kernel panic on setPowerState timeout. An additional security measure was added to macOS Catalina (10.15) causing kernel panic on power change timeout for Apple drivers. Sometimes it may cause issues on misconfigured hardware, notably digital audio, which sometimes fails to wake up. For debug kernels setpowerstate_panic=0 boot argument should be used, which is otherwise equivalent to this quirk.
 ThirdPartyTrim
 Patch IOAHCIBlockStorage.kext to force TRIM command support on AHCI SSDs. Note : This option should avoided whenever possible. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
 XhciPortLimit
