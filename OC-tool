@@ -32,7 +32,7 @@ fin() {
 }
 
 missing() {
-	msg "\n${RED}ERROR:${NC} $1 must be installed to continue\n"
+	msg "\n${RED}ERROR:${NC} $1 must be installed to continue\n\t$2\n\t$3\n"
 	exit 1
 }
 
@@ -40,11 +40,18 @@ check_requirements() {
 	res=""
 	while read -r line
 	do
-		res="$res $line"
+		res="$res*$line"
 	done < "$TOOL_FILES/requirements"
-	for req in $res #why can't this be done in the read loop?
+	res="$res*"
+	res=$(echo $res|cut -f 2- -d '*')
+
+	until [ -z "$res" ]
 	do
-		command -v "$req"||missing "$req"
+		req=$(echo $res|cut -f 1 -d ',')
+		reqm1=$(echo $res|cut -f 2 -d ',')
+		reqm2=$(echo $res|cut -f 3 -d ',')
+		command -v "$req"||missing "$req" "$reqm1" "$reqm2"
+		res=$(echo $res|cut -f 2- -d '*')
 	done
 }
 
