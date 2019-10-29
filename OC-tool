@@ -15,7 +15,7 @@ NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.7pt(281019) last checked with OpenCore version REL-052-2019-10-27"
 COPY=""; USE_EXTRAS=""
-QUIET=""; VERBOSE=""
+QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 #eval G0_NUM=4
 
@@ -322,11 +322,12 @@ build_resources() {
 
 res_not_found() {
 	if [ -z "$IGNORE" ]; then
-		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tEither place $1 in extras directory or use -i option to continue\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
 		IGNORE="yes"
+		CONFIG_CHANGED="true"
 	fi
 }
 
@@ -341,7 +342,9 @@ copy_resources() {
 				if [ -n "$dest" ]; then
 					if [ "$srce" = "unknown" ];then res_not_found "$res_name";fi
 					if [ "$IGNORE" = "yes" ]; then
-						IGNORE="true"
+						msg "${YEL}WARNING:${NC} enabling a resource that does not exist will cause OC to fail on boot\n\tdo not re-enable a resource that was disabled by the -i option"
+						IGNORE=""
+						res_not_found "$res_name"
 					else
 						msg "Copying $res_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
@@ -354,7 +357,7 @@ copy_resources() {
 	done
 }
 
-config_changed() {
+plist_changed() {
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
@@ -366,8 +369,8 @@ config_changed() {
 check_if_Sample_plist_updated() {
 	cfg_ok=""
 	msg "\nChecking if Sample.plist or SampleFull.plist format has changed ... "
-	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist||config_changed
-	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist||config_changed "Full"
+	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
+	cmp --silent "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist||plist_changed "Full"
 	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
@@ -452,7 +455,7 @@ add_res_array() {
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
-		Enabled="ignore"
+		Enabled="false"
 		IGNORE="true"
 	fi
 	set_res "$G$S"
@@ -857,6 +860,7 @@ text_user_interface() {
 					USE_VAULT="true"
 				fi
 				draw_header
+				CONFIG_CHANGED="true"
 				;;
 			sp|nl)
 				if [ "$Enabled" = "true" ];then
@@ -865,6 +869,7 @@ text_user_interface() {
 					Enabled="true"
 				fi
 				set_res "$G$S"
+				CONFIG_CHANGED="true"
 				;;
 			+)
 				if [ "$Enabled" = "false" ];then
@@ -1080,11 +1085,13 @@ swap_res "VirtualSMC.kext" "$P" "2"
 if [ -n "$TEXT" ]; then
 	text_user_interface
 	msg "\033[2J\033[H"
-	write_new_conf
+	if [ -n "$CONFIG_CHANGED" ]; then
+		write_new_conf
+		get_res "06"
+		srce="$BASE_DIR/Docs"
+		set_res "06"
+	fi
 	if [ "$TEXT" = "stop" ];then exit 0;fi
-	get_res "06"
-	srce="$BASE_DIR/Docs"
-	set_res "06"
 fi
 
 build_resources
@@ -1103,3 +1110,6 @@ fi
 if [ -n "$FINDER" ];then open "$FINDER"; fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
+if [ -n "$CONFIG_CHANGED" ]; then
+	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
+fi
