@@ -16,10 +16,10 @@ INV='\033[7m'
 VER="1.7pt(281019) last checked with OpenCore version REL-052-2019-10-27"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""
-UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""
-eval G0_NUM=4
+UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
+#eval G0_NUM=4
 
-eval set -- "$(getopt hoquvTUVX "$@")"
+eval set -- "$(getopt hioqtuvTUVX "$@")"
 
 msg() {
 	if [ -z "$QUIET" ]; then
@@ -321,8 +321,13 @@ build_resources() {
 }
 
 res_not_found() {
-	msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
-	exit 1
+	if [ -z "$IGNORE" ]; then
+		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tPlace $1 file in extras directory to continue\n"
+		exit 1
+	else
+		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
+		IGNORE="yes"
+	fi
 }
 
 copy_resources() {
@@ -335,10 +340,14 @@ copy_resources() {
 			if [ "$Enabled" != "false" ];then
 				if [ -n "$dest" ]; then
 					if [ "$srce" = "unknown" ];then res_not_found "$res_name";fi
-					msg "Copying $res_name to $dest ... "
-					mkdir -p "$BUILD_DIR/$dest"
-					cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
-					fin
+					if [ "$IGNORE" = "yes" ]; then
+						IGNORE="true"
+					else
+						msg "Copying $res_name to $dest ... "
+						mkdir -p "$BUILD_DIR/$dest"
+						cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
+						fin
+					fi
 				fi
 			fi
 		done
@@ -440,6 +449,11 @@ add_res_array() {
 			res_not_found "$res_name"
 		fi
 		USE_EXTRAS=""
+	fi
+	if [ "$IGNORE" = "yes" ]; then
+		srce="unknown"
+		Enabled="ignore"
+		IGNORE="true"
 	fi
 	set_res "$G$S"
 }
@@ -718,16 +732,19 @@ draw_header() {
 
 redraw_screen() {
 	OLD_G=$G; OLD_S=$S
-	if [ "$G" -lt "5" ];then SG=1; else SG=5; fi
-	for S in $(seq $((OLD_S)) "$KEY"); do
-		msg "\033[$((ROW+1))H\033[2K"
-		for G in $(seq $SG 8); do
-			get_res "$G$S"
-			set_ROW_COL
-			set_color
-			unselect_MSG
+	if [ "$G" -lt "5" ];then
+		draw_screen
+	else
+		for S in $(seq $((OLD_S)) "$KEY"); do
+			msg "\033[$((ROW+1))H\033[2K"
+			for G in $(seq 5 8); do
+				get_res "$G$S"
+				set_ROW_COL
+				set_color
+				unselect_MSG
+			done
 		done
-	done
+	fi
 	msg "\033[J"
 	draw_key
 	draw_footer
@@ -756,9 +773,6 @@ draw_screen() {
 			unselect_MSG
 		done
 	done
-	G=1; S=1; get_res "$G$S"
-	set_ROW_COL; set_color
-	select_MSG
 	draw_key
 	draw_footer
 }
@@ -782,6 +796,9 @@ text_user_interface() {
 	CHAR=""
 	set_text_header
 	draw_screen
+	G=1; S=1; get_res "$G$S"
+	set_ROW_COL; set_color
+	select_MSG
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
@@ -819,7 +836,12 @@ text_user_interface() {
 				msg "\033[J${NC}\n"
 				exit 0;;
 			r)
+				OLD_G=$G; OLD_S=$S
 				draw_screen
+				G=$OLD_G; S=$OLD_S
+				#get_res "$G$S"
+				#set_ROW_COL; set_color
+				#select_MSG
 				;;
 			s)
 				CHAR='g'
@@ -937,6 +959,9 @@ do
 	-h) # help
 		msg "$(cat "$TOOL_FILES"/help.msg)\n"
 		exit 0;;
+	-i)
+		IGNORE="true"
+		shift;;
 	-o)
 		FINDER="true"
 		shift;;
@@ -949,7 +974,7 @@ do
 	-v)
 		msg "OpenCore-tool version $VER\n"
 		exit 0;;
-	-T)
+	-T|-t)
 		TEXT="true"
 		shift;;
 	-U)
