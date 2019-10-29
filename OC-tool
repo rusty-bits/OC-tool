@@ -13,7 +13,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.7pt(281019) last checked with OpenCore version REL-052-2019-10-27"
+VER="1.7pti(291019) last checked with OpenCore version REL-052-2019-10-29"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
@@ -43,15 +43,15 @@ check_requirements() {
 		res="$res*$line"
 	done < "$TOOL_FILES/requirements"
 	res="$res*"
-	res=$(echo $res|cut -f 2- -d '*')
+	res=$(echo "$res"|cut -f 2- -d '*')
 
 	until [ -z "$res" ]
 	do
-		req=$(echo $res|cut -f 1 -d ',')
-		reqm1=$(echo $res|cut -f 2 -d ',')
-		reqm2=$(echo $res|cut -f 3 -d ',')
+		req=$(echo "$res"|cut -f 1 -d ',')
+		reqm1=$(echo "$res"|cut -f 2 -d ',')
+		reqm2=$(echo "$res"|cut -f 3 -d ',')
 		command -v "$req"||missing "$req" "$reqm1" "$reqm2"
-		res=$(echo $res|cut -f 2- -d '*')
+		res=$(echo "$res"|cut -f 2- -d '*')
 	done
 }
 
