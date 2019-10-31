@@ -13,17 +13,17 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.7pti(291019) last checked with OpenCore version REL-052-2019-10-29"
+VER="1.8i(311019) last checked with OpenCore version REL-052-2019-10-29"
 COPY=""; USE_EXTRAS=""
 QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 #eval G0_NUM=4
 
-eval set -- "$(getopt hioqtuvTUVX "$@")"
+eval set -- "$(getopt hioqtuvTUVX "$@")" #allowable command line options
 
-msg() {
+msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
-		echo "$1\c" >"$(tty)"
+		echo "$1\c" > "$(tty)"
 	fi
 }
 
@@ -36,7 +36,7 @@ missing() {
 	exit 1
 }
 
-check_requirements() {
+check_requirements() { #required commands moved to .tool-files/requirements for portability
 	res=""
 	while read -r line
 	do
@@ -55,7 +55,7 @@ check_requirements() {
 	done
 }
 
-check_config() {
+check_config() { #config.plist must exist, even with -i option
 	if [ ! -f "$CONFIG_PLIST" ]; then
 		msg "\n${RED}ERROR:${NC} $CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
 		exit 1
@@ -73,17 +73,17 @@ set_up_dest_dir() {
 	fin
 }
 
-init_res_array() {
+init_res_array() { # base-resources moved into .tool-files for portability
 	S=0
 	while read -r line
 	do
 		S=$((S+1))
-		eval "res0$S=$line"
+		eval "res0$S=$line,true"
 	done < "$TOOL_FILES/base-resources"
 	eval G0_NUM=$S
 }
 
-swap_res() {
+swap_res() { #ensure certain dependencies are in correct order
 	for S in $(seq "$2" "$(eval echo \$G"$3"_NUM)")
 	do
 		get_res "$3$S"
@@ -114,7 +114,7 @@ clone() {
 check_for_updates() {
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
-	msg "OC-tool - "
+	msg "OC-tool - " # check OC-tool itself first
 	git fetch --all $VERBOSE $QUIET
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
@@ -168,7 +168,7 @@ build_shell_tool() { #possible to automate this function?
 	fin
 }
 
-build_failed() {
+build_failed() { # failed build even after backing up 5 commits
 	git checkout master
 	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n"
 	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
@@ -255,7 +255,7 @@ missing_iasl() {
 	exit 1
 }
 
-build_acpi() {
+build_acpi() { # compile .dsl into .aml if user hasn't already
 	pkg_name=$(echo "$res_name"|cut -f1 -d.)
 	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
 	if [ -e "$srce/$res_name" ];then
@@ -270,7 +270,7 @@ build_acpi() {
 	fi
 }
 
-get_res() {
+get_res() { # extract resource from psuedo array (needed for POSIX)
 	res=$(eval echo "\$res$1")
 	res_name=$(echo "$res"|cut -f1 -d,)
 	git_url=$(echo "$res"|cut -f2 -d,)
@@ -280,7 +280,7 @@ get_res() {
 	Enabled=${res##*,}
 }
 
-set_res() {
+set_res() { # encode resource into psuedo array (needed for POSIX)
 	eval "res$1=$res_name,$git_url,$build_type,$srce,$dest,$Enabled"
 }
 
@@ -322,28 +322,26 @@ build_resources() {
 
 res_not_found() {
 	if [ -z "$IGNORE" ]; then
-		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tEither place $1 in extras directory or use -i option to continue\n"
+		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tEither place $1 in extras directory to build EFI with $1\n\tor run with -i option to build EFI without $1\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
 		IGNORE="yes"
-		CONFIG_CHANGED="true"
+		CONFIG_CHANGED="true" # need to write new config before build
 	fi
 }
 
 copy_resources() {
 	msg "\n${GRN}Moving ${YEL}$ARG2${GRN} resources into place${NC}\n"
+	IGNORE="" # no more ignoring for you
 	for G in $(seq 0 4)
 	do
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
-			if [ "$Enabled" != "false" ];then
+			if [ "$Enabled" = "true" ];then
 				if [ -n "$dest" ]; then
-					if [ "$srce" = "unknown" ];then res_not_found "$res_name";fi
-					if [ "$IGNORE" = "yes" ]; then
-						msg "${YEL}WARNING:${NC} enabling a resource that does not exist will cause OC to fail on boot\n\tdo not re-enable a resource that was disabled by the -i option"
-						IGNORE=""
+					if [ "$srce" = "unknown" ];then
 						res_not_found "$res_name"
 					else
 						msg "Copying $res_name to $dest ... "
@@ -357,7 +355,7 @@ copy_resources() {
 	done
 }
 
-plist_changed() {
+plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
@@ -374,7 +372,7 @@ check_if_Sample_plist_updated() {
 	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
-parse() {
+parse() { # read plist file hack
 	a=0; in_loop=0
 	while read -r ONE
 	do
@@ -428,7 +426,7 @@ build_vault() {
 	fin
 }
 
-add_res_array() {
+add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	FILE="$REPO_PLIST"
 	git_url=$(parse "$res_name")
 	if [ -z "$COPY" ] && [ -z "$USE_EXTRAS" ];then
@@ -455,14 +453,13 @@ add_res_array() {
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
-		Enabled="false"
+		Enabled="falsed"
 		IGNORE="true"
 	fi
 	set_res "$G$S"
 }
 
-#add_resource "G" "section" "subsec" "Path"
-add_resource() {
+add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	i=0; S=1; G=$1
 	build_type=$ARG2
 	res_name="start"
@@ -521,7 +518,7 @@ set_build_type() {
 	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
 }
 
-print_res_array() {
+print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
 	for G in $(seq 0 8)
 	do
@@ -533,7 +530,7 @@ print_res_array() {
 	done
 }
 
-write_new_array() {
+write_new_array() { # write array section changes to new plist
 	while [ "$line" != "</array>" ]
 	do
 		get_res "$G$S"
@@ -549,7 +546,11 @@ write_new_array() {
 	#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
-				echo "<$Enabled/>" >> "$OUT"
+				if [ "$Enabled" = "falsed" ]; then
+					echo "<false/>" >> "$OUT" # ignored resource
+				else
+					echo "<$Enabled/>" >> "$OUT"
+				fi
 			fi
 		done
 		S=$((S+1))
@@ -558,7 +559,7 @@ write_new_array() {
 	done
 }
 
-write_new_drivers() {
+write_new_drivers() { # write driver section changes to new plist
 	while [ "$line" != "<key>Drivers</key>" ]
 	do
 		read -r line
@@ -580,7 +581,7 @@ write_new_drivers() {
 	done
 }
 
-write_new_quirks() {
+write_new_quirks() { # write quirks section changes to new plist
 	get_res "$G$S"
 	while [ "$line" != "<key>Quirks</key>" ];
 	do
@@ -595,6 +596,9 @@ write_new_quirks() {
 			case "$Enabled" in
 				true|false)
 					echo "<$Enabled/>" >> "$OUT"
+					;;
+				falsed)
+					echo "<false/>" >> "$OUT" # ignored resource
 					;;
 				[0-9])
 					echo "<integer>$Enabled</integer>" >> "$OUT"
@@ -611,7 +615,7 @@ write_new_quirks() {
 	done
 }
 
-write_new_conf() {
+write_new_conf() { # write new config.plist based on changes in psuedo array
 	OUT=$BASE_DIR/Docs/config.plist
 	msg "\033[J\nWriting new config.plist ... "
 	rm -rf "$OUT"
@@ -655,7 +659,7 @@ write_new_conf() {
 	fin
 }
 
-set_ROW_COL(){
+set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 	case "$G" in
 		1|2|3|4)
 			ROW=$((S+2))
@@ -680,13 +684,16 @@ set_text_header() {
 	eval G9_NUM="4"
 }
 
-set_color() {
+set_color() { # set TUI section color based on resource
 	case "$Enabled" in
 		true)
 			color="$GRN"; MSG="+"
 			;;
 		false)
 			color="$RED"; MSG="-"
+			;;
+		falsed)
+			color="${RED}${U}"; MSG="-i"
 			;;
 		dep)
 			color="$YEL"; MSG="$build_type"
@@ -698,11 +705,11 @@ set_color() {
 	if [ "$G" = "9" ];then color="$NC";fi
 }
 
-select_MSG() {
+select_MSG() { # draw highligted resource in TUI
 	msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
 }
 
-unselect_MSG() {
+unselect_MSG() { # clear highlighted resource in TUI
 	msg "\033[${ROW};${COL}H$color $res_name $MSG "
 	MSG=""
 }
@@ -781,7 +788,7 @@ draw_screen() {
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC  $RED$INV disabled $NC  $YEL$INV dependency $NC  $BLU$INV numeric $NC  q - to quit   r - redraw screen"
+	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC $RED$INV$U ignored $NC $YEL$INV dependency $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
 }
 
 get_CHAR() {
@@ -810,7 +817,7 @@ text_user_interface() {
 			b)
 				S=$(eval echo \$G"$G"_NUM)
 				;;
-			e)
+			e) # jump to kExt quirks
 				G=6; S=1;;
 			i)
 #				select_MSG
@@ -846,14 +853,14 @@ text_user_interface() {
 				#set_ROW_COL; set_color
 				#select_MSG
 				;;
-			s)
+			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				CHAR='g'
 				TEXT='stop'
 				;;
 			t)
 				S=1
 				;;
-			v)
+			v) # toggle USE_VAULT
 				if [ "$USE_VAULT" = "true" ];then
 					USE_VAULT="false"
 				else
@@ -862,16 +869,17 @@ text_user_interface() {
 				draw_header
 				CONFIG_CHANGED="true"
 				;;
-			sp|nl)
+			sp|nl) # only mark CONFIG_CHANGED if change was done
 				if [ "$Enabled" = "true" ];then
 					Enabled="false"
+					CONFIG_CHANGED="true"
 				elif [ "$Enabled" = "false" ];then
 					Enabled="true"
+					CONFIG_CHANGED="true"
 				fi
 				set_res "$G$S"
-				CONFIG_CHANGED="true"
 				;;
-			+)
+			+) # possible change + - to inc dec numeric entries
 				if [ "$Enabled" = "false" ];then
 					Enabled="true"
 				fi
@@ -883,7 +891,7 @@ text_user_interface() {
 				fi
 				set_res "$G$S"
 				;;
-			A|k)
+			A|k) # move up
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					S=$((S-1))
 					if [ "$S" -eq "0" ];then
@@ -894,12 +902,12 @@ text_user_interface() {
 							S=1
 						fi
 					fi
-				else
+				else # jump to ACPI group
 					G=1; S=1
 				fi
 				esc=""
 				;;
-			B|j)
+			B|j) # move down
 				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
 					S=$((S+1))
 					len="$(eval echo \$G"$G"_NUM)"
@@ -911,18 +919,18 @@ text_user_interface() {
 							S=$len
 						fi
 					fi
-				else
+				else # jump to Booter quirks
 					G=8; S=1
 				fi
 				esc=""
 				;;
-			C|l)
+			C|l) # move right
 				G=$((G+1))
 				if [ "$G" -eq "5" ];then G=4;fi
 				if [ "$G" -eq "9" ];then G=8;fi
 				esc=""
 				;;
-			D|h)
+			D|h) # move left
 				if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
 					G=$((G-1))
 					if [ "$G" -eq "0" ];then G=1;fi
@@ -932,13 +940,13 @@ text_user_interface() {
 					G=3; S=1
 				fi
 				;;
-			K)
+			K) # jump to kext group
 				G=2; S=1;;
-			T)
+			T) # jump to Tools group
 				G=4; S=1;;
-			U)
+			U) # jump to UEFI quirke
 				G=7; S=1;;
-			Q)
+			Q) # jump to ACPI quirks
 				G=5; S=1;;
 			esc|'[')
 				esc="true"
@@ -1085,14 +1093,17 @@ swap_res "VirtualSMC.kext" "$P" "2"
 if [ -n "$TEXT" ]; then
 	text_user_interface
 	msg "\033[2J\033[H"
-	if [ -n "$CONFIG_CHANGED" ]; then
-		write_new_conf
-		get_res "06"
-		srce="$BASE_DIR/Docs"
-		set_res "06"
-	fi
-	if [ "$TEXT" = "stop" ];then exit 0;fi
 fi
+
+if [ -n "$CONFIG_CHANGED" ]; then
+	write_new_conf
+	command -v "plutil"&&plutil -convert xml1 "$BASE_DIR/Docs/config.plist"
+	get_res "06"
+	srce="$BASE_DIR/Docs"
+	set_res "06"
+fi
+
+if [ "$TEXT" = "stop" ];then exit 0;fi
 
 build_resources
 
