@@ -202,7 +202,8 @@ build_kext() {
 		do
 		xcodebuild -config "$XCODE_CONFIG" build && break
 			if [ "$a" -eq "5" ]; then return 1; fi
-			msg "\n${YEL}$pkg_name TRY $a FAILED:${NC} backing up one commit and trying again\n"
+			git_sha=$(git rev-parse @|cut -c -7)
+			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
 			git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
 			a=$((a+1))
@@ -239,7 +240,8 @@ build_driver() {
 				msg "Building $AUDK_CONFIG $pkg_name ... "
 				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
 				if [ "$a" -eq "5" ]; then return 1; fi
-				msg "\n${YEL}$pkg_name TRY $a FAILED:${NC} backing up one commit and trying again\n"
+				git_sha=$(git rev-parse @|cut -c -7)
+				msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
 				git checkout "$( git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 				a=$((a+1))
 			done
@@ -251,7 +253,8 @@ build_driver() {
 }
 
 missing_iasl() {
-	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
+	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
+	msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
 	exit 1
 }
 
@@ -322,7 +325,10 @@ build_resources() {
 
 res_not_found() {
 	if [ -z "$IGNORE" ]; then
-		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n\t$1 file not found in extras directory\n\tEither place $1 in extras directory to build EFI with $1\n\tor run with -i option to build EFI without $1\n"
+		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in .tool-files/repo.plist\n"
+		msg "\t$1 file not found in extras directory\n"
+		msg "\tEither place $1 in extras directory to build EFI with $1\n"
+		msg "\tor run with -i option to build EFI without $1\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
@@ -359,7 +365,9 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$RES_DIR"/UDK/OpenCorePkg/Docs/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${RED}WARNING:${NC} Sample$1.plist has been updated\n${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\nRun the tool again if you make any changes. ${YEL}!!!${NC}\n"
+	msg "\n${RED}WARNING:${NC} Sample$1.plist has been updated\n"
+	msg "${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\n"
+	msg "Run the tool again if you make any changes. ${YEL}!!!${NC}\n"
 	cfg_ok="false"
 }
 
@@ -788,7 +796,8 @@ draw_screen() {
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC $RED$INV$U ignored $NC $YEL$INV dependency $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
+	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC $RED$INV$U ignored $NC "
+	msg "$YEL$INV dependency $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
 }
 
 get_CHAR() {
@@ -1122,5 +1131,8 @@ if [ -n "$FINDER" ];then open "$FINDER"; fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then
-	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
+	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
+	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
+	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
+	msg "\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
 fi
