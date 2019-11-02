@@ -32,9 +32,9 @@ place your config.plist file in the appropriate directory, or copy and edit one 
 
 **Acknowledgements**  
 
-The folks at [r/hackintosh](https://www.reddit.com/r/hackintosh/) such as [dracoflar](https://www.reddit.com/user/dracoflar/) [midi1996](https://www.reddit.com/user/midi1996/) [Beowolve](https://www.reddit.com/user/Beowolve/) [slandeh](https://www.reddit.com/user/slandeh/) and of course [CorpNewt](https://www.reddit.com/user/corpnewt/) for help guides and tools to get my hack up and running in the first place.  
+The folks at [r/hackintosh](https://www.reddit.com/r/hackintosh/) such as [dracoflar](https://www.reddit.com/user/dracoflar/), [midi1996](https://www.reddit.com/user/midi1996/), [Beowolve](https://www.reddit.com/user/Beowolve/), [slandeh](https://www.reddit.com/user/slandeh/), and of course [CorpNewt](https://www.reddit.com/user/corpnewt/) for help, guides and tools to get my hack up and running in the first place.  
 
-The folks at [acidanthera](https://github.com/acidanthera) for making OpenCore possible such as [vit9696](https://github.com/vit9696) [vandroiy2013](https://github.com/vandroiy2013) [Download-Fritz](https://github.com/Download-Fritz) [Andrey1970AppleLife](https://github.com/Andrey1970AppleLife) [PMheart](https://github.com/PMheart) and on and on, too many to list.  
+The folks at [acidanthera](https://github.com/acidanthera) for making OpenCore possible such as [vit9696](https://github.com/vit9696), [vandroiy2013](https://github.com/vandroiy2013), [Download-Fritz](https://github.com/Download-Fritz), [Andrey1970AppleLife](https://github.com/Andrey1970AppleLife), [PMheart](https://github.com/PMheart) and on and on, too many to list.  
 
 And folks like [Pavo](https://www.insanelymac.com/forum/profile/685502-pavo/) for the inspiration for this tool and [errorexists](https://www.insanelymac.com/forum/profile/2047226-errorexists/) for basically asking "Why bother making this? People can already do that in other ways" Um, because it's fun? Because I want to see if I can? So, why not?  
 
