@@ -4,7 +4,11 @@ cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
 
-if [ "$ini" != "$BASE_DIR" ];then FINDER="true"; fi
+if [ "$ini" != "$BASE_DIR" ];then # double-click from finder?
+	FINDER="true"
+else
+	FINDER=""
+fi
 
 RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
@@ -13,7 +17,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.8i(031119) last checked with OpenCore version  REL-053-2019-11-02"
+VER="1.8i(041119) last checked with OpenCore version  REL-053-2019-11-02"
 COPY=""; USE_EXTRAS=""; ex_com=$0' -i'
 QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
@@ -986,7 +990,7 @@ do
 		IGNORE="true"
 		shift;;
 	-o)
-		FINDER="true"
+		FINDER="open"
 		ex_com="${ex_com}o"
 		shift;;
 	-q)
@@ -1025,7 +1029,7 @@ do
 	esac
 done
 
-if [ -n "$FINDER" ];then
+if [ "$FINDER" = "true" ];then # set defaults for double-click
 	ARG1="build"
 	ARG2="release"
 else
@@ -1132,8 +1136,6 @@ if [ -z "$VERBOSE" ];then
 	exec 1>&6 6>&- 2>&1 #stop logfile
 fi
 
-if [ -n "$FINDER" ];then open "$FINDER"; fi
-
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then
 	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
@@ -1141,3 +1143,5 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
 	msg "\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
 fi
+
+if [ -n "$FINDER" ];then open "$FINDER"; fi # open to EFI if -o or dbl-click
