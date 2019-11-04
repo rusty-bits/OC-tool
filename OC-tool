@@ -18,10 +18,8 @@ RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.8i(041119) last checked with OpenCore version REL-053-2019-11-02"
-COPY=""; USE_EXTRAS=""; ex_com=$0' -i'
-QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
+ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
-#eval G0_NUM=4
 
 eval set -- "$(getopt hioqtuvTUVX "$@")" #allowable command line options
 
@@ -150,7 +148,6 @@ make_base_tools() {
 }
 
 build_shell_tool() { #possible to automate this function?
-	set_build_type "$build_type"
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
 	clone "$git_url"
@@ -180,7 +177,6 @@ build_failed() { # failed build even after backing up 5 commits
 }
 
 build_kext() {
-	set_build_type "$build_type"
 	mkdir -p "$RES_DIR"/Kext_builds
 	cd "$RES_DIR"/Kext_builds
 	clone "$git_url"
@@ -222,7 +218,6 @@ build_kext() {
 }
 
 build_driver() {
-	set_build_type "$build_type"
 	cd "$RES_DIR"/UDK
 	clone "$git_url"
 	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
@@ -281,14 +276,13 @@ get_res() { # extract resource from psuedo array (needed for POSIX)
 	res=$(eval echo "\$res$1")
 	res_name=$(echo "$res"|cut -f1 -d,)
 	git_url=$(echo "$res"|cut -f2 -d,)
-	build_type=$(echo "$res"|cut -f3 -d,)
-	srce=$(echo "$res"|cut -f4 -d,)
-	dest=$(echo "$res"|cut -f5 -d,)
+	srce=$(echo "$res"|cut -f3 -d,)
+	dest=$(echo "$res"|cut -f4 -d,)
 	Enabled=${res##*,}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1=$res_name,$git_url,$build_type,$srce,$dest,$Enabled"
+	eval "res$1=$res_name,$git_url,$srce,$dest,$Enabled"
 }
 
 build_resources() {
@@ -313,6 +307,11 @@ build_resources() {
 						fi
 						;;
 					"kext")
+						if [ "$res_name" = "Lilu.kext" ] && [ "$ARG2" = "release" ]; then
+							set_build_type "debug"
+							build_kext||build_failed
+							set_build_type "release"
+						fi
 						build_kext||build_failed
 						;;
 					"aml")
@@ -442,8 +441,8 @@ build_vault() {
 add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	FILE="$REPO_PLIST"
 	git_url=$(parse "$res_name")
-	if [ -z "$COPY" ] && [ -z "$USE_EXTRAS" ];then
-		if [ -n "$git_url" ]; then
+	if [ "$ARG1" = "build" ] && [ "$dest" != "OC/ACPI" ];then
+		if [ -n "$git_url" ]; then # found repo
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
@@ -455,18 +454,17 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	else # copy mode, check extras folder first
 		if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
-		elif [ -n "$git_url" ]; then
+		elif [ -n "$git_url" ]; then # found repo
 			srce=""
 		elif [ "$Enabled" = "false" ];then
 			srce="unknown"
 		else
 			res_not_found "$res_name"
 		fi
-		USE_EXTRAS=""
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
-		Enabled="falsed"
+		Enabled="ignored"
 		IGNORE="true"
 	fi
 	set_res "$G$S"
@@ -474,7 +472,6 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	i=0; S=1; G=$1
-	build_type=$ARG2
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
@@ -484,17 +481,8 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 			case "$1" in
 				1)
 					Enabled=$(parse "$2" "$3" "$i" "Enabled")
-					dest="OC/ACPI"
-					USE_EXTRAS="true";;
+					dest="OC/ACPI";;
 				2)
-					if [ "$build_type" = "release" ];then #need DEBUG dependencies
-						if [ "$res_name" = "Lilu.kext" ] || [ "$res_name" = "VirtualSMC.kext" ];then
-							Enabled="dep"; build_type="debug"; dest=""
-							add_res_array
-							S=$((S+1)); build_type="$ARG2"
-							FILE="$CONFIG_PLIST"
-						fi
-					fi
 					Enabled=$(parse "$2" "$3" "$i" "Enabled")
 					dest="OC/Kexts";;
 				3)
@@ -517,8 +505,7 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 }
 
 set_build_type() {
-	if [ -z "$build_type" ]; then build_type=$ARG2; fi;
-	case $build_type in
+	case $1 in
 		d|debug)
 			ARG2="debug"; XCODE_CONFIG="Debug";;
 		r|release)
@@ -547,11 +534,6 @@ write_new_array() { # write array section changes to new plist
 	while [ "$line" != "</array>" ]
 	do
 		get_res "$G$S"
-		while [ "$Enabled" = "dep" ]
-		do
-			S=$((S+1))
-			get_res "$G$S"
-		done
 		while [ "$line" != "</dict>" ]
 		do
 			read -r line
@@ -559,7 +541,7 @@ write_new_array() { # write array section changes to new plist
 	#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
-				if [ "$Enabled" = "falsed" ]; then
+				if [ "$Enabled" = "ignored" ]; then
 					echo "<false/>" >> "$OUT" # ignored resource
 				else
 					echo "<$Enabled/>" >> "$OUT"
@@ -610,7 +592,7 @@ write_new_quirks() { # write quirks section changes to new plist
 				true|false)
 					echo "<$Enabled/>" >> "$OUT"
 					;;
-				falsed)
+				ignored)
 					echo "<false/>" >> "$OUT" # ignored resource
 					;;
 				[0-9])
@@ -705,11 +687,8 @@ set_color() { # set TUI section color based on resource
 		false)
 			color="$RED"; MSG="-"
 			;;
-		falsed)
-			color="${RED}${U}"; MSG="-i"
-			;;
-		dep)
-			color="$YEL"; MSG="$build_type"
+		ignored)
+			color="${YEL}"; MSG="-i"
 			;;
 		*)
 			color="$BLU"; MSG="$Enabled"
@@ -801,8 +780,8 @@ draw_screen() {
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC $RED$INV$U ignored $NC "
-	msg "$YEL$INV dependency $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
+	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
+	msg "$YEL$INV ignored $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
 }
 
 get_CHAR() {
@@ -863,9 +842,6 @@ text_user_interface() {
 				OLD_G=$G; OLD_S=$S
 				draw_screen
 				G=$OLD_G; S=$OLD_S
-				#get_res "$G$S"
-				#set_ROW_COL; set_color
-				#select_MSG
 				;;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				CHAR='g'
@@ -1041,12 +1017,10 @@ NOP=""
 case $ARG1 in
 	b|build) #build first if repo exists, else copy from extras folder
 		ARG1="build"
-		set_build_type "$ARG2"
 		;;
 	c|copy) #copy from extras first if exists, else build from repo
-		set_build_type "$ARG2"
 		ARG1="copy"
-		COPY="true"
+		COPY="true" # why did I put this here? to avoid an if [ARG1=copy] ?
 		;;
 	d|debug|r|release)
 		msg "${YEL}Usage:${NC} must specify ${U}command${NC} before $ARG1\n"
@@ -1063,9 +1037,9 @@ if [ -n "$NOP" ];then
 	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
 		exit 0
 	fi
-	if [ -n "$TEXT" ];then
+	if [ -n "$TEXT" ];then # set default for -t option
 		ARG1="build"; ARG2="release"; NOP=""
-		set_build_type "release"
+#		set_build_type "release"
 	fi
 fi
 
@@ -1073,6 +1047,8 @@ if [ -n "$NOP" ];then
 	msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 	exit 0
 fi
+
+set_build_type "$ARG2"
 
 BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$BASE_DIR/$AUDK_CONFIG/config.plist"
