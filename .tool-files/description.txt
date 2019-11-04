@@ -1,3 +1,5 @@
+Lilu.kext
+It's Lilu, everyone loves Lilu.
 ApfsDriverLoader.efi
 Needed for seeing APFS volumes.
 VboxHfs.efi
