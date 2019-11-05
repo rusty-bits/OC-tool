@@ -18,6 +18,7 @@ RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.8i(041119) last checked with OpenCore version REL-053-2019-11-02"
+ARG1="build"; ARG2="release" # set default to 'build release'
 ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
@@ -85,20 +86,20 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	eval G0_NUM=$S
 }
 
-swap_res() { #ensure certain dependencies are in correct order
-	for S in $(seq "$2" "$(eval echo \$G"$3"_NUM)")
-	do
-		get_res "$3$S"
-		if [ "$res_name" = "$1" ]; then
-			eval temp_res=\$res"$3$2"
-			eval res"${3}""${2}"=\$res"${3}""${S}"
-			eval res"$3""$S"=\$temp_res
-			unset temp_res
-			P=$(($2+1))
-			return 0
-		fi
-	done
-}
+#swap_res() { #ensure certain dependencies are in correct order
+#	for S in $(seq "$2" "$(eval echo \$G"$3"_NUM)")
+#	do
+#		get_res "$3$S"
+#		if [ "$res_name" = "$1" ]; then
+#			eval temp_res=\$res"$3$2"
+#			eval res"${3}""${2}"=\$res"${3}""${S}"
+#			eval res"$3""$S"=\$temp_res
+#			unset temp_res
+#			P=$(($2+1))
+#			return 0
+#		fi
+#	done
+#}
 
 clone() {
 	if [ -z "$2" ]; then
@@ -714,13 +715,13 @@ draw_key() {
 }
 
 draw_header() {
-	msg "$NC\033[Hmode=$GRN$INV$ARG1$NC type=$GRN$INV$ARG2$NC RequireVault="
+	msg "$NC\033[H${U}m${UO}ode=$GRN$INV$ARG1$NC ${U}t${UO}ype=$GRN$INV$ARG2$NC RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
 		msg "$RED"
 	fi
-	msg "$INV$USE_VAULT$NC "
+	msg "$INV$USE_VAULT$NC\033[K"
 	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
@@ -831,6 +832,14 @@ text_user_interface() {
 				get_CHAR
 				redraw_screen
 				;;
+			m)
+				if [ "$ARG1" = "build" ];then
+					ARG1="copy"
+				else
+					ARG1="build"
+				fi
+				draw_header
+				;;
 			p)
 				print_res_array
 				exit 0;;
@@ -848,7 +857,12 @@ text_user_interface() {
 				TEXT='stop'
 				;;
 			t)
-				S=1
+				if [ "$ARG2" = "release" ];then
+					ARG2="debug"
+				else
+					ARG2="release"
+				fi
+				draw_header
 				;;
 			v) # toggle USE_VAULT
 				if [ "$USE_VAULT" = "true" ];then
@@ -869,18 +883,18 @@ text_user_interface() {
 				fi
 				set_res "$G$S"
 				;;
-			+) # possible change + - to inc dec numeric entries
-				if [ "$Enabled" = "false" ];then
-					Enabled="true"
-				fi
-				set_res "$G$S"
-				;;
-			-)
-				if [ "$Enabled" = "true" ];then
-					Enabled="false"
-				fi
-				set_res "$G$S"
-				;;
+#			+) # possible change + - to inc dec numeric entries
+#				if [ "$Enabled" = "false" ];then
+#					Enabled="true"
+#				fi
+#				set_res "$G$S"
+#				;;
+#			-)
+#				if [ "$Enabled" = "true" ];then
+#					Enabled="false"
+#				fi
+#				set_res "$G$S"
+#				;;
 			A|k) # move up
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					S=$((S-1))
@@ -1009,7 +1023,12 @@ if [ "$FINDER" = "true" ];then # set defaults for double-click
 	ARG1="build"
 	ARG2="release"
 else
-	ARG1="$1"; ARG2="$2"
+	if [ -n "$1" ]; then
+		ARG1="$1"
+	fi
+	if [ -n "$2" ]; then
+		ARG2="$2"
+	fi
 fi
 
 NOP=""
@@ -1020,7 +1039,6 @@ case $ARG1 in
 		;;
 	c|copy) #copy from extras first if exists, else build from repo
 		ARG1="copy"
-		COPY="true" # why did I put this here? to avoid an if [ARG1=copy] ?
 		;;
 	d|debug|r|release)
 		msg "${YEL}Usage:${NC} must specify ${U}command${NC} before $ARG1\n"
@@ -1037,9 +1055,8 @@ if [ -n "$NOP" ];then
 	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
 		exit 0
 	fi
-	if [ -n "$TEXT" ];then # set default for -t option
-		ARG1="build"; ARG2="release"; NOP=""
-#		set_build_type "release"
+	if [ -n "$TEXT" ];then # let -t option use defaults
+		NOP=""
 	fi
 fi
 
@@ -1080,8 +1097,8 @@ add_resource "4" "Misc" "Tools" "Path"
 FILE="$CONFIG_PLIST"
 USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 
-swap_res "Lilu.kext" "1" "2"
-swap_res "VirtualSMC.kext" "$P" "2"
+#swap_res "Lilu.kext" "1" "2"   # place dependencies first # now handled in build func
+#swap_res "VirtualSMC.kext" "$P" "2"
 #swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
