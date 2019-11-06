@@ -27,6 +27,8 @@ eval set -- "$(getopt hioqtuvTUVX "$@")" #allowable command line options
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
 		echo "$1\c" > "$(tty)"
+	else
+		echo "$1\c"
 	fi
 }
 
@@ -985,6 +987,7 @@ do
 		shift;;
 	-q)
 		QUIET="-q"
+		ex_com="${ex_com}q"
 		shift;;
 	-u)
 		UPDATE="true"
@@ -1125,16 +1128,16 @@ check_if_Sample_plist_updated
 
 if [ "$USE_VAULT" = "true" ];then build_vault; fi
 
-if [ -z "$VERBOSE" ];then
-	exec 1>&6 6>&- 2>&1 #stop logfile
-fi
-
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then
 	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
 	msg "\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
+fi
+
+if [ -z "$VERBOSE" ];then
+	exec 1>&6 6>&- 2>&1 #stop logfile
 fi
 
 if [ -n "$FINDER" ];then open "$FINDER"; fi # open to EFI if -o or dbl-click
