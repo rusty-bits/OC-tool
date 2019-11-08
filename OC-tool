@@ -123,7 +123,7 @@ check_for_updates() {
 	git fetch --all $VERBOSE $QUIET
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
-		msg "${YEL}INFO:${NC} OpenCore-tool has been updated, run tool again to continue\n"
+		msg "${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		exit 0
 	fi
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
@@ -615,7 +615,7 @@ write_new_quirks() { # write quirks section changes to new plist
 
 write_new_conf() { # write new config.plist based on changes in psuedo array
 	OUT=$BASE_DIR/Docs/config.plist
-	msg "\033[J\nWriting new config.plist ... "
+	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
 	while read -r line
 	do
@@ -847,8 +847,10 @@ text_user_interface() {
 				exit 0;;
 			q)
 				stty echo
-				msg "\033[J${NC}\n"
-				exit 0;;
+				#msg "\033[J${NC}\n" # return to screen buffer
+				CHAR='g'
+				TEXT="quit"
+				;;
 			r)
 				OLD_G=$G; OLD_S=$S
 				draw_screen
@@ -971,6 +973,20 @@ text_user_interface() {
 	msg "${NC}"
 }
 
+start_logging() {
+	if [ -z "$VERBOSE" ]; then
+		exec 6>&1 #start logging
+		exec > $LOGFILE
+		exec 2>&1
+	fi
+}
+
+stop_logging() {
+	if [ -z "$VERBOSE" ];then
+		exec 1>&6 6>&- 2>&1 #stop logfile
+	fi
+}
+
 #****** Start build ***************
 while :
 do
@@ -994,7 +1010,7 @@ do
 		ex_com="${ex_com}u"
 		shift;;
 	-v)
-		msg "OpenCore-tool version $VER\n"
+		msg "OC-tool version $VER\n"
 		exit 0;;
 	-T|-t)
 		TEXT="true"
@@ -1083,11 +1099,7 @@ if [ -n "$UPDATE" ]; then
 	fi
 fi
 
-if [ -z "$VERBOSE" ]; then
-	exec 6>&1 #start logging
-	exec > $LOGFILE
-	exec 2>&1
-fi
+start_logging
 
 check_requirements
 check_config
@@ -1105,9 +1117,18 @@ USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 #swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
+	msg "Entering TUI ... "
+	stop_logging
+	tput smcup
+
 	text_user_interface
-	msg "\033[2J\033[H"
+
+	tput rmcup
+	start_logging
+	fin
 fi
+
+if [ "$TEXT" = "quit" ];then exit 0;fi
 
 if [ -n "$CONFIG_CHANGED" ]; then
 	write_new_conf
@@ -1126,20 +1147,19 @@ copy_resources
 
 check_if_Sample_plist_updated
 
+
 if [ "$USE_VAULT" = "true" ];then
 	build_vault||msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"; exit 1
 fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then
-	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
+	msg "\n${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
 	msg "\tthe original $AUDK_CONFIG config.plist ${YEL}has not been touched${NC}\n"
 fi
 
-if [ -z "$VERBOSE" ];then
-	exec 1>&6 6>&- 2>&1 #stop logfile
-fi
+stop_logging
 
 if [ -n "$FINDER" ];then open "$FINDER"; fi # open to EFI if -o or dbl-click
