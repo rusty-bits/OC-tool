@@ -431,9 +431,9 @@ build_vault() {
 	if ls vault* 1> /dev/null 2>&1; then
 		rm vault.*
 	fi
-	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .
-	make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool
-	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub
+	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
+	make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 	str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 	off=$((str+16))
 	dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=520 conv=notrunc
@@ -1126,7 +1126,9 @@ copy_resources
 
 check_if_Sample_plist_updated
 
-if [ "$USE_VAULT" = "true" ];then build_vault; fi
+if [ "$USE_VAULT" = "true" ];then
+	build_vault||msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"; exit 1
+fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then

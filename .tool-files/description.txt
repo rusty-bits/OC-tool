@@ -1,8 +1,6 @@
-Lilu.kext
-It's Lilu, everyone loves Lilu.
 ApfsDriverLoader.efi
 Needed for seeing APFS volumes.
-VboxHfs.efi
+VBoxHfs.efi
 Needed for seeing HFS volumes.
 HfsPlus.efi
 Needed for seeing HFS volumes.
@@ -82,6 +80,8 @@ XhciPortLimit
 Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
 AvoidHighAlloc
 Advises allocators to avoid allocations above first 4 GBs of RAM. This is a workaround for select board firmwares, namely GA-Z77P-D3 (rev. 1.1), failing to properly access higher memory in UEFI Boot Services. On these boards this quirk is required for booting entries that need to allocate large memory chunks, such as macOS DMG recovery entries. On unaffected boards it may cause boot failures, and thus strongly not recommended. For known issues refer to acidanthera/bugtracker#449.
+ClearScreenOnModeSwitch
+Some firmwares clear only part of screen when switching from graphics to text mode, leaving a fragment of previously drawn image visible. This option fills the entire graphics screen with black color before switching to text mode. Note : ConsoleControl should be set to true for this to work.
 ExitBootServicesDelay
 Adds delay in microseconds after EXIT_BOOT_SERVICES event. This is a very ugly quirk to circumvent "Still waiting for root device" message on select APTIO IV firmwares, namely ASUS Z87-Pro, when using FileVault 2 in particular. It seems that for some reason they execute code in parallel to EXIT_BOOT_SERVICES, which results in SATA controller being inaccessible from macOS. A better approach should be found in some future. Expect 3-5 seconds to be enough in case the quirk is needed.
 IgnoreInvalidFlexRatio
@@ -100,5 +100,5 @@ RequestBootVarRouting
 Request redirectBoot prefixed variables from EFI_GLOBAL_VARIABLE_GUID to OC_VENDOR_VARIABLE_GUID. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. The quirk lets default boot entry preservation at times when firmwares delete incompatible boot entries. Simply said, you are required to enable this quirk to be able to reliably use Startup Disk preference pane in a firmware that is not compatible with macOS boot entries by design.
 SanitiseClearScreen
 Some firmwares reset screen resolution to a failsafe value (like 1024x768) on the attempts to clear screen contents when large display (e.g. 2K or 4K) is used. This option attempts to apply a workaround. Note : ConsoleControl may need to be set to true for this to work. On all known affected systems ConsoleMode had to be set to empty string for this to work.
-ClearScreenOnModeSwitch
-Some firmwares clear only part of screen when switching from graphics to text mode, leaving a fragment of previously drawn image visible. This option fills the entire graphics screen with black color before switching to text mode. Note : ConsoleControl should be set to true for this to work.
+UnblockFsConnect
+Some firmwares block partition handles by opening them in By Driver mode, which results in File System protocols being unable to install. Note : The quirk is mostly relevant for select HP laptops with no drives listed.
