@@ -1118,13 +1118,13 @@ USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 
 if [ -n "$TEXT" ]; then
 	msg "Entering TUI ... "
-	stop_logging
-	tput smcup
+#	stop_logging
+	command -v tput&&stop_logging; tput smcup
 
 	text_user_interface
+	msg "\033[J\n"
 
-	tput rmcup
-	start_logging
+	command -v tput&&tput rmcup; start_logging
 	fin
 fi
 
