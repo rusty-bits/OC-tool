@@ -1117,14 +1117,17 @@ USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 #swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
-	msg "Entering TUI ... "
-#	stop_logging
-	command -v tput&&stop_logging; tput smcup
+	msg "\nEntering TUI ... "
 
+#	command -v tput&&tput smcup
+#	stop_logging
+	msg "$(tput smcup)"
 	text_user_interface
 	msg "\033[J\n"
 
-	command -v tput&&tput rmcup; start_logging
+#	start_logging
+#	command -v tput&&tput rmcup
+	msg "$(tput rmcup)"
 	fin
 fi
 
@@ -1149,7 +1152,7 @@ check_if_Sample_plist_updated
 
 
 if [ "$USE_VAULT" = "true" ];then
-	build_vault||msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"; exit 1
+	build_vault||msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"
 fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
