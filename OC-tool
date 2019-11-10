@@ -4,7 +4,7 @@ cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
 
-if [ "$ini" != "$BASE_DIR" ];then # double-click from finder?
+if [ "$ini" != "$BASE_DIR" ];then # double-click from finder
 	FINDER="true"
 else
 	FINDER=""
@@ -17,7 +17,7 @@ LOGFILE="tool.log"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="1.8i(041119) last checked with OpenCore version REL-053-2019-11-02"
+VER="1.9(101119) last checked with OpenCore version REL-053-2019-11-10"
 ARG1="build"; ARG2="release" # set default to 'build release'
 ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
@@ -425,6 +425,11 @@ parse() { # read plist file hack
 	done < "$FILE"
 }
 
+vault_failed() {
+	msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"
+	exit 1
+}
+
 build_vault() {
 	msg "\nBuilding vault files for $BUILD_DIR ... "
 	cd "$BUILD_DIR"/OC
@@ -436,7 +441,7 @@ build_vault() {
 	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 	str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 	off=$((str+16))
-	dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=520 conv=notrunc
+	dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count=528 conv=notrunc
 	rm vault.pub
 	fin
 }
@@ -648,7 +653,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 				G=8; S=1;
 				write_new_quirks
 				;;
-			"<key>RequireVault</key>")
+			"<key>RequireVault</key>"|"<key>RequireSignature</key>")
 				read -r line
 				echo "<$USE_VAULT/>" >> "$OUT"
 				;;
@@ -832,6 +837,7 @@ text_user_interface() {
 				msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 				select_MSG
 				get_CHAR
+				if [ "$CHAR" = "esc" ];then esc="true"; fi
 				redraw_screen
 				;;
 			m)
@@ -1117,16 +1123,10 @@ USE_VAULT=$(parse "Misc" "Security" "RequireVault")
 #swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
-	msg "\nEntering TUI ... "
-
-#	command -v tput&&tput smcup
-#	stop_logging
+	msg "\nSwitching to TUI ... "
 	msg "$(tput smcup)"
 	text_user_interface
-	msg "\033[J\n"
-
-#	start_logging
-#	command -v tput&&tput rmcup
+	msg "\033[J\n" # still cleanup for TERM types that don't buffer
 	msg "$(tput rmcup)"
 	fin
 fi
@@ -1150,9 +1150,8 @@ copy_resources
 
 check_if_Sample_plist_updated
 
-
 if [ "$USE_VAULT" = "true" ];then
-	build_vault||msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"
+	build_vault||vault_failed
 fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
