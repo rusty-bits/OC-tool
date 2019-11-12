@@ -14,13 +14,18 @@ RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
 REPO_PLIST="$TOOL_FILES/repo.plist"
 GIT_JSON="$TOOL_FILES/git_repo.json"
+INPUT="$BASE_DIR/INPUT"
+OUTPUT="$BASE_DIR/OUTPUT"
+BUILD_DIR="$OUTPUT/EFI"
+CONFIG_PLIST="$INPUT/config.plist"
 LOGFILE="tool.log"
 PARSE_FILE=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.9(101119) last checked with OpenCore version REL-053-2019-11-10"
-MODE="release"; TYPE="debug"  # set default to 'source release'
+MODE="release"; TYPE="debug"  # set default to debug version of prebuilt release
+SOURCE="$GIT_JSON" # default source is prebuilts
 ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
@@ -1077,9 +1082,7 @@ esac
 
 set_build_type "$TYPE"
 
-BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
-CONFIG_PLIST="$BASE_DIR/$AUDK_CONFIG/config.plist"
-if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
+if [ -n "$FINDER" ]; then FINDER="$OUTPUT"; fi
 
 
 if [ -n "$UPDATE" ]; then

@@ -1,12 +1,10 @@
 .DS_Store
 
 tool.log
-DEBUG/config.plist
-RELEASE/config.plist
+INPUT/config.plist
 Docs/config.plist
 
-DEBUG/EFI/*
-RELEASE/EFI/*
+OUTPUT/EFI/*
 
 resources/*
 
