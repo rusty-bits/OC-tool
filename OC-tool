@@ -13,16 +13,18 @@ fi
 RES_DIR="$BASE_DIR/resources"
 TOOL_FILES="$BASE_DIR/.tool-files"
 REPO_PLIST="$TOOL_FILES/repo.plist"
+GIT_JSON="$TOOL_FILES/git_repo.json"
 LOGFILE="tool.log"
+PARSE_FILE=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.9(101119) last checked with OpenCore version REL-053-2019-11-10"
-ARG1="build"; ARG2="release" # set default to 'build release'
-ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
+MODE="release"; TYPE="debug"  # set default to 'source release'
+ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-eval set -- "$(getopt hioqtuvTUVX "$@")" #allowable command line options
+eval set -- "$(getopt cdhioqtuvTUVX "$@")" #allowable command line options
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -87,21 +89,6 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	done < "$TOOL_FILES/base-resources"
 	eval G0_NUM=$S
 }
-
-#swap_res() { #ensure certain dependencies are in correct order
-#	for S in $(seq "$2" "$(eval echo \$G"$3"_NUM)")
-#	do
-#		get_res "$3$S"
-#		if [ "$res_name" = "$1" ]; then
-#			eval temp_res=\$res"$3$2"
-#			eval res"${3}""${2}"=\$res"${3}""${S}"
-#			eval res"$3""$S"=\$temp_res
-#			unset temp_res
-#			P=$(($2+1))
-#			return 0
-#		fi
-#	done
-#}
 
 clone() {
 	if [ -z "$2" ]; then
@@ -310,7 +297,7 @@ build_resources() {
 						fi
 						;;
 					"kext")
-						if [ "$res_name" = "Lilu.kext" ] && [ "$ARG2" = "release" ]; then
+						if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
 							set_build_type "debug"
 							build_kext||build_failed
 							set_build_type "release"
@@ -335,7 +322,7 @@ res_not_found() {
 		msg "\t$1 file not found in extras directory\n"
 		msg "\tEither place $1 in extras directory to build EFI with $1\n"
 		msg "\tor run with -i option to build EFI without $1\n"
-		msg "\tfor example, try '$ex_com $ARG1 $ARG2'\n"
+		msg "\tfor example, try '$ex_com $MODE'\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
@@ -345,7 +332,7 @@ res_not_found() {
 }
 
 copy_resources() {
-	msg "\n${GRN}Moving ${YEL}$ARG2${GRN} resources into place${NC}\n"
+	msg "\n${GRN}Moving ${YEL}$TYPE${GRN} resources into place${NC}\n"
 	IGNORE="" # no more ignoring for you
 	for G in $(seq 0 4)
 	do
@@ -387,6 +374,12 @@ check_if_Sample_plist_updated() {
 	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
+parse_json() {
+	msg "$(cat $GIT_JSON|jshon -e WhateverGreen -e release -e release|tr -d '"\')\n"
+	msg "$(cat $GIT_JSON|jshon -e WhateverGreen -e release -e release-sha256|tr -d '"\')\n"
+	exit 0
+}
+
 parse() { # read plist file hack
 	a=0; in_loop=0
 	while read -r ONE
@@ -422,7 +415,7 @@ parse() { # read plist file hack
 				a=$1; in_loop=1
 				shift;;
 		esac
-	done < "$FILE"
+	done < "$PARSE_FILE"
 }
 
 vault_failed() {
@@ -447,9 +440,9 @@ build_vault() {
 }
 
 add_res_array() { # add a resource to the psuedo array (neede for POSIX)
-	FILE="$REPO_PLIST"
+	PARSE_FILE="$REPO_PLIST"
 	git_url=$(parse "$res_name")
-	if [ "$ARG1" = "build" ] && [ "$dest" != "OC/ACPI" ];then
+	if [ -z "$COPY"  ] && [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ]; then # found repo
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
@@ -483,7 +476,7 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
-		FILE="$CONFIG_PLIST"
+		PARSE_FILE="$CONFIG_PLIST"
 		res_name=$(parse "$2" "$3" "$i" "$4")
 		if [ -n "$res_name" ];then
 			case "$1" in
@@ -515,11 +508,11 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 set_build_type() {
 	case $1 in
 		d|debug)
-			ARG2="debug"; XCODE_CONFIG="Debug";;
+			TYPE="debug"; XCODE_CONFIG="Debug";;
 		r|release)
-			ARG2="release"; XCODE_CONFIG="Release";;
+			TYPE="release"; XCODE_CONFIG="Release";;
 		*)
-			msg "need to specify ${U}debug${NC} or ${U}release${NC} after $ARG1 command\n"
+			msg "need to specify ${U}debug${NC} or ${U}release${NC} after ...\n"
 			exit 1;;
 	esac
 	AUDK_CONFIG=$(echo $XCODE_CONFIG|tr "[:lower:]" "[:upper:]")
@@ -722,7 +715,7 @@ draw_key() {
 }
 
 draw_header() {
-	msg "$NC\033[H${U}m${UO}ode=$GRN$INV$ARG1$NC ${U}t${UO}ype=$GRN$INV$ARG2$NC RequireVault="
+	msg "$NC\033[H${U}m${UO}ode=$GRN$INV$MODE$NC ${U}t${UO}ype=$GRN$INV$TYPE$NC RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
@@ -841,10 +834,10 @@ text_user_interface() {
 				redraw_screen
 				;;
 			m)
-				if [ "$ARG1" = "build" ];then
-					ARG1="copy"
+				if [ "$COPY" = "true" ];then
+					COPY=""
 				else
-					ARG1="build"
+					COPY="true"
 				fi
 				draw_header
 				;;
@@ -867,10 +860,10 @@ text_user_interface() {
 				TEXT='stop'
 				;;
 			t)
-				if [ "$ARG2" = "release" ];then
-					ARG2="debug"
+				if [ "$TYPE" = "release" ];then
+					TYPE="debug"
 				else
-					ARG2="release"
+					TYPE="release"
 				fi
 				draw_header
 				;;
@@ -994,103 +987,95 @@ stop_logging() {
 }
 
 #****** Start build ***************
+
 while :
 do
 	case  "$1" in
-	-h) # help
-		msg "$(cat "$TOOL_FILES"/help.msg)\n"
-		exit 0;;
-	-i)
-		IGNORE="true"
-		shift;;
-	-o)
-		FINDER="open"
-		ex_com="${ex_com}o"
-		shift;;
-	-q)
-		QUIET="-q"
-		ex_com="${ex_com}q"
-		shift;;
-	-u)
-		UPDATE="true"
-		ex_com="${ex_com}u"
-		shift;;
-	-v)
-		msg "OC-tool version $VER\n"
-		exit 0;;
-	-T|-t)
-		TEXT="true"
-		ex_com="${ex_com}t"
-		shift;;
-	-U)
-		UPDATE="stop"
-		ex_com="${ex_com}U"
-		shift;;
-	-V)
-		VERBOSE="-v"
-		shift;;
-	-X)
-		if [ -z "$UPDATE" ];then
-			msg "Deleting $BASE_DIR/resources ... "
-			rm -rf "$BASE_DIR/resources"
-			fin
-			REMOVE_ALL="true"
-		else
-			msg "${YEL}WARNING:${NC} not deleting $BASE_DIR/resources since update option selected first\n"
-		fi
-		shift;;
-	--)
-		shift; break;;
+		-c)
+			COPY="true"
+			shift;;
+		-d)
+			TYPE="debug"
+			shift;;
+		-h) # help
+			msg "$(cat "$TOOL_FILES"/help.msg)\n"
+			exit 0;;
+		-i)
+			IGNORE="true"
+			shift;;
+		-o)
+			FINDER="open"
+			ex_com="${ex_com}o"
+			shift;;
+		-q)
+			QUIET="-q"
+			ex_com="${ex_com}q"
+			shift;;
+		-u)
+			UPDATE="true"
+			ex_com="${ex_com}u"
+			shift;;
+		-v)
+			msg "OC-tool version $VER\n"
+			exit 0;;
+		-T|-t)
+			TEXT="true"
+			ex_com="${ex_com}t"
+			shift;;
+		-U)
+			UPDATE="stop"
+			ex_com="${ex_com}U"
+			shift;;
+		-V)
+			VERBOSE="-v"
+			shift;;
+		-X)
+			if [ -z "$UPDATE" ];then
+				msg "Deleting $BASE_DIR/resources ... "
+				rm -rf "$BASE_DIR/resources"
+				fin
+				REMOVE_ALL="true"
+			else
+				msg "${YEL}WARNING:${NC} not deleting $BASE_DIR/resources since update option selected first\n"
+			fi
+			shift;;
+		--)
+			shift
+			break;;
 	esac
 done
 
 if [ "$FINDER" = "true" ];then # set defaults for double-click
-	ARG1="build"
-	ARG2="release"
+	MODE="source"
 else
 	if [ -n "$1" ]; then
-		ARG1="$1"
-	fi
-	if [ -n "$2" ]; then
-		ARG2="$2"
+		MODE="$1"
 	fi
 fi
 
-NOP=""
 
-case $ARG1 in
-	b|build) #build first if repo exists, else copy from extras folder
-		ARG1="build"
+case $MODE in
+	d|daily)
+		MODE="daily"
 		;;
-	c|copy) #copy from extras first if exists, else build from repo
-		ARG1="copy"
+	l|latest)
+		MODE="latest"
 		;;
-	d|debug|r|release)
-		msg "${YEL}Usage:${NC} must specify ${U}command${NC} before $ARG1\n"
+	r|release)
+		MODE="release"
+		;;
+	'') # - check for options with no arguments valid?
+#		if [ -n "$REMOVE_ALL" ]; then
+#			exit 0
+#		fi
+		;;
+	*) # unknown argument
+		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 		exit 1
 		;;
-	*) #fallthrough - check for options with no command or type
-		NOP="true"
 esac
 
-if [ -n "$NOP" ];then
-	if [ -n "$UPDATE" ]; then # -u option with no following command
-		UPDATE="only"; NOP=""
-	fi
-	if [ -n "$REMOVE_ALL" ]; then #removed resources no command
-		exit 0
-	fi
-	if [ -n "$TEXT" ];then # let -t option use defaults
-		NOP=""
-	fi
-fi
-
-if [ -n "$NOP" ];then
-	msg "$(cat "$TOOL_FILES"/usage.msg)\n"
-	exit 0
-fi
-
-set_build_type "$ARG2"
+set_build_type "$TYPE"
 
 BUILD_DIR="$BASE_DIR/$AUDK_CONFIG/EFI"
 CONFIG_PLIST="$BASE_DIR/$AUDK_CONFIG/config.plist"
@@ -1099,7 +1084,7 @@ if [ -n "$FINDER" ]; then FINDER="$BASE_DIR/$AUDK_CONFIG"; fi
 
 if [ -n "$UPDATE" ]; then
 	check_for_updates
-	if [ "$UPDATE" != "true" ];then
+	if [ "$UPDATE" = "stop" ];then
 		msg "${GRN}All resources are up to date.${NC}\n"
 		exit 0
 	fi
@@ -1115,12 +1100,8 @@ add_resource "1" "ACPI" "Add" "Path"
 add_resource "2" "Kernel" "Add" "BundlePath"
 add_resource "3" "UEFI" "Drivers"
 add_resource "4" "Misc" "Tools" "Path"
-FILE="$CONFIG_PLIST"
+PARSE_FILE="$CONFIG_PLIST"
 USE_VAULT=$(parse "Misc" "Security" "RequireVault")
-
-#swap_res "Lilu.kext" "1" "2"   # place dependencies first # now handled in build func
-#swap_res "VirtualSMC.kext" "$P" "2"
-#swap_res "Shell.efi" "4" #keep Shell last, uses UDK2018
 
 if [ -n "$TEXT" ]; then
 	msg "\nSwitching to TUI ... "
