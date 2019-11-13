@@ -12,7 +12,7 @@ fi
 
 # RES_DIR="$BASE_DIR/resources/prebuilt-release"  set after mode is determined
 TOOL_FILES="$BASE_DIR/.tool-files"
-REPO_PLIST="$TOOL_FILES/repo.plist"
+# REPO_PLIST="$TOOL_FILES/repo.plist"  no longer needed?
 GIT_JSON="$TOOL_FILES/git_repo.json"
 # INPUT="$BASE_DIR/INPUT" set after check for path argument $1
 OUTPUT="$BASE_DIR/OUTPUT"
@@ -382,7 +382,7 @@ check_if_Sample_plist_updated() {
 }
 
 parse_json() { # rewrite - don't want to use jshon/jq/jsawk if avoidable
-	echo "$(jshon -e $1 -e $MODE -u < $GIT_JSON||echo '')"
+	jshon -e "$1" -e "$MODE" -u < "$GIT_JSON"||echo ""
 #	zip_name="${json_url##*/}"
 #	zip_dir="${zip_name%.*}"
 #	mkdir -p $zip_dir
@@ -991,7 +991,7 @@ text_user_interface() {
 start_logging() {
 	if [ -z "$VERBOSE" ]; then
 		exec 6>&1 #start logging
-		exec > $LOGFILE
+		exec > "$LOGFILE"
 		exec 2>&1
 	fi
 }
