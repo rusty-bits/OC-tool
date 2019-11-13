@@ -1,32 +1,250 @@
 {
-	"OpenCorePkg" : {
-		"type" : "base",
-		"release" : {
-			"commit" : "8be245fb1a775b6a11766f827b5e9bad50e6247b",
-			"commitdescription" : "latest release",
-			"version" : "0.5.2",
-			"dateadded" : "20191030-06:23:00",
-			"developer" : "false",
-			"knowngood" : "true",
-			"debug" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.2/OpenCore-0.5.2-DEBUG.zip",
-			"debug-sha256" : "dc45bba43c6c19dd655df28f1dca98dfad7884daf34f1408a559599b327c136b",
-			"release" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.2/OpenCore-0.5.2-RELEASE.zip",
-			"release-sha256" : "413d0bba6ef8e85461283cce77b9d8fc5826aaa7de9787497077fd9bc1bf1d4a"
-		}
-	},
-	"WhateverGreen" : {
-		"type" : "kext",
-		"release" : {
-			"commit" : "f5c4211b160f00b6b495112ae59cc23cec6a541b",
-			"commitdescription" : "latest release",
-			"version" : "1.3.4",
-			"dateadded" : "20191030-08:12:00",
-			"developer" : "false",
-			"knowngood" : "true",
-			"debug" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.4/WhateverGreen-1.3.4-DEBUG.zip",
-			"debug-sha256" : "8c1460df36d21ae8bf2779572a7b82bfa683bc55a058b885d9c79f7fa28d8a1a",
-			"release" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.4/WhateverGreen-1.3.4-RELEASE.zip",
-			"release-sha256" : "040cca1eb44e314c303e79ae401da0c8078a621002a077a2465394d2058c3db1"
-		}
-	}
+  "OpenCorePkg" : {
+    "type" : "base",
+    "latest-source" : "https://github.com/acidanthera/OpenCorePkg/",
+    "prebuilt-release" : {
+      "commit" : "8be245fb1a775b6a11766f827b5e9bad50e6247b",
+      "commitdescription" : "latest release",
+      "version" : "0.5.2",
+      "dateadded" : "20191030-06:23:00",
+      "developer" : "false",
+      "knowngood" : "true",
+      "debug" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.2/OpenCore-0.5.2-DEBUG.zip",
+      "debug-sha256" : "dc45bba43c6c19dd655df28f1dca98dfad7884daf34f1408a559599b327c136b",
+      "release" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.2/OpenCore-0.5.2-RELEASE.zip",
+      "release-sha256" : "413d0bba6ef8e85461283cce77b9d8fc5826aaa7de9787497077fd9bc1bf1d4a"
+    },
+    "prebuilt-daily" : {
+      "commit" : "",
+      "commitdescription" : "",
+      "version" : "",
+      "dateadded" : "",
+      "developer" : "",
+      "knowngood" : "",
+      "debug" : "",
+      "debug-sha256" : "",
+      "release" : "",
+      "release-sha256" : ""
+    }
+  },
+  "WhateverGreen.kext" : {
+    "type" : "kext",
+    "latest-source" : "https://github.com/acidanthera/WhateverGreen",
+    "prebuilt-release" : {
+      "commit" : "f5c4211b160f00b6b495112ae59cc23cec6a541b",
+      "commitdescription" : "",
+      "version" : "1.3.4",
+      "dateadded" : "20191030-08:12:00",
+      "developer" : "false",
+      "knowngood" : "true",
+      "debug" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.4/WhateverGreen-1.3.4-DEBUG.zip",
+      "debug-sha256" : "8c1460df36d21ae8bf2779572a7b82bfa683bc55a058b885d9c79f7fa28d8a1a",
+      "release" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.4/WhateverGreen-1.3.4-RELEASE.zip",
+      "release-sha256" : "040cca1eb44e314c303e79ae401da0c8078a621002a077a2465394d2058c3db1"
+    },
+    "prebuilt-daily" : {
+      "commit" : "",
+      "commitdescription" : "",
+      "version" : "",
+      "dateadded" : "",
+      "developer" : "",
+      "knowngood" : "",
+      "debug" : "",
+      "debug-sha256" : "",
+      "release" : "",
+      "release-sha256" : ""
+    }
+  },
+  "UsbKbDxe.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "VoodooPS2Controller.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VoodooPS2"
+  },
+  "IntelMausi.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/IntelMausi"
+  },
+  "SerialMouse.kext" : {
+    "latest-source" : "https:\/\/github.com\/Goldfish64\/SerialMouse"
+  },
+  "AirportBrcmFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AirportBrcmFixup"
+  },
+  "GdbSyms.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "AcpiTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "VoodooTSCSync.kext" : {
+    "latest-source" : "https:\/\/github.com\/RehabMan\/VoodooTSCSync"
+  },
+  "KernelTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SystemProfilerMemoryFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/Goldfish64\/SystemProfilerMemoryFixup"
+  },
+  "VerifyMsrE2.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "SSDT-SBUS-MCHC.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-SBUS-MCHC.dsl"
+  },
+  "AppleImageLoader.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "AsusSMC.kext" : {
+    "latest-source" : "https:\/\/github.com\/hieplpvip\/AsusSMC"
+  },
+  "DiskArbitrationFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/Goldfish64\/DiskArbitrationFixup"
+  },
+  "BlessTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SMCSuperIO.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VirtualSMC"
+  },
+  "HibernationFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/HibernationFixup"
+  },
+  "HWPEnabler.kext" : {
+    "latest-source" : "https:\/\/github.com\/headkaze\/HWPEnable"
+  },
+  "VBoxHfs.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "SmbiosTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SSDT-RTC0.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-RTC0.dsl"
+  },
+  "SMCProcessor.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VirtualSMC"
+  },
+  "NoTouchID.kext" : {
+    "latest-source" : "https:\/\/github.com\/al3xtjames\/NoTouchID"
+  },
+  "AppleALC.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleALC"
+  },
+  "SMCLightSensor.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VirtualSMC"
+  },
+  "ATH9KFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/chunnann\/ATH9KFixup"
+  },
+  "RealtekRTL8100.kext" : {
+    "latest-source" : "https:\/\/github.com\/Mieze\/RealtekRTL8100"
+  },
+  "CPUFriend.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/CPUFriend"
+  },
+  "CryptoTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "BT4LEContinuityFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/BT4LEContinuityFixup"
+  },
+  "AcpiTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "FwRuntimeServices.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "SSDT-PLUG.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-PLUG.dsl"
+  },
+  "VirtualSMC.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VirtualSMC"
+  },
+  "IntelMausiEthernet.kext" : {
+    "latest-source" : "https:\/\/github.com\/Mieze\/IntelMausiEthernet"
+  },
+  "KernelTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "WhateverGreen.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/WhateverGreen"
+  },
+  "ApfsDriverLoader.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "CryptoTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "AtherosL1cEthernet.kext" : {
+    "latest-source" : "https:\/\/github.com\/al3xtjames\/AtherosL1cEthernet"
+  },
+  "Shell.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OpenCoreShell"
+  },
+  "SSDT-EC.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-EC.dsl"
+  },
+  "ExternalUi.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "Lilu.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/Lilu"
+  },
+  "VirtualSmc.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+  },
+  "LiluFriend.kext" : {
+    "latest-source" : "https:\/\/github.com\/PMheart\/LiluFriend"
+  },
+  "TSCAdjustReset.kext" : {
+    "latest-source" : "https:\/\/github.com\/interferenc\/TSCAdjustReset"
+  },
+  "VoodooSDHC.kext" : {
+    "latest-source" : "https:\/\/github.com\/lvs1974\/VoodooSDHCMod"
+  },
+  "SSDT-EC-USBX.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-EC-USBX.dsl"
+  },
+  "NoVPAJpeg.kext" : {
+    "latest-source" : "https:\/\/github.com\/vulgo\/NoVPAJpeg"
+  },
+  "DataHubTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SSDT-EHCx_OFF.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-EHCx_OFF.dsl"
+  },
+  "PropertyTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "PropertyTestApp.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SSDT-AWAC.aml" : {
+    "latest-source" : "UDK\/OpenCorePkg\/Docs\/AcpiSamples\/SSDT-AWAC.dsl"
+  },
+  "RTCMemoryFixup.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/RTCMemoryFixup"
+  },
+  "SMCBatteryManager.kext" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/VirtualSMC"
+  },
+  "BlessTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "SmbiosTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "RealtekRTL8111.kext" : {
+    "latest-source" : "https:\/\/github.com\/Mieze\/RTL8111_driver_for_OS_X"
+  },
+  "AppleIntelInfo.kext" : {
+    "latest-source" : "https:\/\/github.com\/headkaze\/AppleIntelInfo"
+  },
+  "DataHubTest.efi" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/OcSupportPkg"
+  },
+  "AtherosE2200Ethernet.kext" : {
+    "latest-source" : "https:\/\/github.com\/Mieze\/AtherosE2200Ethernet"
+  }
 }

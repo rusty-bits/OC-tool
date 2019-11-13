@@ -10,26 +10,28 @@ else
 	FINDER=""
 fi
 
-RES_DIR="$BASE_DIR/resources"
+# RES_DIR="$BASE_DIR/resources/prebuilt-release"  set after mode is determined
 TOOL_FILES="$BASE_DIR/.tool-files"
 REPO_PLIST="$TOOL_FILES/repo.plist"
 GIT_JSON="$TOOL_FILES/git_repo.json"
-INPUT="$BASE_DIR/INPUT"
+# INPUT="$BASE_DIR/INPUT" set after check for path argument $1
 OUTPUT="$BASE_DIR/OUTPUT"
 BUILD_DIR="$OUTPUT/EFI"
-CONFIG_PLIST="$INPUT/config.plist"
-LOGFILE="tool.log"
-PARSE_FILE=""
+# CONFIG_PLIST="$INPUT/config.plist"
+# BOOT_LOADER="OC"  set after check for path argument $1
+LOGFILE="$BASE_DIR/tool.log"
+
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="1.9(101119) last checked with OpenCore version REL-053-2019-11-10"
-MODE="release"; TYPE="debug"  # set default to debug version of prebuilt release
-SOURCE="$GIT_JSON" # default source is prebuilts
+
+MODE="prebuilt-release"; TYPE="debug"  # set default to debug version of prebuilt release
+
 ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-eval set -- "$(getopt cdhioqtuvTUVX "$@")" #allowable command line options
+eval set -- "$(getopt cdhiloqrtuvTUVX "$@")" #allowable command line options
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -337,7 +339,7 @@ res_not_found() {
 }
 
 copy_resources() {
-	msg "\n${GRN}Moving ${YEL}$TYPE${GRN} resources into place${NC}\n"
+	msg "\n${GRN}Moving ${YEL}$MODE${GRN} resources into place${NC}\n"
 	IGNORE="" # no more ignoring for you
 	for G in $(seq 0 4)
 	do
@@ -379,13 +381,22 @@ check_if_Sample_plist_updated() {
 	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
-parse_json() {
-	msg "$(cat $GIT_JSON|jshon -e WhateverGreen -e release -e release|tr -d '"\')\n"
-	msg "$(cat $GIT_JSON|jshon -e WhateverGreen -e release -e release-sha256|tr -d '"\')\n"
-	exit 0
+parse_json() { # rewrite - don't want to use jshon/jq/jsawk if avoidable
+	echo "$(jshon -e $1 -e $MODE -u < $GIT_JSON||echo '')"
+#	zip_name="${json_url##*/}"
+#	zip_dir="${zip_name%.*}"
+#	mkdir -p $zip_dir
+#	cd $zip_dir
+#	curl -L -O $json_url
+#	jshon -e OpenCorePkg -e release -e debug-sha256 -u < $GIT_JSON > sha256
+#	json_sha="$(jshon -e OpenCorePkg -e release -e debug-sha256 -u < $GIT_JSON)"
+#	live_sha=$(shasum -a 256 $zip_name|cut -f1 -d ' ')
+#	msg "j=$json_sha\nl=$live_sha\n"
+#	msg "$zip_name - $zip_dir\n"
+#	unzip $zip_name
 }
 
-parse() { # read plist file hack
+parse_plist() { # read plist file hack
 	a=0; in_loop=0
 	while read -r ONE
 	do
@@ -445,8 +456,8 @@ build_vault() {
 }
 
 add_res_array() { # add a resource to the psuedo array (neede for POSIX)
-	PARSE_FILE="$REPO_PLIST"
-	git_url=$(parse "$res_name")
+#	PARSE_FILE="$REPO_PLIST"
+	git_url=$(parse_json "$res_name")
 	if [ -z "$COPY"  ] && [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ]; then # found repo
 			srce=""
@@ -482,23 +493,23 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	until [ -z "$res_name" ]
 	do
 		PARSE_FILE="$CONFIG_PLIST"
-		res_name=$(parse "$2" "$3" "$i" "$4")
+		res_name=$(parse_plist "$2" "$3" "$i" "$4")
 		if [ -n "$res_name" ];then
 			case "$1" in
 				1)
-					Enabled=$(parse "$2" "$3" "$i" "Enabled")
+					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/ACPI";;
 				2)
-					Enabled=$(parse "$2" "$3" "$i" "Enabled")
+					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/Kexts";;
 				3)
 					Enabled="true"
 					dest="OC/Drivers";;
 				4)
-					Enabled=$(parse "$2" "$3" "$i" "Enabled")
+					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/Tools";;
 				5|6|7|8)
-					Enabled=$(parse "$2" "$3" "$res_name")
+					Enabled=$(parse_plist "$2" "$3" "$res_name")
 					set_res "$G$S"
 					i=$((i+1));;
 			esac
@@ -992,7 +1003,6 @@ stop_logging() {
 }
 
 #****** Start build ***************
-
 while :
 do
 	case  "$1" in
@@ -1000,13 +1010,16 @@ do
 			COPY="true"
 			shift;;
 		-d)
-			TYPE="debug"
+			MODE="prebuilt-daily"
 			shift;;
 		-h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;
 		-i)
 			IGNORE="true"
+			shift;;
+		-l)
+			MODE="latest-source"
 			shift;;
 		-o)
 			FINDER="open"
@@ -1015,6 +1028,9 @@ do
 		-q)
 			QUIET="-q"
 			ex_com="${ex_com}q"
+			shift;;
+		-r)
+			TYPE="release"
 			shift;;
 		-u)
 			UPDATE="true"
@@ -1050,35 +1066,41 @@ do
 	esac
 done
 
-if [ "$FINDER" = "true" ];then # set defaults for double-click
-	MODE="source"
-else
-	if [ -n "$1" ]; then
-		MODE="$1"
-	fi
+if [ "$MODE" != "latest-source" ]; then
+	msg "\n${YEL}$MODE${NC} not implemented yet.\n"
+	exit 0
 fi
 
+RES_DIR="$BASE_DIR/resources/$MODE"
 
-case $MODE in
-	d|daily)
-		MODE="daily"
-		;;
-	l|latest)
-		MODE="latest"
-		;;
-	r|release)
-		MODE="release"
-		;;
-	'') # - check for options with no arguments valid?
-#		if [ -n "$REMOVE_ALL" ]; then
-#			exit 0
-#		fi
-		;;
-	*) # unknown argument
+if [ -n "$1" ]; then # possible new input source
+	INPUT="$1"
+	if [ -e "$INPUT" ]; then
+		if [ -e "$INPUT/OC" ]; then
+			BOOT_LOADER="OC"
+			INPUT="$INPUT/$BOOT_LOADER"
+			CONFIG_PLIST="$INPUT/config.plist"
+		elif [ -e "$INPUT/CLOVER" ]; then
+			BOOT_LOADER="CLOVER"
+			msg "Can not process CLOVER EFI folders yet.\n"
+			INPUT="$INPUT/$BOOT_LOADER"
+			CONFIG_PLIST="$INPUT/config.plist"
+			exit 0
+		elif [ -e "$INPUT/config.plist" ]; then
+			CONFIG_PLIST="$INPUT/config.plist"
+		else
+			msg "Could not find config.plist in $INPUT, verify path is correct.\n"
+			exit 1
+		fi
+	else
 		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 		exit 1
-		;;
-esac
+	fi
+else # no path given, use INPUT folder
+	INPUT="$BASE_DIR/INPUT"
+	CONFIG_PLIST="$INPUT/config.plist"
+	BOOT_LOADER="OC"
+fi
 
 set_build_type "$TYPE"
 
@@ -1104,7 +1126,7 @@ add_resource "2" "Kernel" "Add" "BundlePath"
 add_resource "3" "UEFI" "Drivers"
 add_resource "4" "Misc" "Tools" "Path"
 PARSE_FILE="$CONFIG_PLIST"
-USE_VAULT=$(parse "Misc" "Security" "RequireVault")
+USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
 
 if [ -n "$TEXT" ]; then
 	msg "\nSwitching to TUI ... "
