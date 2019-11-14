@@ -1,6 +1,6 @@
- base,https://github.com/acidanthera/EfiPkg,,
- base,https://github.com/acidanthera/MacInfoPkg,,
- base,https://github.com/acidanthera/OcSupportPkg,,
- BOOTx64.efi,https://github.com/acidanthera/OpenCorePkg,,BOOT
- OpenCore.efi,https://github.com/acidanthera/OpenCorePkg,,OC
+ base,EfiPkg,,
+ base,MacInfoPkg,,
+ base,OcSupportPkg,,
+ BOOTx64.efi,OpenCorePkg,,BOOT
+ OpenCore.efi,OpenCorePkg,,OC
  config.plist,,$INPUT,OC
