@@ -342,7 +342,6 @@ curl_parent() {
 		msg "Downloading $zip_name ... "
 		curl -L -O $git_url
 		shasum -a 256 $zip_name|cut -f1 -d ' ' > shasum256
-		msg "\n$sha\n$(cat shasum256)\n"
 		if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
 		msg "unzipping ... "
 		unzip -o $zip_name
@@ -357,14 +356,12 @@ curl_child() { # need parent first, then zip source
 
 	child=$res_name # self
 	res_name=$parent
-	msg "\nparent $parent git_url $git_url srce $srce\n"
 
 	curl_parent||curl_failed
 
 	git_url=$parent
 	res_name="$child"
 	srce="$srce/$(jshon -e "$res_name" -e "path" -u < "$GIT_JSON"||echo "")"
-	msg "\nparent $parent git_url $git_url srce $srce\n"
 }
 
 curl_acpi() { # compile .dsl into .aml if user hasn't already
@@ -1255,6 +1252,14 @@ if [ -n "$TEXT" ]; then
 fi
 
 if [ "$TEXT" = "quit" ];then exit 0;fi
+
+if [ "$MODE" != "latest-source" ]; then
+	if [ "$USE_VAULT" = "true" ]; then
+		USE_VAULT="false"
+		CONFIG_CHANGED="true"
+		msg "\n${YEL}NOTICE:${NC} vault disabled at the moment for prebuilts\n"
+	fi
+fi
 
 if [ -n "$CONFIG_CHANGED" ]; then
 	write_new_conf
