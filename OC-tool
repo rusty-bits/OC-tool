@@ -631,6 +631,7 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	eval G"$G"_NUM=$((S-1))
 }
 
+#this is an ugle function, rewrite it if possible
 init_res_array() { # base-resources moved into .tool-files for portability
 	S=0; G=0
 	while read -r line
@@ -1269,7 +1270,7 @@ fi
 
 start_logging
 
-check_requirements
+if [ "$MODE" = "latest-source" ]; then check_requirements; fi
 check_config
 
 init_res_array
