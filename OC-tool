@@ -88,16 +88,6 @@ set_up_dest_dir() {
 	fin
 }
 
-init_res_array() { # base-resources moved into .tool-files for portability
-	S=0
-	while read -r line
-	do
-		S=$((S+1))
-		eval "res0$S=$line,true"
-	done < "$TOOL_FILES/base-resources"
-	eval G0_NUM=$S
-}
-
 clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
 		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
@@ -276,11 +266,12 @@ get_res() { # extract resource from psuedo array (needed for POSIX)
 	git_url=$(echo "$res"|cut -f2 -d,)
 	srce=$(echo "$res"|cut -f3 -d,)
 	dest=$(echo "$res"|cut -f4 -d,)
+	child=$(echo "$res"|cut -f5 -d,)
 	Enabled=${res##*,}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1=$res_name,$git_url,$srce,$dest,$Enabled"
+	eval "res$1=$res_name,$git_url,$srce,$dest,$child,$Enabled"
 }
 
 build_resources() {
@@ -351,13 +342,13 @@ curl_parent() {
 }
 
 curl_child() { # need parent first, then zip source
-	parent=$git_url
+	parent="$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")"
 	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 
-	child=$res_name # self
+	child="$res_name" # self
 	res_name=$parent
 
-	curl_parent||curl_failed
+	curl_parent # temp use parent resources
 
 	git_url=$parent
 	res_name="$child"
@@ -389,16 +380,16 @@ curl_resources() {
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)") # cycle through group members
 		do
 			get_res "$G$S"
-			if [ "$Enabled" != "false" ];then
+			if [ "${Enabled%-*}" != "false" ];then
 				if [ -z "$srce" ]; then # no source alread, need to download
 					case ${res_name##*.} in
 					"base")
 						;;
 					"efi"|"kext")
-						if [ -n "$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")" ]; then
-							curl_child||curl_failed
+						if [ -n "$child" ]; then
+							curl_child
 						else
-							curl_parent||curl_failed
+							curl_parent
 						fi
 						;;
 					"aml")
@@ -486,22 +477,6 @@ check_if_Sample_plist_updated() {
 #	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
-parse_json() { # rewrite - don't want to use jshon/jq/jsawk if avoidable
-	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
-	if [ -n "$parent" ]; then # has parent resource
-		git_url=$parent
-		if [ "$MODE" = "latest-source" ]; then
-			git_url=$(jshon -e "$git_url" -e "$MODE" -u < "$GIT_JSON"||echo "")
-		fi
-	else # is parent resource
-		if [ "$MODE" = "latest-source" ]; then
-			git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
-		else
-			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
-		fi
-	fi
-}
-
 parse_plist() { # read plist file hack
 	a=0; in_loop=0
 	while read -r ONE
@@ -562,9 +537,37 @@ build_vault() {
 	fin
 }
 
+find_srce_url() {
+	child=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
+	if [ "$MODE" = "latest-source" ]; then
+		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
+		if [ -z "$git_url" ]; then
+			git_url="$(jshon -e "$child" -e "latest-source" -u < "$GIT_JSON"||echo "")"
+		fi
+	else
+		if [ -z "$child" ]; then
+			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+		else
+			git_url=$(jshon -e "$child" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+		fi
+	fi
+#	if [ -n "$parent" ]; then # has parent resource
+#		git_url=$parent
+#		if [ "$MODE" = "latest-source" ]; then
+#			git_url=$(jshon -e "$git_url" -e "$MODE" -u < "$GIT_JSON"||echo "")
+#		fi
+#	else # is parent resource
+#		if [ "$MODE" = "latest-source" ]; then
+#			git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
+#		else
+#			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+#		fi
+#	fi
+}
+
 add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 #	PARSE_FILE="$REPO_PLIST"
-	parse_json
+	find_srce_url
 	if [ -z "$COPY"  ] && [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ]; then # found repo
 			srce=""
@@ -599,7 +602,7 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
-		PARSE_FILE="$CONFIG_PLIST"
+		PARSE_FILE="$CONFIG_PLIST" # can move out of loop if keeping json format
 		res_name=$(parse_plist "$2" "$3" "$i" "$4")
 		if [ -n "$res_name" ];then
 			case "$1" in
@@ -628,6 +631,40 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	eval G"$G"_NUM=$((S-1))
 }
 
+init_res_array() { # base-resources moved into .tool-files for portability
+	S=0; G=0
+	while read -r line
+	do
+		S=$((S+1))
+		eval "res0$S=$line,true"
+	done < "$TOOL_FILES/no-pre-base-resources"
+	preB=$S
+	if [ "$MODE" = "latest-source" ]; then
+		for S in $(seq 1 $preB) # add resources without prebuilts
+		do
+			get_res "0$S"
+			if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
+			add_res_array
+			res_name="base"
+			set_res "0$S"
+		done
+	fi
+	#now add resources without prebuilts
+	while read -r line
+	do
+		S=$((S+1))
+		eval "res0$S=$line,true"
+	done < "$TOOL_FILES/pre-base-resources"
+	eval G0_NUM=$S
+	for S in $(seq $((preB+1)) $G0_NUM) # add resources with prebuilts
+	do
+		get_res "0$S"
+		add_res_array
+	done
+	G0_NUM=$((G0_NUM+1))
+	eval "res0$G0_NUM=config.plist,,$INPUT,OC,,true"
+}
+
 set_build_type() {
 	case $1 in
 		d|debug)
@@ -644,12 +681,12 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
-	for G in $(seq 0 5)
+	for G in $(seq 0 4)
 	do
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
-			msg "$G$S | $res_name | $git_url | $srce | $dest | $Enabled\n"
+			msg "$G$S|$res_name|$git_url|$srce|$dest|$child|$Enabled\n"
 		done
 	done
 }
@@ -1003,13 +1040,15 @@ text_user_interface() {
 				CONFIG_CHANGED="true"
 				;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
-				if [ "$Enabled" = "true" ];then
-					Enabled="false"
-					CONFIG_CHANGED="true"
-				elif [ "$Enabled" = "false" ];then
-					Enabled="true"
-					CONFIG_CHANGED="true"
-				fi
+				case "$Enabled" in
+					true)
+						Enabled="false"
+						;;
+					false)
+						Enabled="true"
+						;;
+				esac
+				CONFIG_CHANGED="true"
 				set_res "$G$S"
 				;;
 #			+) # possible change + - to inc dec numeric entries
@@ -1239,6 +1278,9 @@ add_resource "2" "Kernel" "Add" "BundlePath"
 add_resource "3" "UEFI" "Drivers"
 add_resource "4" "Misc" "Tools" "Path"
 
+#print_res_array
+#exit 0
+
 PARSE_FILE="$CONFIG_PLIST"
 USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
 
@@ -1264,9 +1306,9 @@ fi
 if [ -n "$CONFIG_CHANGED" ]; then
 	write_new_conf
 	command -v "plutil"&&plutil -convert xml1 "$BASE_DIR/Docs/config.plist"
-	get_res "06" # update srce location for config.plist file
+	get_res "0$G0_NUM" # update location for config.plist file
 	srce="$BASE_DIR/Docs"
-	set_res "06"
+	set_res "0$G0_NUM"
 fi
 
 if [ "$TEXT" = "stop" ];then exit 0;fi

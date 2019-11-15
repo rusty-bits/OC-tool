@@ -1,6 +1,0 @@
- base,EfiPkg,,
- base,MacInfoPkg,,
- base,OcSupportPkg,,
- BOOTx64.efi,OpenCorePkg,,BOOT
- OpenCore.efi,OpenCorePkg,,OC
- config.plist,,$INPUT,OC

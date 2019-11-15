@@ -1,7 +1,6 @@
 {
   "OpenCorePkg" : {
-    "type" : "base",
-    "latest-source" : "https://github.com/acidanthera/OpenCorePkg/",
+    "latest-source" : "https://github.com/acidanthera/OpenCorePkg",
     "prebuilt-release" : {
       "commit" : "8be245fb1a775b6a11766f827b5e9bad50e6247b",
       "commitdescription" : "latest release",
@@ -136,7 +135,6 @@
     }
   },
   "WhateverGreen.kext" : {
-    "type" : "kext",
     "latest-source" : "https://github.com/acidanthera/WhateverGreen",
     "prebuilt-release" : {
       "commit" : "f5c4211b160f00b6b495112ae59cc23cec6a541b",
@@ -382,6 +380,11 @@
   },
   "Lilu.kext" : {
     "latest-source" : "https:\/\/github.com\/acidanthera\/Lilu",
+    "parent" : "Lilu",
+    "path" : ""
+  },
+  "Lilu" : {
+    "latest-source" : "https:\/\/github.com\/acidanthera\/Lilu",
     "prebuilt-release" : {
       "commit" : "",
       "commitdescription" : "",
@@ -408,7 +411,9 @@
     }
   },
   "VirtualSmc.efi" : {
-    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg"
+    "latest-source" : "https:\/\/github.com\/acidanthera\/AppleSupportPkg",
+    "parent" : "VirtualSMC",
+    "path" : "Drivers"
   },
   "LiluFriend.kext" : {
     "latest-source" : "https:\/\/github.com\/PMheart\/LiluFriend"
