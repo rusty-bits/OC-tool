@@ -415,7 +415,7 @@ res_not_found() {
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
 		IGNORE="yes"
-		CONFIG_CHANGED="true" # need to write new config before build
+		CONFIG_CHANGED="-i option" # need to write new config before build
 	fi
 }
 
@@ -1037,7 +1037,7 @@ text_user_interface() {
 					USE_VAULT="true"
 				fi
 				draw_header
-				CONFIG_CHANGED="true"
+				CONFIG_CHANGED="-T/-t option"
 				;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
 				case "$Enabled" in
@@ -1048,7 +1048,7 @@ text_user_interface() {
 						Enabled="true"
 						;;
 				esac
-				CONFIG_CHANGED="true"
+				CONFIG_CHANGED="-T/-t option"
 				set_res "$G$S"
 				;;
 #			+) # possible change + - to inc dec numeric entries
@@ -1298,7 +1298,7 @@ if [ "$TEXT" = "quit" ];then exit 0;fi
 if [ "$MODE" != "latest-source" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
-		CONFIG_CHANGED="true"
+		CONFIG_CHANGED="temp vault disable"
 		msg "\n${YEL}NOTICE:${NC} vault disabled at the moment for prebuilts\n"
 	fi
 fi
@@ -1333,7 +1333,7 @@ fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
 if [ -n "$CONFIG_CHANGED" ]; then
-	msg "\n${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by use of the -i/-T options\n"
+	msg "\n${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
 	msg "\tthe original $CONFIG_PLIST ${YEL}has not been touched${NC}\n"
