@@ -1271,6 +1271,7 @@ fi
 start_logging
 
 if [ "$MODE" = "latest-source" ]; then check_requirements; fi
+command -v jshon||missing "jshon" "this is currently required to parse json files" "code will be rewritten soon so it won't be needed"
 check_config
 
 init_res_array
