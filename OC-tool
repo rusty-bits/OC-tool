@@ -447,9 +447,13 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	cp "$DOC_DIR"/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${RED}WARNING:${NC} Sample$1.plist has been updated\n"
-	msg "${YEL}!!!${NC} Make sure $CONFIG_PLIST is up to date${NC}.\n"
-	msg "Run the tool again if you make any changes. ${YEL}!!!${NC}\n"
+	msg "\n${YEL}WARNING:${NC} Sample$1.plist has changed from last run.\n"
+	msg "  If you changed build types this may be normal.\n"
+	if [ -n "$UPDATE" ]; then
+		msg "  An update of the OpenCorePkg may have changed the config.plist format,\n"
+		msg "  make sure $CONFIG_PLIST is up to date.\n"
+		msg "  Run the tool again if you make any changes. ${YEL}!!!${NC}\n"
+	fi
 #	cfg_ok="false"
 }
 
