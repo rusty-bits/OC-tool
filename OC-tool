@@ -1,10 +1,11 @@
 #!/bin/sh -e
-ini=$(pwd)
+
+INI=$(pwd)
 cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
 
-if [ "$ini" != "$BASE_DIR" ];then # double-click from finder
+if [ "$INI" != "$BASE_DIR" ];then # double-click from finder
 	FINDER="true"
 else
 	FINDER=""
@@ -22,9 +23,9 @@ NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
 VER="2.0(151119) last checked with OpenCore version REL-053-2019-11-10"
 
-MODE="prebuilt-release"; TYPE="debug"  # set default to debug version of prebuilt release
+MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
-ex_com=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
+EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
 UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
 eval set -- "$(getopt cdhiloqrtuvTUVX "$@")" #allowable command line options
@@ -261,12 +262,12 @@ get_res() { # extract resource from psuedo array (needed for POSIX)
 	git_url=$(echo "$res"|cut -f2 -d,)
 	srce=$(echo "$res"|cut -f3 -d,)
 	dest=$(echo "$res"|cut -f4 -d,)
-	child=$(echo "$res"|cut -f5 -d,)
-	Enabled=${res##*,}
+	parent=$(echo "$res"|cut -f5 -d,)
+	enabled=${res##*,}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1=$res_name,$git_url,$srce,$dest,$child,$Enabled"
+	eval "res$1=$res_name,$git_url,$srce,$dest,$parent,$enabled"
 }
 
 build_resources() {
@@ -281,7 +282,7 @@ build_resources() {
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
-			if [ "$Enabled" != "false" ];then
+			if [ "$enabled" != "false" ];then
 				if [ -z "$srce" ]; then
 					case ${res_name##*.} in
 					"base"|"efi")
@@ -337,17 +338,17 @@ curl_parent() {
 }
 
 curl_child() { # need parent first, then zip source
-	parent="$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")"
+	path=$git_url
 	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 
-	child="$res_name" # self
+	temp="$res_name" # hold self
 	res_name=$parent
 
 	curl_parent # temp use parent resources
 
-	git_url=$parent
-	res_name="$child"
-	srce="$srce/$(jshon -e "$res_name" -e "path" -u < "$GIT_JSON"||echo "")"
+	git_url=$path
+	res_name="$temp"
+	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
 curl_acpi() { # compile .dsl into .aml if user hasn't already
@@ -380,16 +381,16 @@ curl_resources() {
 					case ${res_name##*.} in
 					"base")
 						;;
-					"efi"|"kext")
-						if [ -n "$child" ]; then
+					"efi"|"kext"|"aml")
+						if [ -n "$parent" ]; then
 							curl_child
 						else
 							curl_parent
 						fi
 						;;
-					"aml")
-						# curl_acpi||curl_failed
-						;;
+#					"aml")
+#						# curl_acpi||curl_failed
+#						;;
 					esac
 					set_res "$G$S"
 				fi
@@ -401,11 +402,15 @@ curl_resources() {
 
 res_not_found() {
 	if [ -z "$IGNORE" ]; then
-		msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON\n"
+		if [ "$MODE" = "latestSource" ]; then
+			msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON\n"
+		else
+			msg "\n${RED}ERROR:${NC}\t$1 - no prebuilt found for $1\n"
+		fi
 		msg "\t$1 file not found in extras directory\n"
 		msg "\tEither place $1 in extras directory to build EFI with $1\n"
 		msg "\tor run with -i option to build EFI without $1\n"
-		msg "\tfor example, try '$ex_com'\n"
+		msg "\tfor example, try '$EX_COM'\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
@@ -422,7 +427,7 @@ copy_resources() {
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
-			if [ "$Enabled" = "true" ];then
+			if [ "$enabled" = "true" ];then
 				if [ -n "$dest" ]; then
 					if [ "$srce" = "unknown" ];then # catch additions from TUI
 						res_not_found "$res_name"
@@ -455,7 +460,7 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 
 check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
-	if [ "$MODE" != "latest-source" ]; then
+	if [ "$MODE" != "latestSource" ]; then
 		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
 #		DOC_DIR="$RES_DIR/${$(jshon -e OpenCorePkg -e $MODE -e $TYPE -u < "$GIT_JSON")##*/}/Docs"
 		DOC_DIR="${DOC_DIR##*/}"
@@ -537,17 +542,18 @@ build_vault() {
 }
 
 find_srce_url() {
-	child=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
-	if [ "$MODE" = "latest-source" ]; then
+	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
+	if [ "$MODE" = "latestSource" ]; then
 		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
 		if [ -z "$git_url" ]; then
-			git_url="$(jshon -e "$child" -e "latest-source" -u < "$GIT_JSON"||echo "")"
+			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
 		fi
 	else
-		if [ -z "$child" ]; then
+		if [ -z "$parent" ]; then
 			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 		else
-			git_url=$(jshon -e "$child" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+#			git_url=$(jshon -e "$child" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
 		fi
 	fi
 }
@@ -556,11 +562,11 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 #	PARSE_FILE="$REPO_PLIST"
 	find_srce_url
 	if [ -z "$COPY"  ] && [ "$dest" != "OC/ACPI" ];then
-		if [ -n "$git_url" ]; then # found repo
+		if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
-		elif [ "$Enabled" = "false" ]; then
+		elif [ "$enabled" = "false" ]; then
 			srce="unknown"
 		else
 			res_not_found "$res_name"
@@ -570,7 +576,7 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 			srce="$BASE_DIR/extras"
 		elif [ -n "$git_url" ]; then # found repo
 			srce=""
-		elif [ "$Enabled" = "false" ];then
+		elif [ "$enabled" = "false" ];then
 			srce="unknown"
 		else
 			res_not_found "$res_name"
@@ -578,7 +584,7 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
-		Enabled="ignored"
+		enabled="ignored"
 		IGNORE="true"
 	fi
 	set_res "$G$S"
@@ -594,19 +600,19 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 		if [ -n "$res_name" ];then
 			case "$1" in
 				1)
-					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
+					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/ACPI";;
 				2)
-					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
+					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/Kexts";;
 				3)
-					Enabled="true"
+					enabled="true"
 					dest="OC/Drivers";;
 				4)
-					Enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
+					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
 					dest="OC/Tools";;
 				5|6|7|8)
-					Enabled=$(parse_plist "$2" "$3" "$res_name")
+					enabled=$(parse_plist "$2" "$3" "$res_name")
 					set_res "$G$S"
 					i=$((i+1));;
 			esac
@@ -627,7 +633,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		eval "res0$S=$line,true"
 	done < "$TOOL_FILES/no-pre-base-resources"
 	preB=$S
-	if [ "$MODE" = "latest-source" ]; then
+	if [ "$MODE" = "latestSource" ]; then
 		for S in $(seq 1 $preB) # add resources without prebuilts
 		do
 			get_res "0$S"
@@ -650,7 +656,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		add_res_array
 	done
 	G0_NUM=$((G0_NUM+1))
-	eval "res0$G0_NUM=config.plist,,$INPUT,OC,,true"
+	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
 }
 
 set_build_type() {
@@ -669,12 +675,12 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
-	for G in $(seq 0 8)
+	for G in $(seq 0 4)
 	do
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
-			msg "$G$S|$res_name|$git_url|$srce|$dest|$child|$Enabled\n"
+			msg "$G$S|$res_name|$git_url|$srce|$dest|$parent|$enabled\n"
 		done
 	done
 }
@@ -690,10 +696,10 @@ write_new_array() { # write array section changes to new plist
 	#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
-				if [ "$Enabled" = "ignored" ]; then
+				if [ "$enabled" = "ignored" ]; then
 					echo "<false/>" >> "$OUT" # ignored resource
 				else
-					echo "<$Enabled/>" >> "$OUT"
+					echo "<$enabled/>" >> "$OUT"
 				fi
 			fi
 		done
@@ -714,7 +720,7 @@ write_new_drivers() { # write driver section changes to new plist
 	do
 		read -r line
 		if [ "$line" = "<string>$res_name</string>" ];then
-			if [ "$Enabled" = "true" ];then
+			if [ "$enabled" = "true" ];then
 				echo "$line" >> "$OUT"
 			fi
 			S=$((S+1))
@@ -737,15 +743,15 @@ write_new_quirks() { # write quirks section changes to new plist
 #		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		if [ "$line" = "<key>$res_name</key>" ];then
 			read -r line
-			case "$Enabled" in
+			case "$enabled" in
 				true|false)
-					echo "<$Enabled/>" >> "$OUT"
+					echo "<$enabled/>" >> "$OUT"
 					;;
 				ignored)
 					echo "<false/>" >> "$OUT" # ignored resource
 					;;
 				[0-9])
-					echo "<integer>$Enabled</integer>" >> "$OUT"
+					echo "<integer>$enabled</integer>" >> "$OUT"
 					;;
 				*)
 					echo "$line" >> "$OUT"
@@ -829,7 +835,7 @@ set_text_header() {
 }
 
 set_color() { # set TUI section color based on resource
-	case "$Enabled" in
+	case "$enabled" in
 		true)
 			color="$GRN"; MSG="+"
 			;;
@@ -837,10 +843,10 @@ set_color() { # set TUI section color based on resource
 			color="$RED"; MSG="-"
 			;;
 		ignored)
-			color="${YEL}"; MSG="-i"
+			color="$YEL"; MSG="-i"
 			;;
 		*)
-			color="$BLU"; MSG="$Enabled"
+			color="$BLU"; MSG="$enabled"
 			;;
 	esac
 	if [ "$G" = "9" ];then color="$NC";fi
@@ -863,13 +869,13 @@ draw_key() {
 }
 
 draw_header() {
-	msg "$NC\033[H${U}m${UO}ode=$GRN$INV$MODE$NC ${U}t${UO}ype=$GRN$INV$TYPE$NC RequireVault="
+	msg "$NC\033[H${U}m${UO}ode=$GRN$MODE$NC ${U}t${UO}ype=$GRN$TYPE$NC RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
 		msg "$RED"
 	fi
-	msg "$INV$USE_VAULT$NC\033[K"
+	msg "$INV$USE_VAULT$NC\033[K INPUT=${GRN}$CONFIG_PLIST${NC}  "
 	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
@@ -1025,12 +1031,12 @@ text_user_interface() {
 				CONFIG_CHANGED="-T/-t option"
 				;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
-				case "$Enabled" in
+				case "$enabled" in
 					true)
-						Enabled="false"
+						enabled="false"
 						;;
 					false)
-						Enabled="true"
+						enabled="true"
 						;;
 				esac
 				CONFIG_CHANGED="-T/-t option"
@@ -1130,11 +1136,11 @@ do
 	case  "$1" in
 		-c)
 			COPY="true"
-			ex_com="${ex_com}c"
+			EX_COM="${EX_COM}c"
 			shift;;
 		-d)
-			MODE="prebuilt-daily"
-			ex_com="${ex_com}d"
+			MODE="prebuiltDaily"
+			EX_COM="${EX_COM}d"
 			shift;;
 		-h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
@@ -1143,35 +1149,35 @@ do
 			IGNORE="true"
 			shift;;
 		-l)
-			MODE="latest-source"
-			ex_com="${ex_com}l"
+			MODE="latestSource"
+			EX_COM="${EX_COM}l"
 			shift;;
 		-o)
 			FINDER="open"
-			ex_com="${ex_com}o"
+			EX_COM="${EX_COM}o"
 			shift;;
 		-q)
 			QUIET="-q"
-			ex_com="${ex_com}q"
+			EX_COM="${EX_COM}q"
 			shift;;
 		-r)
 			TYPE="release"
-			ex_com="${ex_com}r"
+			EX_COM="${EX_COM}r"
 			shift;;
 		-u)
 			UPDATE="true"
-			ex_com="${ex_com}u"
+			EX_COM="${EX_COM}u"
 			shift;;
 		-v)
 			msg "OC-tool version $VER\n"
 			exit 0;;
 		-T|-t)
 			TEXT="true"
-			ex_com="${ex_com}t"
+			EX_COM="${EX_COM}t"
 			shift;;
 		-U)
 			UPDATE="stop"
-			ex_com="${ex_com}U"
+			EX_COM="${EX_COM}U"
 			shift;;
 		-V)
 			VERBOSE="-v"
@@ -1192,7 +1198,7 @@ do
 	esac
 done
 
-if [ "$MODE" = "prebuilt-daily" ]; then
+if [ "$MODE" = "prebuiltDaily" ]; then
 	msg "\n${YEL}$MODE${NC} not implemented yet.\n"
 	exit 0
 fi
@@ -1200,7 +1206,7 @@ fi
 RES_DIR="$BASE_DIR/resources/$MODE"
 
 if [ -n "$1" ]; then # possible new input source
-	INPUT="$1"
+	INPUT="$@" # will need to gather all args for paths with spaces
 	if [ -e "$INPUT" ]; then
 		if [ -e "$INPUT/OC" ]; then
 			BOOT_LOADER="OC"
@@ -1242,7 +1248,7 @@ fi
 
 start_logging
 
-if [ "$MODE" = "latest-source" ]; then check_requirements; fi
+if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 command -v jshon||missing "jshon" "this is currently required to parse json files" "code will be rewritten soon so it won't be needed"
 check_config
 
@@ -1266,7 +1272,7 @@ fi
 
 if [ "$TEXT" = "quit" ];then exit 0;fi
 
-if [ "$MODE" != "latest-source" ]; then
+if [ "$MODE" != "latestSource" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
 		CONFIG_CHANGED="temp vault disable"
@@ -1284,7 +1290,7 @@ fi
 
 if [ "$TEXT" = "stop" ];then exit 0;fi
 
-if [ "$MODE" = "latest-source" ]; then
+if [ "$MODE" = "latestSource" ]; then
 	build_resources
 else
 	curl_resources
