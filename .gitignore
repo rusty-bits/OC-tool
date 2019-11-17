@@ -3,7 +3,6 @@
 tool.log
 INPUT/config.plist
 Docs/config.plist
-Docs/Sample.plist
 Docs/SampleFull.plist
 
 OUTPUT/EFI/*
