@@ -1,7 +1,7 @@
 # OC-tool  
 POSIX shell script that builds an OpenCore EFI folder from an OpenCore config.plist  
 
-Can also be double-clicked in macOS Finder which will run as `./OC-tool -ou build release` 
+Can also be double-clicked in macOS Finder which will run as `./OC-tool -o` 
 
 see the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more detailed information  
 
@@ -12,19 +12,18 @@ see the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for mor
 `git clone https://github.com/rusty-bits/OC-tool`   
 `cd OC-tool`  
 
-place your config.plist file in the appropriate directory, or copy and edit one of the sample plist files. eg.  
+copy your `config.plist` file into the `INPUT` folder, or copy and edit one of the sample plist files.  
 
-`cp Docs/SampleFull.plist RELEASE/config.plist` for building a release version  
-
-`cp Docs/SampleFull.plist DEBUG/config.plist` for building a debug version  
+e.g. `cp Docs/SampleFull.plist INPUT/config.plist`
 
 ---
 
 **Requirements**  
 
 - `git` is installed  
+- `jshon` is installed (needed currently, will rewrite to remove this requirement soon)  
 
-- `xcodebuild`, `nasm`, and `mtoc` are installed and configured to run from the command line  
+To build from source instead of using prebuilt releases `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line, they are not required to use prebuilts  
   
 - if you want the tool to compile .dsl files into .aml on the fly, `iasl` needs to be installed, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
 
