@@ -21,14 +21,14 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.0(151119) last checked with OpenCore version REL-053-2019-11-10"
+VER="2.0(161119) last checked with OpenCore version REL-053-2019-11-10"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
-EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""; COPY=""
-UPDATE=""; REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
+EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
+REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-eval set -- "$(getopt cdhiloqrtuvTUVX "$@")" #allowable command line options
+eval set -- "$(getopt dhioqrstvTVX "$@")" #allowable command line options
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -98,26 +98,24 @@ clone() { # will only clone if pkg is not local
 }
 
 check_for_updates() {
-	msg "\n${GRN}Checking for updates${NC} ... \n"
 	cd "$BASE_DIR"
-	msg "OC-tool - " # check OC-tool itself first
+	if [ -z "$QUIET" ]; then
+		msg "\n${GRN}Checking for updates${NC} ... \n"
+		msg "OC-tool - " # check OC-tool itself first
+	fi
 	git fetch --all $VERBOSE $QUIET
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
 		msg "${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
-		exit 0
+		exit 2
 	fi
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
-	if [ -d "$RES_DIR" ]; then
+	if [ -d "$RES_DIR" ] && [ "$MODE" = "latestSource" ]; then
 		cd "$RES_DIR" # now check all other resources
 		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
-			msg "$git_dir - "
-			git -C "$git_dir" fetch --all $VERBOSE $QUIET
-			if [ "$(git -C "$git_dir" rev-parse @)" != "$(git -C "$git_dir" rev-parse "@{u}")" ];then
-				git -C "$git_dir" pull $VERBOSE $QUIET
-				if [ "$UPDATE" = "stop" ];then UPDATE="true";fi
-			fi
+			if [ -z "$QUIET" ]; then msg "${git_dir##*/} - "; fi
+			git -C "$git_dir" pull $VERBOSE $QUIET
 		done
 	fi
 }
@@ -313,7 +311,8 @@ build_resources() {
 }
 
 curl_failed() { # is this needed?
-	msg "\n${RED}ERROR:${NC} download failed for $res_name\n"
+	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
+	msg "\tpossible shasum mismatch\n"
 	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
 	exit 1
 }
@@ -351,21 +350,6 @@ curl_child() { # need parent first, then zip source
 	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
-curl_acpi() { # compile .dsl into .aml if user hasn't already
-	pkg_name=$(echo "$res_name"|cut -f1 -d.)
-	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
-	if [ -e "$srce/$res_name" ];then
-		return 0
-	elif [ -e "$RES_DIR/$git_url" ];then
-		command -v iasl||missing_iasl
-		msg "Building $res_name ... "
-		iasl "$RES_DIR/$git_url"||return 1
-		fin
-	else
-		return 1
-	fi
-}
-
 curl_resources() {
 	msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
 	mkdir -p "$RES_DIR"
@@ -379,18 +363,15 @@ curl_resources() {
 			if [ "${Enabled%-*}" != "false" ];then
 				if [ -z "$srce" ]; then # no source alread, need to download
 					case ${res_name##*.} in
-					"base")
-						;;
-					"efi"|"kext"|"aml")
-						if [ -n "$parent" ]; then
-							curl_child
-						else
-							curl_parent
-						fi
-						;;
-#					"aml")
-#						# curl_acpi||curl_failed
-#						;;
+						"base")
+							;;
+						"efi"|"kext"|"aml")
+							if [ -n "$parent" ]; then
+								curl_child
+							else
+								curl_parent
+							fi
+							;;
 					esac
 					set_res "$G$S"
 				fi
@@ -446,15 +427,8 @@ copy_resources() {
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
-	cp "$DOC_DIR"/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	msg "\n${YEL}WARNING:${NC} Sample$1.plist has changed from last run.\n"
-	msg "  If you changed build types this may be normal.\n"
-	if [ -n "$UPDATE" ]; then
-		msg "  An update of the OpenCorePkg may have changed the config.plist format,\n"
-		msg "  make sure $CONFIG_PLIST is up to date.\n"
-		msg "  Run the tool again if you make any changes. ${YEL}!!!${NC}\n"
-	fi
-#	cfg_ok="false"
+	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
+	msg "\tIf you changed build mode this may be normal.\n"
 }
 
 
@@ -462,23 +436,14 @@ check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
 	if [ "$MODE" != "latestSource" ]; then
 		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
-#		DOC_DIR="$RES_DIR/${$(jshon -e OpenCorePkg -e $MODE -e $TYPE -u < "$GIT_JSON")##*/}/Docs"
 		DOC_DIR="${DOC_DIR##*/}"
 		DOC_DIR="$RES_DIR/OpenCorePkg/${DOC_DIR%.*}/Docs"
 	fi
-#	cfg_ok=""
-#	msg "\nChecking if Sample.plist or SampleFull.plist format has changed ... "
 	if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
 		cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
 	else
 		cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	fi
-	if [ -e "$BASE_DIR/Docs/SampleFull.plist" ]; then
-		cmp --silent "$DOC_DIR"/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist||plist_changed "Full"
-	else
-		cp "$DOC_DIR"/SampleFull.plist "$BASE_DIR"/Docs/SampleFull.plist
-	fi
-#	if [ -z "$cfg_ok" ]; then fin; fi
 }
 
 parse_plist() { # read plist file hack
@@ -516,11 +481,11 @@ parse_plist() { # read plist file hack
 				a=$1; in_loop=1
 				shift;;
 		esac
-	done < "$PARSE_FILE"
+	done < "$CONFIG_PLIST"
 }
 
 vault_failed() {
-	msg "${RED}ERROR\n\nERROR:${NC} vault build failed, see $LOGFILE for details\n"
+	msg "${RED}ERROR:${NC} vault build failed, see $LOGFILE for details\n"
 	exit 1
 }
 
@@ -552,16 +517,14 @@ find_srce_url() {
 		if [ -z "$parent" ]; then
 			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 		else
-#			git_url=$(jshon -e "$child" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
 		fi
 	fi
 }
 
 add_res_array() { # add a resource to the psuedo array (neede for POSIX)
-#	PARSE_FILE="$REPO_PLIST"
 	find_srce_url
-	if [ -z "$COPY"  ] && [ "$dest" != "OC/ACPI" ];then
+	if [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
@@ -571,7 +534,7 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 		else
 			res_not_found "$res_name"
 		fi
-	else # copy mode, check extras folder first
+	else # check extras folder first for ACPI files
 		if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
 		elif [ -n "$git_url" ]; then # found repo
@@ -595,7 +558,6 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	res_name="start"
 	until [ -z "$res_name" ]
 	do
-		PARSE_FILE="$CONFIG_PLIST" # can move out of loop if keeping json format
 		res_name=$(parse_plist "$2" "$3" "$i" "$4")
 		if [ -n "$res_name" ];then
 			case "$1" in
@@ -984,14 +946,8 @@ text_user_interface() {
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
 				redraw_screen
 				;;
-			m)
-				if [ "$COPY" = "true" ];then
-					COPY=""
-				else
-					COPY="true"
-				fi
-				draw_header
-				;;
+#			m)
+#				;;
 			p) # debug dump array
 				stty echo
 				msg "${NC}"
@@ -1134,10 +1090,6 @@ stop_logging() {
 while :
 do
 	case  "$1" in
-		-c)
-			COPY="true"
-			EX_COM="${EX_COM}c"
-			shift;;
 		-d)
 			MODE="prebuiltDaily"
 			EX_COM="${EX_COM}d"
@@ -1147,10 +1099,6 @@ do
 			exit 0;;
 		-i)
 			IGNORE="true"
-			shift;;
-		-l)
-			MODE="latestSource"
-			EX_COM="${EX_COM}l"
 			shift;;
 		-o)
 			FINDER="open"
@@ -1164,9 +1112,9 @@ do
 			TYPE="release"
 			EX_COM="${EX_COM}r"
 			shift;;
-		-u)
-			UPDATE="true"
-			EX_COM="${EX_COM}u"
+		-s)
+			MODE="latestSource"
+			EX_COM="${EX_COM}l"
 			shift;;
 		-v)
 			msg "OC-tool version $VER\n"
@@ -1175,22 +1123,11 @@ do
 			TEXT="true"
 			EX_COM="${EX_COM}t"
 			shift;;
-		-U)
-			UPDATE="stop"
-			EX_COM="${EX_COM}U"
-			shift;;
 		-V)
 			VERBOSE="-v"
 			shift;;
 		-X)
-			if [ -z "$UPDATE" ];then
-				msg "Deleting $BASE_DIR/resources ... "
-				rm -rf "$BASE_DIR/resources"
-				fin
-				REMOVE_ALL="true"
-			else
-				msg "${YEL}WARNING:${NC} not deleting $BASE_DIR/resources since update option selected first\n"
-			fi
+			REMOVE_ALL="true"
 			shift;;
 		--)
 			shift
@@ -1200,24 +1137,26 @@ done
 
 if [ "$MODE" = "prebuiltDaily" ]; then
 	msg "\n${YEL}$MODE${NC} not implemented yet.\n"
-	exit 0
+	exit 1
 fi
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
+if [ -n "$REMOVE_ALL" ]; then
+	msg "Deleting $RES_DIR ... "
+	rm -rf "$RES_DIR"
+	fin
+fi
+
 if [ -n "$1" ]; then # possible new input source
 	INPUT="$@" # will need to gather all args for paths with spaces
 	if [ -e "$INPUT" ]; then
-		if [ -e "$INPUT/OC" ]; then
-			BOOT_LOADER="OC"
+		if [ -e "$INPUT/OC/config.plist" ]; then
 			INPUT="$INPUT/$BOOT_LOADER"
-			CONFIG_PLIST="$INPUT/config.plist"
+			CONFIG_PLIST="$INPUT/OC/config.plist"
 		elif [ -e "$INPUT/CLOVER" ]; then
-			BOOT_LOADER="CLOVER"
 			msg "Can not process CLOVER EFI folders yet.\n"
-			INPUT="$INPUT/$BOOT_LOADER"
-			CONFIG_PLIST="$INPUT/config.plist"
-			exit 0
+			exit 1
 		elif [ -e "$INPUT/config.plist" ]; then
 			CONFIG_PLIST="$INPUT/config.plist"
 		else
@@ -1231,21 +1170,13 @@ if [ -n "$1" ]; then # possible new input source
 else # no path given, use INPUT folder
 	INPUT="$BASE_DIR/INPUT"
 	CONFIG_PLIST="$INPUT/config.plist"
-	BOOT_LOADER="OC"
 fi
 
 set_build_type "$TYPE"
 
 if [ -n "$FINDER" ]; then FINDER="$OUTPUT"; fi
 
-if [ -n "$UPDATE" ]; then
-	check_for_updates
-	if [ "$UPDATE" = "stop" ];then
-		msg "${GRN}All resources are up to date.${NC}\n"
-		exit 0
-	fi
-fi
-
+check_for_updates
 start_logging
 
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
@@ -1258,7 +1189,6 @@ add_resource "2" "Kernel" "Add" "BundlePath"
 add_resource "3" "UEFI" "Drivers"
 add_resource "4" "Misc" "Tools" "Path"
 
-PARSE_FILE="$CONFIG_PLIST"
 USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
 
 if [ -n "$TEXT" ]; then
