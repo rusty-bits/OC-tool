@@ -3,7 +3,8 @@ POSIX shell script that builds an OpenCore EFI folder from an OpenCore config.pl
 
 Can also be double-clicked in macOS Finder which will run as `./OC-tool -o` 
 
-see the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more detailed information  
+see either the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more detailed information  
+or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/master/Docs/tool-changelog.md) for ver 2.0 info  
 
 ---
 
