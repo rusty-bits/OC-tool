@@ -1,9 +1,9 @@
 ## ver 2.0(171119)  
-**removed -c option**  
+- **removed -c option**  
 but ACPI files will still be copied from `extras` first  
 
-**removed -u and -U options**  
-- prebuilts will be using the json file  
+- **removed -u and -U options**  
+prebuilts will be using the json file  
 latest source builds will check for git updates before building  
 in either case tool will check itself for updates first  
 
