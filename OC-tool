@@ -1180,9 +1180,14 @@ else
 		mkdir -p "$INPUT"
 		cp "${1}" "$CONFIG_PLIST"
 	else
-		msg "\nUsing INPUT/config.plist\n"
-		INPUT="$BASE_DIR/INPUT"
-		CONFIG_PLIST="$INPUT/config.plist"
+		if [ -n "$1" ]; then
+			msg "$(cat $TOOL_FILES/usage.msg)\n"
+			exit 1
+		else
+			msg "\nUsing INPUT/config.plist\n"
+			INPUT="$BASE_DIR/INPUT"
+			CONFIG_PLIST="$INPUT/config.plist"
+		fi
 	fi
 fi
 
