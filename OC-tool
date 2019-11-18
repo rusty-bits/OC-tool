@@ -68,7 +68,10 @@ check_requirements() { #required commands moved to .tool-files/requirements for 
 
 check_config() { #config.plist must exist, even with -i option
 	if [ ! -f "$CONFIG_PLIST" ]; then
-		msg "\n${RED}ERROR:${NC} $CONFIG_PLIST does not exist\n\nPlease create this file and run the tool again.\n"
+		msg "\n${RED}ERROR:${NC}\t$CONFIG_PLIST does not exist\n"
+		msg "\tEither - copy a config.plist to the INPUT folder,\n"
+		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
+		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file'|./OC-tool'\n"
 		exit 1
 	fi
 }
@@ -362,7 +365,7 @@ curl_resources() {
 		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)") # cycle through group members
 		do
 			get_res "$G$S"
-			if [ "${Enabled%-*}" != "false" ];then
+			if [ "$enabled" != "false" ];then
 				if [ -z "$srce" ]; then # no source alread, need to download
 					case ${res_name##*.} in
 						"base")
@@ -1158,34 +1161,35 @@ fi
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
+if [ -p /dev/stdin ]; then
+#	"Data was piped to this script!"
+	INPUT="$BASE_DIR/INPUT/temp"
+	CONFIG_PLIST="$INPUT/config.plist"
+	mkdir -p "$INPUT"
+	cat > "$CONFIG_PLIST"
+	QUIET="-q" # currently stdin is not a terminal, no output to tty
+	TEXT="" # no TUI use either with piped config.plist
+else
+# "No input was found on stdin, skipping!"
+# Checking to ensure a filename was specified and that it exists
+	if [ -f "$1" ]; then
+		msg "\nUsing ${1}\n"
+		INPUT="$BASE_DIR/INPUT/temp"
+		CONFIG_PLIST="$INPUT/config.plist"
+		EX_COM="${EX_COM} ${1}"
+		mkdir -p "$INPUT"
+		cp "${1}" "$CONFIG_PLIST"
+	else
+		msg "\nUsing INPUT/config.plist\n"
+		INPUT="$BASE_DIR/INPUT"
+		CONFIG_PLIST="$INPUT/config.plist"
+	fi
+fi
+
 if [ -n "$REMOVE_ALL" ]; then
 	msg "Deleting $RES_DIR ... "
 	rm -rf "$RES_DIR"
 	fin
-fi
-
-if [ -n "$1" ]; then # possible new input source
-	INPUT="$@" # will need to gather all args for paths with spaces
-	if [ -e "$INPUT" ]; then
-		if [ -e "$INPUT/OC/config.plist" ]; then
-			INPUT="$INPUT/$BOOT_LOADER"
-			CONFIG_PLIST="$INPUT/OC/config.plist"
-		elif [ -e "$INPUT/CLOVER" ]; then
-			msg "Can not process CLOVER EFI folders yet.\n"
-			exit 1
-		elif [ -e "$INPUT/config.plist" ]; then
-			CONFIG_PLIST="$INPUT/config.plist"
-		else
-			msg "Could not find config.plist in $INPUT, verify path is correct.\n"
-			exit 1
-		fi
-	else
-		msg "$(cat "$TOOL_FILES"/usage.msg)\n"
-		exit 1
-	fi
-else # no path given, use INPUT folder
-	INPUT="$BASE_DIR/INPUT"
-	CONFIG_PLIST="$INPUT/config.plist"
 fi
 
 set_build_type "$TYPE"
@@ -1196,7 +1200,7 @@ check_for_updates
 start_logging
 
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-command -v jshon||missing "jshon" "this is currently required to parse json files" "code will be rewritten soon so it won't be needed"
+command -v jshon||missing "jshon" "this is currently required to parse json files" "if I can, code will be rewritten soon so it won't be needed\n\ton macOS you can try ${YEL}brew install jshon${NC}\n\ton Linux you can try ${YEL}sudo apt install jshon${NC}"
 check_config
 
 init_res_array
