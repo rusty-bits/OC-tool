@@ -326,11 +326,13 @@ curl_parent() {
 	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		msg "Downloading $zip_name ... "
-		curl -L -O "$git_url"
+		curl -L "$git_url" -o "$zip_name"
 		shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
 		if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
 		msg "unzipping ... "
-		unzip -o "$zip_name"
+		if [ "${zip_name##*.}" = "zip" ]; then
+			unzip -o "$zip_name"
+		fi
 		fin
 	fi
 	srce="$(pwd)"
@@ -625,6 +627,14 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	done
 	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
+
+	cd "$BASE_DIR/extras"
+	if [ ! -e "HFSPlus.efi" ]; then
+		curl -L "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi" -o HFSPlus.efi
+	fi
+	if [ ! -e "HfsPlus.efi" ]; then
+		cp HFSPlus.efi HfsPlus.efi
+	fi
 }
 
 set_build_type() {
