@@ -491,6 +491,12 @@ vault_failed() {
 
 build_vault() {
 	msg "\nBuilding vault files for $BUILD_DIR ... "
+	if [ ! -e "$RES_DIR/UDK/OcSupportPkg" ]; then
+		mkdir -p "$RES_DIR/UDK/OcSupportPkg"
+		cd "$RES_DIR/UDK/OcSupportPkg"
+		curl -L -O "https://github.com/rusty-bits/OcSupportPkg/releases/download/161119/OcSupportPkg-DEBUG-161119.zip"
+		unzip "OcSupportPkg-DEBUG-161119.zip"
+	fi
 	cd "$BUILD_DIR"/OC
 	if ls vault* 1> /dev/null 2>&1; then
 		rm vault.*
@@ -1202,11 +1208,12 @@ fi
 
 if [ "$TEXT" = "quit" ];then exit 0;fi
 
-if [ "$MODE" != "latestSource" ]; then
+if [ "$MODE" != "latestSource" ] && [ "$(uname)" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
 		CONFIG_CHANGED="temp vault disable"
-		msg "\n${YEL}NOTICE:${NC} vault disabled at the moment for prebuilts\n"
+		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $(uname)\n"
+		msg "\tvault disabled for prebuilts not made on macOS\n"
 	fi
 fi
 
