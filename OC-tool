@@ -268,7 +268,7 @@ get_res() { # extract resource from psuedo array (needed for POSIX)
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1=$res_name,$git_url,$srce,$dest,$parent,$enabled"
+	eval "res$1=$res_name,'$git_url','$srce',$dest,$parent,$enabled"
 }
 
 build_resources() {
@@ -1181,7 +1181,7 @@ else
 		cp "${1}" "$CONFIG_PLIST"
 	else
 		if [ -n "$1" ]; then
-			msg "$(cat $TOOL_FILES/usage.msg)\n"
+			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
 			msg "\nUsing INPUT/config.plist\n"

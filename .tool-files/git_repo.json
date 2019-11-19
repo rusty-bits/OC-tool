@@ -537,7 +537,7 @@
   "RealtekRTL8111.kext" : {
     "latestSource" : "https:\/\/github.com\/Mieze\/RTL8111_driver_for_OS_X",
   "parent" : "RealtekRTL8111.kext",
-  "path" : "Version 2.2.2/Debug",
+  "path" : "RealtekRTL8111-V2.2.2/Version\u0020 2.2.2/Debug",
   "prebuiltRelease" : {
     "version" : "2.2.2",
     "debug" : "https://github.com/Mieze/RTL8111_driver_for_OS_X/releases/download/v2.2.2/RealtekRTL8111-V2.2.2.zip",
