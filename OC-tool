@@ -28,7 +28,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-eval set -- "$(getopt dhioqrstvTVX "$@")" #allowable command line options
+eval set -- "$(getopt dhioqrstvVX "$@")" #allowable command line options
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -71,7 +71,7 @@ check_config() { #config.plist must exist, even with -i option
 		msg "\n${RED}ERROR:${NC}\t$CONFIG_PLIST does not exist\n"
 		msg "\tEither - copy a config.plist to the INPUT folder,\n"
 		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
-		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file'|./OC-tool'\n"
+		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file' | ./OC-tool'\n"
 		exit 1
 	fi
 }
@@ -132,6 +132,13 @@ make_base_tools() {
 	make -C BaseTools
 }
 
+build_failed() { # failed build even after backing up 5 commits
+	git checkout master
+	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n"
+	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
+	exit 1
+}
+
 build_shell_tool() { #possible to automate this function?
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
@@ -154,11 +161,38 @@ build_shell_tool() { #possible to automate this function?
 	fin
 }
 
-build_failed() { # failed build even after backing up 5 commits
-	git checkout master
-	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n"
-	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
-	exit 1
+build_driver() {
+	cd "$RES_DIR"/UDK
+	clone "$git_url"
+	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+	cd "$pkg_name"
+	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
+		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
+		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
+		if [ -f "$pkg_name.dsc" ]; then
+			if [ -z "$BASE_TOOLS" ]; then #no need to build again
+				msg "Making base tools ... "
+				cd ..
+				make_base_tools; fin
+				cd "$pkg_name"
+				BASE_TOOLS="built"
+			fi
+			a=1
+			while :
+			do
+				msg "Building $AUDK_CONFIG $pkg_name ... "
+				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
+				if [ "$a" -eq "5" ]; then return 1; fi
+				git_sha=$(git rev-parse @|cut -c -7)
+				msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
+				git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+				a=$((a+1))
+			done
+			if [ "$a" -ne "1" ];then git checkout master; fi
+			fin
+		fi
+		git rev-parse HEAD > git"$AUDK_CONFIG"sha
+	fi
 }
 
 build_kext() {
@@ -199,40 +233,6 @@ build_kext() {
 			cp -r build/Products/* build
 		fi
 		fin
-	fi
-}
-
-build_driver() {
-	cd "$RES_DIR"/UDK
-	clone "$git_url"
-	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-	cd "$pkg_name"
-	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
-		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
-		if [ -f "$pkg_name.dsc" ]; then
-			if [ -z "$BASE_TOOLS" ]; then #no need to build again
-				msg "Making base tools ... "
-				cd ..
-				make_base_tools; fin
-				cd "$pkg_name"
-				BASE_TOOLS="built"
-			fi
-			a=1
-			while :
-			do
-				msg "Building $AUDK_CONFIG $pkg_name ... "
-				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
-				if [ "$a" -eq "5" ]; then return 1; fi
-				git_sha=$(git rev-parse @|cut -c -7)
-				msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
-				git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
-				a=$((a+1))
-			done
-			if [ "$a" -ne "1" ];then git checkout master; fi
-			fin
-		fi
-		git rev-parse HEAD > git"$AUDK_CONFIG"sha
 	fi
 }
 
@@ -326,7 +326,8 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
+#	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
+	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		msg "Downloading $zip_name ... "
 		curl -L "$git_url" -o "$zip_name"
@@ -342,15 +343,16 @@ curl_parent() {
 }
 
 curl_child() { # need parent first, then zip source
-	path=$git_url
-	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+	path="$git_url"
+#	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 
 	temp="$res_name" # hold self
-	res_name=$parent
+	res_name="$parent"
 
 	curl_parent # temp use parent resources
 
-	git_url=$path
+	git_url="$path"
 	res_name="$temp"
 	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
@@ -440,7 +442,8 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
 	if [ "$MODE" != "latestSource" ]; then
-		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
+#		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
+		DOC_DIR=$(grep "/OpenCorePkg/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 		DOC_DIR="${DOC_DIR##*/}"
 		DOC_DIR="$RES_DIR/OpenCorePkg/${DOC_DIR%.*}/Docs"
 	fi
@@ -518,17 +521,22 @@ build_vault() {
 }
 
 find_srce_url() {
-	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
+#	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
+	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
+#		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
+		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 		if [ -z "$git_url" ]; then
-			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
+#			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
+			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 		fi
 	else
 		if [ -z "$parent" ]; then
-			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+#			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 		else
-			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
+#			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
+			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
 		fi
 	fi
 }
@@ -631,7 +639,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
 
-	cd "$BASE_DIR/extras"
+	cd "$BASE_DIR/extras" # an ugly workaround to get HfsPlus.efi, better solution?
 	if [ ! -e "HFSPlus.efi" ]; then
 		curl -L "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi" -o HFSPlus.efi
 	fi
@@ -1136,15 +1144,15 @@ do
 			EX_COM="${EX_COM}l"
 			shift;;
 		-v)
-			msg "OC-tool version $VER\n"
-			exit 0;;
-		-T|-t)
+			VERBOSE="-v"
+			shift;;
+		-t)
 			TEXT="true"
 			EX_COM="${EX_COM}t"
 			shift;;
 		-V)
-			VERBOSE="-v"
-			shift;;
+			msg "OC-tool version $VER\n"
+			exit 0;;
 		-X)
 			REMOVE_ALL="true"
 			shift;;
@@ -1199,14 +1207,14 @@ fi
 
 set_build_type "$TYPE"
 
-if [ -n "$FINDER" ]; then FINDER="$OUTPUT"; fi
-
 check_for_updates
 start_logging
 
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-command -v jshon||missing "jshon" "this is currently required to parse json files" "if I can, code will be rewritten soon so it won't be needed\n\ton macOS you can try ${YEL}brew install jshon${NC}\n\ton Linux you can try ${YEL}sudo apt install jshon${NC}"
 check_config
+
+cd "$TOOL_FILES"
+cat git_repo.json|./parse_json.sh > git_repo.json.tmp
 
 init_res_array
 add_resource "1" "ACPI" "Add" "Path"
@@ -1271,4 +1279,4 @@ fi
 
 stop_logging
 
-if [ -n "$FINDER" ];then open "$FINDER"; fi # open to EFI if -o or dbl-click
+if [ -n "$FINDER" ] && [ "$(uname)" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click

@@ -6,6 +6,8 @@ INPUT/temp/config.plist
 Docs/config.plist
 Docs/SampleFull.plist
 
+.tool-files/git_repo.json.tmp
+
 OUTPUT/EFI/*
 
 resources/*
