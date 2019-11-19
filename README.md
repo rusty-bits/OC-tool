@@ -22,7 +22,6 @@ e.g. `cp Docs/SampleFull.plist INPUT/config.plist`
 **Requirements**  
 
 - `git` is installed  
-- `jshon` is installed (needed currently, will rewrite to remove this requirement soon)  
 
 To build from source instead of using prebuilt releases `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line, they are not required to use prebuilts  
   
