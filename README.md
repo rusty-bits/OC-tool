@@ -30,6 +30,12 @@ To build from source instead of using prebuilt releases `xcodebuild`, `nasm`, an
 
 ---
 
+**Credits**
+
+elliptic-shiho for the [parse_json.sh gist](https://gist.github.com/elliptic-shiho/45698491e1f3a0ba51f4c2e81d0fcfa4) on github  
+
+---
+
 **Acknowledgements**  
 
 The folks at [r/hackintosh](https://www.reddit.com/r/hackintosh/) such as [dracoflar](https://www.reddit.com/user/dracoflar/), [midi1996](https://www.reddit.com/user/midi1996/), [Beowolve](https://www.reddit.com/user/Beowolve/), [slandeh](https://www.reddit.com/user/slandeh/), and of course [CorpNewt](https://www.reddit.com/user/corpnewt/) for help, guides and tools to get my hack up and running in the first place.  

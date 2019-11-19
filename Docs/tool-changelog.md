@@ -1,3 +1,13 @@
+## ver 2.0(191119)  
+- **removed the requirement for the jshon command  
+found a small POSIX sh that takes care of it  
+[elliptic-shiho parse_json.sh](https://gist.github.com/elliptic-shiho/45698491e1f3a0ba51f4c2e81d0fcfa4)  
+
+- **removed -T option, no need since -t option is the same  
+
+- **fixed a "few" typos
+
+
 ## ver 2.0(171119)  
 - **removed -c option**  
 but ACPI files will still be copied from `extras` first  
@@ -13,7 +23,6 @@ in either case tool will check itself for updates first
 - **the -X option will only remove local resources for current build type**  
 e.g. `./OC-tool -Xs` will remove `resources/latestSource`  
 `./OC-tool -X` will remove `resources/prebuiltRelease`  
-
 
 
 ## ver 2.0(151119)  
