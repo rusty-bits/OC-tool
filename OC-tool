@@ -1214,7 +1214,7 @@ if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 check_config
 
 cd "$TOOL_FILES"
-cat git_repo.json|./parse_json.sh > git_repo.json.tmp
+./parse_json.sh < git_repo.json > git_repo.json.tmp
 
 init_res_array
 add_resource "1" "ACPI" "Add" "Path"
