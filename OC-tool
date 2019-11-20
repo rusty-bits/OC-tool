@@ -21,14 +21,14 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.0(191119) last checked with OpenCore version DBG-053-2019-11-16"
+VER="2.0(201119) last checked with OpenCore version DBG-053-2019-11-16"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-eval set -- "$(getopt dhioqrstvVX "$@")" #allowable command line options
+optspec="dhioqrstvVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -100,7 +100,7 @@ clone() { # will only clone if pkg is not local
 	fi
 }
 
-check_for_updates() {
+check_tool_for_updates() {
 	cd "$BASE_DIR"
 	if [ -z "$QUIET" ]; then
 		msg "\n${GRN}Checking for updates${NC} ... \n"
@@ -112,8 +112,11 @@ check_for_updates() {
 		msg "${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		exit 2
 	fi
+}
+
+check_resources_for_updates() {
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
-	if [ -d "$RES_DIR" ] && [ "$MODE" = "latestSource" ]; then
+	if [ -d "$RES_DIR" ]; then
 		cd "$RES_DIR" # now check all other resources
 		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
@@ -401,7 +404,7 @@ res_not_found() {
 		msg "\tfor example, try '$EX_COM'\n"
 		exit 1
 	else
-		msg "${YEL}WARNING:${NC} $1 repo not in .tool-files/repo.plist or extras directory - ${YEL}IGNORING${NC}\n"
+		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON or extras directory - ${YEL}IGNORING${NC}\n"
 		IGNORE="yes"
 		CONFIG_CHANGED="-i option" # need to write new config before build
 	fi
@@ -435,18 +438,13 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	mkdir -p "$BASE_DIR"/Docs
 	cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
 	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
-	msg "\tIf you changed build mode this may be normal.\n"
+	msg "\tYou may want to check it for any changes that could apply to\n"
+	msg "\t$filePath\n"
 }
 
 
 check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
-	if [ "$MODE" != "latestSource" ]; then
-#		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
-		DOC_DIR=$(grep "/OpenCorePkg/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
-		DOC_DIR="${DOC_DIR##*/}"
-		DOC_DIR="$RES_DIR/OpenCorePkg/${DOC_DIR%.*}/Docs"
-	fi
 	if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
 		cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
 	else
@@ -1114,58 +1112,47 @@ stop_logging() {
 }
 
 #****** Start build ***************
-while :
-do
-	case  "$1" in
-		-d)
+
+while getopts "$optspec" optchar; do
+case "${optchar}" in
+		d)
 			MODE="prebuiltDaily"
 			EX_COM="${EX_COM}d"
-			shift;;
-		-h) # help
+			msg "\n${YEL}$MODE${NC} not implemented yet.\n"
+			exit 1;;
+		h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;
-		-i)
-			IGNORE="true"
-			shift;;
-		-o)
+		i)
+			IGNORE="true";;
+		o)
 			FINDER="open"
-			EX_COM="${EX_COM}o"
-			shift;;
-		-q)
+			EX_COM="${EX_COM}o";;
+		q)
 			QUIET="-q"
-			EX_COM="${EX_COM}q"
-			shift;;
-		-r)
+			EX_COM="${EX_COM}q";;
+		r)
 			TYPE="release"
-			EX_COM="${EX_COM}r"
-			shift;;
-		-s)
+			EX_COM="${EX_COM}r";;
+		s)
 			MODE="latestSource"
-			EX_COM="${EX_COM}l"
-			shift;;
-		-v)
-			VERBOSE="-v"
-			shift;;
-		-t)
+			EX_COM="${EX_COM}s";;
+		v)
+			VERBOSE="-v";;
+		t)
 			TEXT="true"
-			EX_COM="${EX_COM}t"
-			shift;;
-		-V)
+			EX_COM="${EX_COM}t";;
+		V)
 			msg "OC-tool version $VER\n"
 			exit 0;;
-		-X)
-			REMOVE_ALL="true"
-			shift;;
-		--)
-			shift
-			break;;
+		X)
+			REMOVE_ALL="true";;
+		*)
+			msg "$(cat "$TOOL_FILES/usage.msg")\n"
+			exit 1;;
 	esac
 done
-
-if [ "$MODE" = "prebuiltDaily" ]; then
-	msg "\n${YEL}$MODE${NC} not implemented yet.\n"
-	exit 1
-fi
+eval filePath="\$$OPTIND"
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
@@ -1177,27 +1164,30 @@ if [ -p /dev/stdin ]; then
 	cat > "$CONFIG_PLIST"
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
 	TEXT="" # no TUI use either with piped config.plist
+	filePath="stdin"
 else
 # "No input was found on stdin, skipping!"
 # Checking to ensure a filename was specified and that it exists
-	if [ -f "$1" ]; then
-		msg "\nUsing ${1}\n"
+	if [ -e "$filePath" ]; then
 		INPUT="$BASE_DIR/INPUT/temp"
 		CONFIG_PLIST="$INPUT/config.plist"
-		EX_COM="${EX_COM} ${1}"
+		EX_COM="${EX_COM} ${filePath}"
 		mkdir -p "$INPUT"
-		cp "${1}" "$CONFIG_PLIST"
+		cp "${filePath}" "$CONFIG_PLIST"
 	else
-		if [ -n "$1" ]; then
+		if [ -n "${filePath}" ]; then
+			msg "file '${filePath}' not found\n"
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
-			msg "\nUsing INPUT/config.plist\n"
 			INPUT="$BASE_DIR/INPUT"
 			CONFIG_PLIST="$INPUT/config.plist"
+			filePath="$CONFIG_PLIST"
 		fi
 	fi
 fi
+
+check_tool_for_updates
 
 if [ -n "$REMOVE_ALL" ]; then
 	msg "Deleting $RES_DIR ... "
@@ -1207,12 +1197,18 @@ fi
 
 set_build_type "$TYPE"
 
-check_for_updates
-start_logging
-
-if [ "$MODE" = "latestSource" ]; then check_requirements; fi
+if [ "$MODE" = "latestSource" ]; then
+	if [ -z "$QUIET" ]; then
+		msg "\n${GRN}Checking existing resources${NC} ... \n"
+	fi
+	check_resources_for_updates
+fi
 #command -v jshon||missing "jshon" "currently needed to parse json file" "will remove requirement soon if possible"
 
+start_logging
+if [ "$MODE" = "latestSource" ]; then check_requirements; fi
+
+msg "\nUsing ${filePath}\n"
 check_config
 
 #cd "$TOOL_FILES"
@@ -1265,7 +1261,7 @@ fi
 set_up_dest_dir
 copy_resources
 
-check_if_Sample_plist_updated
+if [ "$MODE" = "latestSource" ];then check_if_Sample_plist_updated; fi
 
 if [ "$USE_VAULT" = "true" ];then
 	build_vault||vault_failed
@@ -1276,7 +1272,7 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	msg "\n${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
-	msg "\tthe original $CONFIG_PLIST ${YEL}has not been touched${NC}\n"
+	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n"
 fi
 
 stop_logging
