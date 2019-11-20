@@ -326,8 +326,8 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
-#	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
+	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		msg "Downloading $zip_name ... "
 		curl -L "$git_url" -o "$zip_name"
@@ -344,8 +344,8 @@ curl_parent() {
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
-#	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 
 	temp="$res_name" # hold self
 	res_name="$parent"
@@ -442,8 +442,8 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
 	if [ "$MODE" != "latestSource" ]; then
-		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
-#		DOC_DIR=$(grep "/OpenCorePkg/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#		DOC_DIR="$(jshon -e "OpenCorePkg" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON")"
+		DOC_DIR=$(grep "/OpenCorePkg/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		DOC_DIR="${DOC_DIR##*/}"
 		DOC_DIR="$RES_DIR/OpenCorePkg/${DOC_DIR%.*}/Docs"
 	fi
@@ -521,22 +521,22 @@ build_vault() {
 }
 
 find_srce_url() {
-	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
-#	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
+	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
-#		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
+		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		if [ -z "$git_url" ]; then
-			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
-#			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
+			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		fi
 	else
 		if [ -z "$parent" ]; then
-			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
-#			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
+			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		else
-			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
-#			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.tmp"|cut -f2- -d ' '|tr -d '"')
+#			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
+			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		fi
 	fi
 }
@@ -1211,12 +1211,12 @@ check_for_updates
 start_logging
 
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-command -v jshon||missing "jshon" "currently needed to parse json file" "will remove requirement soon if possible"
+#command -v jshon||missing "jshon" "currently needed to parse json file" "will remove requirement soon if possible"
 
 check_config
 
 #cd "$TOOL_FILES"
-#./parse_json.sh < git_repo.json > git_repo.json.tmp
+#./parse_json.sh < git_repo.json > git_repo.json.txt
 
 init_res_array
 add_resource "1" "ACPI" "Add" "Path"
