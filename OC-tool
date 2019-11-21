@@ -23,7 +23,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.0(201119) last checked with OpenCore version DBG-053-2019-11-16"
+VER="2.0(211119) last checked with OpenCore version DBG-053-2019-11-16"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -129,7 +129,7 @@ check_resources_for_updates() {
 			msg "\033[2K\r${git_dir##*/} - "
 			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 				git pull $VERBOSE -q
-				msg "${GRN}updated${NC}\n"
+				msg "${GRN}updated to ${NC}$(git rev-parse @|cut -c -7)\n"
 			else
 				msg "${GRN}OK${NC}"
 			fi
@@ -954,9 +954,10 @@ text_user_interface() {
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
 	BOT=0; KEY=0
-	stty -echo
 	CHAR=""
 	set_text_header
+	msg "$(tput smcup)"
+	stty -echo
 	draw_screen
 	G=1; S=1; get_res "$G$S"
 	set_ROW_COL; set_color
@@ -1238,7 +1239,7 @@ USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
 
 if [ -n "$TEXT" ]; then
 	msg "\nSwitching to TUI ... "
-	msg "$(tput smcup)"
+#	msg "$(tput smcup)"
 	text_user_interface
 	msg "\033[J\n" # cleanup for TERM types that don't buffer
 	msg "$(tput rmcup)"
