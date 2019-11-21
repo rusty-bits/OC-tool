@@ -30,7 +30,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-optspec="dhioqrstvxVX"
+optspec="dhioqrstvVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -422,6 +422,11 @@ res_not_found() {
 	fi
 }
 
+copy_failed() {
+	msg "\n\n${RED}ERROR:${NC} Copying $res_name to $dest failed, see $LOGFILE for details.\n"
+	exit 1
+}
+
 copy_resources() {
 	msg "\n${GRN}Moving ${YEL}$MODE${GRN} resources into place${NC}\n"
 	IGNORE="" # no more ignoring for you
@@ -437,7 +442,7 @@ copy_resources() {
 					else
 						msg "Copying $res_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
-						cp -r "$srce/$res_name" "$BUILD_DIR/$dest"
+						cp -r "$srce/$res_name" "$BUILD_DIR/$dest"||copy_failed
 						fin
 					fi
 				fi
@@ -1134,8 +1139,6 @@ remove_resource_msg() {
 }
 
 #****** Start build ***************
-start_logging
-
 while getopts "$optspec" optchar; do
 case "${optchar}" in
 		d)
@@ -1177,6 +1180,8 @@ case "${optchar}" in
 done
 eval filePath="\$$OPTIND"
 
+start_logging
+
 RES_DIR="$BASE_DIR/resources/$MODE"
 
 if [ -p /dev/stdin ]; then # data was piped
@@ -1202,6 +1207,10 @@ else  #  no input found on stdin
 		fi
 	fi
 fi
+if [ "$MODE" != "latestSource" ] && [ "$(uname)" = "Darwin" ]; then
+	msg "To build from source use ${B}-s${NC} option\n"
+fi
+msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
 
 check_tool_for_updates
 
@@ -1214,7 +1223,6 @@ if [ "$MODE" = "latestSource" ]; then check_resources_for_updates; fi
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 
-msg "\nUsing ${filePath}\n"
 check_config
 
 #cd "$TOOL_FILES"
@@ -1232,9 +1240,9 @@ if [ -n "$TEXT" ]; then
 	msg "\nSwitching to TUI ... "
 	msg "$(tput smcup)"
 	text_user_interface
-	msg "\033[J\n" # still cleanup for TERM types that don't buffer
+	msg "\033[J\n" # cleanup for TERM types that don't buffer
 	msg "$(tput rmcup)"
-	fin
+	msg "${GRN}done in TUI${NC}\n"
 fi
 
 if [ "$TEXT" = "quit" ];then exit 0;fi
@@ -1273,12 +1281,12 @@ if [ "$USE_VAULT" = "true" ];then
 	build_vault||vault_failed
 fi
 
-msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n"
+msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
-	msg "\n${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
+	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
-	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n"
+	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n\n"
 fi
 
 stop_logging
