@@ -16,6 +16,8 @@ GIT_JSON="$TOOL_FILES/git_repo.json"
 OUTPUT="$BASE_DIR/OUTPUT"
 BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
+INPUT="$BASE_DIR/INPUT/temp"
+CONFIG_PLIST="$INPUT/config.plist"
 DOC_DIR="" # repo doc location
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
@@ -26,9 +28,9 @@ VER="2.0(201119) last checked with OpenCore version DBG-053-2019-11-16"
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
-REMOVE_ALL=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
+REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
 
-optspec="dhioqrstvVX"
+optspec="dhioqrstvxVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -106,23 +108,33 @@ check_tool_for_updates() {
 		msg "\n${GRN}Checking for updates${NC} ... \n"
 		msg "OC-tool - " # check OC-tool itself first
 	fi
-	git fetch --all $VERBOSE $QUIET
+#	git fetch --all $VERBOSE $QUIET
+	git fetch --all -q
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE $QUIET
 		msg "${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		exit 2
 	fi
+	msg "${GRN}OK${NC}\n"
 }
 
 check_resources_for_updates() {
+		msg "\n${GRN}Checking existing resources${NC} ... \n"
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	if [ -d "$RES_DIR" ]; then
-		cd "$RES_DIR" # now check all other resources
-		for git_dir in $(find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
+		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
-			if [ -z "$QUIET" ]; then msg "${git_dir##*/} - "; fi
-			git -C "$git_dir" pull $VERBOSE $QUIET
+			cd "$git_dir"
+			git fetch --all -q
+			msg "\033[2K\r${git_dir##*/} - "
+			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
+				git pull $VERBOSE -q
+				msg "${GRN}updated${NC}\n"
+			else
+				msg "${GRN}OK${NC}"
+			fi
 		done
+		msg "\033[2K\rexisting resources up to date\n"
 	fi
 }
 
@@ -203,7 +215,7 @@ build_kext() {
 	cd "$RES_DIR"/Kext_builds
 	clone "$git_url"
 	cd "$pkg_name"
-	if [ -n "$REMOVE_ALL" ];then
+	if [ -n "$REMOVE_RES" ];then
 		msg "Removing Xcode DerivedData for $pkg_name ... "
 		rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
 		fin
@@ -1111,7 +1123,18 @@ stop_logging() {
 	fi
 }
 
+remove_resource_msg() {
+	msg "\n ${RED}***${NC} WARNING: -X option used ${RED}****************************************\n"
+	msg " ${RED}*** ${NC}$RES_DIR has been removed\n"
+	msg " ${RED}*** ${NC}the -X option is only useful if there is an issue with the\n"
+	msg " ${RED}*** ${NC}previously downloaded resources causing problems while building.\n"
+	msg " ${RED}*** ${NC}Using it at any other time will only increase bandwith usage and\n"
+	msg " ${RED}*** ${NC}compile time, in many cases requiring all tools to be rebuilt.\n"
+	msg " ${RED}*********************************************************************${NC}\n"
+}
+
 #****** Start build ***************
+start_logging
 
 while getopts "$optspec" optchar; do
 case "${optchar}" in
@@ -1146,7 +1169,7 @@ case "${optchar}" in
 			msg "OC-tool version $VER\n"
 			exit 0;;
 		X)
-			REMOVE_ALL="true";;
+			REMOVE_RES="true";;
 		*)
 			msg "$(cat "$TOOL_FILES/usage.msg")\n"
 			exit 1;;
@@ -1156,21 +1179,14 @@ eval filePath="\$$OPTIND"
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
-if [ -p /dev/stdin ]; then
-#	"Data was piped to this script!"
-	INPUT="$BASE_DIR/INPUT/temp"
-	CONFIG_PLIST="$INPUT/config.plist"
+if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST"
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
 	TEXT="" # no TUI use either with piped config.plist
 	filePath="stdin"
-else
-# "No input was found on stdin, skipping!"
-# Checking to ensure a filename was specified and that it exists
+else  #  no input found on stdin
 	if [ -e "$filePath" ]; then
-		INPUT="$BASE_DIR/INPUT/temp"
-		CONFIG_PLIST="$INPUT/config.plist"
 		EX_COM="${EX_COM} ${filePath}"
 		mkdir -p "$INPUT"
 		cp "${filePath}" "$CONFIG_PLIST"
@@ -1189,23 +1205,13 @@ fi
 
 check_tool_for_updates
 
-if [ -n "$REMOVE_ALL" ]; then
-	msg "Deleting $RES_DIR ... "
-	rm -rf "$RES_DIR"
-	fin
-fi
+if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
 
-if [ "$MODE" = "latestSource" ]; then
-	if [ -z "$QUIET" ]; then
-		msg "\n${GRN}Checking existing resources${NC} ... \n"
-	fi
-	check_resources_for_updates
-fi
-#command -v jshon||missing "jshon" "currently needed to parse json file" "will remove requirement soon if possible"
+if [ "$MODE" = "latestSource" ]; then check_resources_for_updates; fi
 
-start_logging
+if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 
 msg "\nUsing ${filePath}\n"
