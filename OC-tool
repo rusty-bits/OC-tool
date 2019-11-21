@@ -104,10 +104,8 @@ clone() { # will only clone if pkg is not local
 
 check_tool_for_updates() {
 	cd "$BASE_DIR"
-	if [ -z "$QUIET" ]; then
-		msg "\n${GRN}Checking for updates${NC} ... \n"
-		msg "OC-tool - " # check OC-tool itself first
-	fi
+	msg "\n${GRN}Checking for updates${NC} ... \n"
+	msg "OC-tool - " # check OC-tool itself first
 #	git fetch --all $VERBOSE $QUIET
 	git fetch --all -q
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
@@ -1237,7 +1235,7 @@ add_resource "4" "Misc" "Tools" "Path"
 
 USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
 
-if [ -n "$TEXT" ]; then
+if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
 #	msg "$(tput smcup)"
 	text_user_interface
