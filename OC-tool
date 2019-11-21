@@ -111,8 +111,8 @@ check_tool_for_updates() {
 #	git fetch --all $VERBOSE $QUIET
 	git fetch --all -q
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
-		git pull $VERBOSE $QUIET
-		msg "${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
+		git pull $VERBOSE -q
+		msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		exit 2
 	fi
 	msg "${GRN}OK${NC}\n"
