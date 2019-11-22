@@ -304,19 +304,16 @@ build_resources() {
 							build_shell_tool||build_failed
 						else
 							build_driver||build_failed
-						fi
-						;;
+						fi;;
 					"kext")
 						if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
 							set_build_type "debug"
 							build_kext||build_failed
 							set_build_type "release"
 						fi
-						build_kext||build_failed
-						;;
+						build_kext||build_failed;;
 					"aml")
-						build_acpi||build_failed
-						;;
+						build_acpi||build_failed;;
 					esac
 					set_res "$G$S"
 				fi
@@ -339,7 +336,6 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-#	sha=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE"-sha256 -u < "$GIT_JSON")
 	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		msg "Downloading $zip_name ... "
@@ -357,7 +353,6 @@ curl_parent() {
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-#	git_url=$(jshon -e "$parent" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 
 	temp="$res_name" # hold self
@@ -495,8 +490,7 @@ parse_plist() { # read plist file hack
 							a=$((a-1))
 						fi;;
 					"</array>")
-						if [ "$in_loop" = "1" ];then return; fi
-						;;
+						if [ "$in_loop" = "1" ];then return; fi;;
 				esac;;
 			*)
 				a=$1; in_loop=1
@@ -534,21 +528,16 @@ build_vault() {
 }
 
 find_srce_url() {
-#	parent=$(jshon -e "$res_name" -e parent -u < "$GIT_JSON"||echo "")
 	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 	if [ "$MODE" = "latestSource" ]; then
-#		git_url=$(jshon -e "$res_name" -e "$MODE" -u < "$GIT_JSON"||echo "")
 		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		if [ -z "$git_url" ]; then
-#			git_url="$(jshon -e "$parent" -e "latestSource" -u < "$GIT_JSON"||echo "")"
 			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		fi
 	else
 		if [ -z "$parent" ]; then
-#			git_url=$(jshon -e "$res_name" -e "$MODE" -e "$TYPE" -u < "$GIT_JSON"||echo "")
 			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		else
-#			git_url=$(jshon -e "$res_name" -e path -u < "$GIT_JSON"||echo "")
 			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
 		fi
 	fi
@@ -747,17 +736,13 @@ write_new_quirks() { # write quirks section changes to new plist
 			read -r line
 			case "$enabled" in
 				true|false)
-					echo "<$enabled/>" >> "$OUT"
-					;;
-				ignored)
-					echo "<false/>" >> "$OUT" # ignored resource
-					;;
+					echo "<$enabled/>" >> "$OUT";;
+				ignored) # ignored resources
+					echo "<false/>" >> "$OUT";;
 				[0-9])
-					echo "<integer>$enabled</integer>" >> "$OUT"
-					;;
+					echo "<integer>$enabled</integer>" >> "$OUT";;
 				*)
-					echo "$line" >> "$OUT"
-					;;
+					echo "$line" >> "$OUT";;
 			esac
 			S=$((S+1))
 			get_res "$G$S"
@@ -780,32 +765,26 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 				G=1; S=1;
 				write_new_array
 				G=5; S=1;
-				write_new_quirks
-				;;
+				write_new_quirks;;
 			"<key>Kernel</key>")
 				G=2; S=1;
 				write_new_array
 				G=6; S=1;
-				write_new_quirks
-				;;
+				write_new_quirks;;
 			"<key>UEFI</key>")
 				G=3; S=1;
 				write_new_drivers
 				G=7; S=1;
-				write_new_quirks
-				;;
+				write_new_quirks;;
 			"<key>Tools</key>")
 				G=4; S=1;
-				write_new_array
-				;;
+				write_new_array;;
 			"<key>Booter</key>")
 				G=8; S=1;
-				write_new_quirks
-				;;
+				write_new_quirks;;
 			"<key>RequireVault</key>"|"<key>RequireSignature</key>")
 				read -r line
-				echo "<$USE_VAULT/>" >> "$OUT"
-				;;
+				echo "<$USE_VAULT/>" >> "$OUT";;
 		esac
 	done < "$CONFIG_PLIST"
 	fin
@@ -839,17 +818,13 @@ set_text_header() {
 set_color() { # set TUI section color based on resource
 	case "$enabled" in
 		true)
-			color="$GRN"; MSG="+"
-			;;
+			color="$GRN"; MSG="+";;
 		false)
-			color="$RED"; MSG="-"
-			;;
+			color="$RED"; MSG="-";;
 		ignored)
-			color="$YEL"; MSG="-i"
-			;;
+			color="$YEL"; MSG="-i";;
 		*)
-			color="$BLU"; MSG="$enabled"
-			;;
+			color="$BLU"; MSG="$enabled";;
 	esac
 	if [ "$G" = "9" ];then color="$NC";fi
 }
@@ -966,8 +941,7 @@ text_user_interface() {
 		unselect_MSG
 		case $CHAR in
 			b)
-				S=$(eval echo \$G"$G"_NUM)
-				;;
+				S=$(eval echo \$G"$G"_NUM);;
 			e) # jump to kExt quirks
 				G=6; S=1;;
 			i)
@@ -985,8 +959,7 @@ text_user_interface() {
 				select_MSG
 				get_CHAR
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
-				redraw_screen
-				;;
+				redraw_screen;;
 #			m)
 #				;;
 			p) # debug dump array
@@ -999,25 +972,21 @@ text_user_interface() {
 				stty echo
 				#msg "\033[J${NC}\n" # return to screen buffer
 				CHAR='g'
-				TEXT="quit"
-				;;
+				TEXT="quit";;
 			r)
 				OLD_G=$G; OLD_S=$S
 				draw_screen
-				G=$OLD_G; S=$OLD_S
-				;;
+				G=$OLD_G; S=$OLD_S;;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				CHAR='g'
-				TEXT='stop'
-				;;
+				TEXT='stop';;
 			t)
 				if [ "$TYPE" = "release" ];then
 					TYPE="debug"
 				else
 					TYPE="release"
 				fi
-				draw_header
-				;;
+				draw_header;;
 			v) # toggle USE_VAULT
 				if [ "$USE_VAULT" = "true" ];then
 					USE_VAULT="false"
@@ -1025,8 +994,7 @@ text_user_interface() {
 					USE_VAULT="true"
 				fi
 				draw_header
-				CONFIG_CHANGED="-T/-t option"
-				;;
+				CONFIG_CHANGED="-T/-t option";;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
 				case "$enabled" in
 					true)
@@ -1037,8 +1005,7 @@ text_user_interface() {
 						;;
 				esac
 				CONFIG_CHANGED="-T/-t option"
-				set_res "$G$S"
-				;;
+				set_res "$G$S";;
 			A|k) # move up
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					S=$((S-1))
@@ -1053,8 +1020,7 @@ text_user_interface() {
 				else # jump to ACPI group
 					G=1; S=1
 				fi
-				esc=""
-				;;
+				esc="";;
 			B|j) # move down
 				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
 					S=$((S+1))
@@ -1070,14 +1036,12 @@ text_user_interface() {
 				else # jump to Booter quirks
 					G=8; S=1
 				fi
-				esc=""
-				;;
+				esc="";;
 			C|l) # move right
 				G=$((G+1))
 				if [ "$G" -eq "5" ];then G=4;fi
 				if [ "$G" -eq "9" ];then G=8;fi
-				esc=""
-				;;
+				esc="";;
 			D|h) # move left
 				if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
 					G=$((G-1))
@@ -1086,8 +1050,7 @@ text_user_interface() {
 					esc=""
 				else
 					G=3; S=1
-				fi
-				;;
+				fi;;
 			K) # jump to kext group
 				G=2; S=1;;
 			T) # jump to Tools group
@@ -1097,8 +1060,7 @@ text_user_interface() {
 			Q) # jump to ACPI quirks
 				G=5; S=1;;
 			esc|'[')
-				esc="true"
-				;;
+				esc="true";;
 		esac
 		if [ "$S" -gt "$(eval echo \$G"$G"_NUM)" ];then
 			S=$(eval echo \$G"$G"_NUM)
