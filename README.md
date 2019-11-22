@@ -21,15 +21,23 @@ e.g. `cp Docs/SampleFull.plist INPUT/config.plist`
 
 **Requirements**  
 
-- `git` is installed  
+- access to a POSIX shell such as `sh`, `bash`, `ksh`, `ash`, or `dash` should all work. I myself use `zsh`, which seems to be the default in macOS Catalina, and it works fine even though I'm told it's not strictly POSIX compliant.  
 
-To build from source instead of using prebuilt releases `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line, they are not required to use prebuilts  
+That's it. Nothing more is needed to have `OC-tool` make a working EFI folder from the prebuilt releases on [Acidanthera's github](https://github.com/acidanthera). `git`, `grep`, `curl`, `cp`, `cut`, `tr`, etc used by OC-tool should already exist on those shells.  
+
+Now, if you want the latest build made yourself from source you will need additional tools/dependencies, and as far as I know will have to use macOC as well.  If there is a good way to run Xcode on Linux let me know ...  
+
+- To build from source `Xcode` with `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line.  You can build/install these yourself, or you can run the get-deps.sh in the .tool-files folder which uses code from acidanthera to get prebuilt dependencies.    
+`.tool-files/get-deps.sh` while in the `OC-tool` directory  
   
-- if you want the tool to compile .dsl files into .aml on the fly, `iasl` needs to be installed, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
+- Also, if you want the tool to compile .dsl files into .aml on the fly, `iasl` needs to be installed, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
 
 ---
 
 **Credits**
+
+[vit9696](https://github.com/vit9696), [PMheart](https://github.com/PMheart), and [cattyhouse](https://github.com/cattyhouse)  
+for parts of [macbuild.tool](https://github.com/acidanthera/OpenCoreShell/blob/master/macbuild.tool) used in .tool-files/get-deps.sh  
 
 elliptic-shiho for the [parse_json.sh gist](https://gist.github.com/elliptic-shiho/45698491e1f3a0ba51f4c2e81d0fcfa4) on github  
 
@@ -38,6 +46,8 @@ elliptic-shiho for the [parse_json.sh gist](https://gist.github.com/elliptic-shi
 **Acknowledgements**  
 
 The folks at [r/hackintosh](https://www.reddit.com/r/hackintosh/) such as [dracoflar](https://www.reddit.com/user/dracoflar/), [midi1996](https://www.reddit.com/user/midi1996/), [Beowolve](https://www.reddit.com/user/Beowolve/), [slandeh](https://www.reddit.com/user/slandeh/), and of course [CorpNewt](https://www.reddit.com/user/corpnewt/) for help, guides and tools to get my hack up and running in the first place.  
+
+[u/ChrisWayg](https://www.reddit.com/user/ChrisWayg) for pointing out the script for prebuilt mtoc and nasm  
 
 The folks at [acidanthera](https://github.com/acidanthera) for making OpenCore possible such as [vit9696](https://github.com/vit9696), [vandroiy2013](https://github.com/vandroiy2013), [Download-Fritz](https://github.com/Download-Fritz), [Andrey1970AppleLife](https://github.com/Andrey1970AppleLife), [PMheart](https://github.com/PMheart) and on and on, too many to list.  
 
