@@ -1,3 +1,9 @@
+## ver 2.0(221119)  
+- **added `.tool-files/get-deps`.sh**  
+`get-deps.sh` will install prebuilt `nasm` and `mtoc` for those who don't want to build/install them themselves  
+
+- **cleaned up error messages and program flow**  
+
 ## ver 2.0(191119)  
 - **removed the requirement for the jshon command**  
 found a small POSIX sh that takes care of it  
