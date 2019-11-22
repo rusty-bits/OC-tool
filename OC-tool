@@ -45,8 +45,8 @@ fin() {
 }
 
 missing() {
-	msg "\n${RED}ERROR:${NC} $1 must be installed to continue\n\t$2\n\t$3\n"
-	msg "\tor run ${B}.tool-files/get-deps.sh${NC} which will check dependencies for you\n"
+	msg "\n${RED}ERROR:${NC}\t${B}$1${NC} must be installed to continue\n\t$2\n\t$3\n"
+	msg "\tor run '${B}.tool-files/get-deps.sh${NC}' which will get dependencies for you\n"
 	exit 1
 }
 
@@ -118,7 +118,8 @@ check_tool_for_updates() {
 }
 
 check_resources_for_updates() {
-		msg "\n${GRN}Checking existing resources${NC} ... \n"
+	msg "\n${GRN}Checking existing resources${NC} ... \n"
+	res_updated=""
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	if [ -d "$RES_DIR" ]; then
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
@@ -129,11 +130,17 @@ check_resources_for_updates() {
 			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 				git pull $VERBOSE -q
 				msg "${GRN}updated to ${NC}$(git rev-parse @|cut -c -7)\n"
+				res_updated="true"
 			else
 				msg "${GRN}OK${NC}"
 			fi
 		done
-		msg "\033[2K\rexisting resources up to date\n"
+		msg "\033[2K\rexisting resources "
+		if [ -z "$res_updated" ]; then
+			msg "are up to date\n"
+		else
+			msg "have been updated\n"
+		fi
 	fi
 }
 
