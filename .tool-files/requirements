@@ -1,3 +1,3 @@
 xcodebuild,install xcode - https://developer.apple.com/xcode/,then use 'xcode-select --install' for the command line tools,
-nasm,you can build it yourself or install homebrew - https://brew.sh,then use 'brew install nasm'\n\tor run '.tool-files/get-deps.sh' which will install prebuilts for you,
-mtoc,you can build it yourself or install macports - https://www.macports.org,then use 'sudo port install cctools'\n\tor run '.tool-files/get-deps.sh' which will install prebuilts for you,
+nasm,you can build it yourself or install homebrew - https://brew.sh,then use 'brew install nasm'\nor run '.tool-files/get-deps.sh' which will install prebuilts for you,
+mtoc,you can build it yourself or install macports - https://www.macports.org,then use 'sudo port install cctools'\nor run '.tool-files/get-deps.sh' which will install prebuilts for you,
