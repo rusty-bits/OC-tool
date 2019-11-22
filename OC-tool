@@ -46,6 +46,7 @@ fin() {
 
 missing() {
 	msg "\n${RED}ERROR:${NC} $1 must be installed to continue\n\t$2\n\t$3\n"
+	msg "\tor run ${B}.tool-files/get-deps.sh${NC} which will check dependencies for you\n"
 	exit 1
 }
 
