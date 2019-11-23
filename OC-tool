@@ -23,7 +23,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.0(221119) last checked with OpenCore version DBG-053-2019-11-16"
+VER="2.0(231119) last checked with OpenCore version DBG-053-2019-11-21"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -856,7 +856,12 @@ draw_key() {
 }
 
 draw_header() {
-	msg "$NC\033[H${U}m${UO}ode=$GRN$MODE$NC ${U}t${UO}ype=$GRN$TYPE$NC RequireVault="
+	if [ "$TYPE" = "debug" ]; then
+		inc_syms="${GRN}include${NC}"
+	else
+		inc_syms="${RED}no${NC}"
+	fi
+	msg "$NC\033[Hmode=$GRN$MODE$NC ${U}d${NC}ebugSyms=${inc_syms} RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
@@ -952,6 +957,13 @@ text_user_interface() {
 		case $CHAR in
 			b)
 				S=$(eval echo \$G"$G"_NUM);;
+			d)
+				if [ "$TYPE" = "release" ];then
+					TYPE="debug"
+				else
+					TYPE="release"
+				fi
+				draw_header;;
 			e) # jump to kExt quirks
 				G=6; S=1;;
 			i)
@@ -990,13 +1002,6 @@ text_user_interface() {
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				CHAR='g'
 				TEXT='stop';;
-			t)
-				if [ "$TYPE" = "release" ];then
-					TYPE="debug"
-				else
-					TYPE="release"
-				fi
-				draw_header;;
 			v) # toggle USE_VAULT
 				if [ "$USE_VAULT" = "true" ];then
 					USE_VAULT="false"
@@ -1168,7 +1173,7 @@ else  #  no input found on stdin
 		cp "${filePath}" "$CONFIG_PLIST"
 	else
 		if [ -n "${filePath}" ]; then
-			msg "file '${filePath}' not found\n"
+			msg "config.plist file '${filePath}' not found\n"
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
