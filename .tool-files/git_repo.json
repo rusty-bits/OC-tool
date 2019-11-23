@@ -278,6 +278,22 @@
     "parent" : "AppleSupportPkg",
     "path" : "Drivers"
   },
+  "HFSPlus.efi" : {
+    "prebuiltRelease" : {
+      "debug" : "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi",
+      "debug-sha256" : "a8b07609028a7c7fe25ed2ce601e73a7fd1076e6fda7c5d202613730694d214b",
+      "release" : "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi",
+      "release-sha256" : "a8b07609028a7c7fe25ed2ce601e73a7fd1076e6fda7c5d202613730694d214b"
+    }
+  },
+  "HfsPlus.efi" : {
+    "prebuiltRelease" : {
+      "debug" : "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi",
+      "debug-sha256" : "a8b07609028a7c7fe25ed2ce601e73a7fd1076e6fda7c5d202613730694d214b",
+      "release" : "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi",
+      "release-sha256" : "a8b07609028a7c7fe25ed2ce601e73a7fd1076e6fda7c5d202613730694d214b"
+    }
+  },
   "SmbiosTestApp.efi" : {
     "latestSource" : "https://github.com/acidanthera/OcSupportPkg",
     "parent" : "OcSupportPkg",
