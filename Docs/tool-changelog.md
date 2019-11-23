@@ -1,3 +1,12 @@
+## ver 2.0(231119)  
+- **Oc-tool no longer downloads `HFSPlus.efi` when it is not requested in config.plist**  
+and the `HFSPlus.efi` will now be placed in the `resources` folder instead of `extras`  
+
+- **changed wording of release/debug options in -h help and -t TUI**  
+wording reflects that debug means debug symbols are included in the code to make debugging easier, not that it isn't as up to date as the release version of code  
+
+- **fixed more typos, always finding typos**  
+
 ## ver 2.0(221119)  
 - **added `.tool-files/get-deps.sh`**  
 `get-deps.sh` will install prebuilt `nasm` and `mtoc` for those who don't want to build/install them themselves  
