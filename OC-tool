@@ -111,7 +111,7 @@ check_tool_for_updates() {
 	git fetch --all -q
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE -q
-		msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
+		msg "${YEL}updated\n\n$INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		exit 2
 	fi
 	msg "${GRN}OK${NC}\n"
@@ -142,6 +142,48 @@ check_resources_for_updates() {
 			msg "have been updated\n"
 		fi
 	fi
+}
+
+curl_failed() { # is this needed?
+	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
+	msg "\tpossible shasum mismatch\n"
+	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
+	exit 1
+}
+
+curl_parent() {
+	zip_name="${git_url##*/}"
+	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
+	mkdir -p "$zip_dir"
+	cd "$zip_dir"
+	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
+	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+	if [ "$(cat shasum256)" != "$sha" ]; then
+		msg "Downloading $zip_name ... "
+		curl -L "$git_url" -o "$zip_name"
+		shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
+		if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
+		msg "unzipping ... "
+		if [ "${zip_name##*.}" = "zip" ]; then
+			unzip -o "$zip_name"
+		fi
+		fin
+	fi
+	srce="$(pwd)"
+}
+
+curl_child() { # need parent first, then zip source
+	path="$git_url"
+	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+
+	temp="$res_name" # hold self
+	res_name="$parent"
+
+	curl_parent # temp use parent resources
+
+	git_url="$path"
+	res_name="$temp"
+	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
 make_base_tools() {
@@ -292,109 +334,55 @@ set_res() { # encode resource into psuedo array (needed for POSIX)
 	eval "res$1=$res_name,'$git_url','$srce',$dest,$parent,$enabled"
 }
 
-build_resources() {
-	msg "\n${GRN}Building needed or updated resources${NC}\n"
+prepare_resources() {
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
 
-	clone "https://github.com/acidanthera/audk" "UDK"
+	if [ "$MODE" = "latestSource" ]; then
+		msg "\n${GRN}Building new or updated resources${NC}\n"
+		clone "https://github.com/acidanthera/audk" "UDK"
 
-	for G in $(seq 0 4)
+	else
+		msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
+	fi
+
+	for G in $(seq 0 4) # cycle first 5 groups
 	do
-		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
+		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)") # cycle through members
 		do
 			get_res "$G$S"
 			if [ "$enabled" != "false" ];then
 				if [ -z "$srce" ]; then
-					case ${res_name##*.} in
-					"base"|"efi")
-						if [ "$res_name" = "Shell.efi" ]; then #special case
-							build_shell_tool||build_failed
-						else
-							build_driver||build_failed
-						fi;;
-					"kext")
-						if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
-							set_build_type "debug"
-							build_kext||build_failed
-							set_build_type "release"
-						fi
-						build_kext||build_failed;;
-					"aml")
-						build_acpi||build_failed;;
-					esac
-					set_res "$G$S"
-				fi
-			fi
-		done
-	done
-	msg "\n"
-}
-
-curl_failed() { # is this needed?
-	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
-	msg "\tpossible shasum mismatch\n"
-	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
-	exit 1
-}
-
-curl_parent() {
-	zip_name="${git_url##*/}"
-	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
-	mkdir -p "$zip_dir"
-	cd "$zip_dir"
-	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
-	if [ "$(cat shasum256)" != "$sha" ]; then
-		msg "Downloading $zip_name ... "
-		curl -L "$git_url" -o "$zip_name"
-		shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
-		if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
-		msg "unzipping ... "
-		if [ "${zip_name##*.}" = "zip" ]; then
-			unzip -o "$zip_name"
-		fi
-		fin
-	fi
-	srce="$(pwd)"
-}
-
-curl_child() { # need parent first, then zip source
-	path="$git_url"
-	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
-
-	temp="$res_name" # hold self
-	res_name="$parent"
-
-	curl_parent # temp use parent resources
-
-	git_url="$path"
-	res_name="$temp"
-	if [ -n "$path" ]; then srce="$srce/$path"; fi
-}
-
-curl_resources() {
-	msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
-	mkdir -p "$RES_DIR"
-	cd "$RES_DIR"
-
-	for G in $(seq 0 4) # cycle through first 5 groups
-	do
-		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)") # cycle through group members
-		do
-			get_res "$G$S"
-			if [ "$enabled" != "false" ];then
-				if [ -z "$srce" ]; then # no source alread, need to download
-					case ${res_name##*.} in
-						"base")
-							;;
-						"efi"|"kext"|"aml")
-							if [ -n "$parent" ]; then
-								curl_child
-							else
-								curl_parent
-							fi
-							;;
+					case "$MODE" in
+						"latestSource")
+							case ${res_name##*.} in
+							"base"|"efi")
+								if [ "$res_name" = "Shell.efi" ]; then #special case
+									build_shell_tool||build_failed
+								else
+									build_driver||build_failed
+								fi;;
+							"kext")
+								if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
+									set_build_type "debug"
+									build_kext||build_failed
+									set_build_type "release"
+								fi
+								build_kext||build_failed;;
+							"aml")
+								build_acpi||build_failed;;
+							esac;;
+						"prebuiltRelease")
+							case ${res_name##*.} in
+							"base")
+								;;
+							"efi"|"kext"|"aml")
+								if [ -n "$parent" ]; then
+									curl_child
+								else
+									curl_parent
+								fi;;
+							esac;;
 					esac
 					set_res "$G$S"
 				fi
@@ -650,14 +638,6 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	done
 	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
-
-#	cd "$BASE_DIR/extras" # an ugly workaround to get HfsPlus.efi, better solution?
-#	if [ ! -e "HFSPlus.efi" ]; then
-#		curl -L "https://github.com/STLVNUB/CloverGrower/raw/master/Files/HFSPlus/x64/HFSPlus.efi" -o HFSPlus.efi
-#	fi
-#	if [ ! -e "HfsPlus.efi" ]; then
-#		cp HFSPlus.efi HfsPlus.efi
-#	fi
 }
 
 set_build_type() {
@@ -982,8 +962,6 @@ text_user_interface() {
 				get_CHAR
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
 				redraw_screen;;
-#			m)
-#				;;
 			p) # debug dump array
 				stty echo
 				msg "${NC}"
@@ -1183,7 +1161,7 @@ else  #  no input found on stdin
 		fi
 	fi
 fi
-if [ "$MODE" != "latestSource" ] && [ "$(uname)" = "Darwin" ]; then
+if [ "$MODE" != "latestSource" ] && [ "$(uname)" = "Darwin" ]; then # show start messaged
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
@@ -1221,7 +1199,7 @@ if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "${GRN}done in TUI${NC}\n"
 fi
 
-if [ "$TEXT" = "quit" ];then exit 0;fi
+if [ "$TEXT" = "quit" ];then exit 0;fi # quit without saving changes
 
 if [ "$MODE" != "latestSource" ] && [ "$(uname)" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
@@ -1240,14 +1218,9 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	set_res "0$G0_NUM"
 fi
 
-if [ "$TEXT" = "stop" ];then exit 0;fi
+if [ "$TEXT" = "stop" ];then exit 0;fi # save and quit
 
-if [ "$MODE" = "latestSource" ]; then
-	build_resources
-else
-	curl_resources
-fi
-
+prepare_resources
 set_up_dest_dir
 copy_resources
 
