@@ -331,7 +331,7 @@ get_res() { # extract resource from psuedo array (needed for POSIX)
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1=$res_name,'$git_url','$srce',$dest,$parent,$enabled"
+	eval "res$1='$res_name','$git_url','$srce','$dest','$parent','$enabled'"
 }
 
 prepare_resources() {
