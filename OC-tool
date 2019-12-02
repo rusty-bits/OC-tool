@@ -1075,7 +1075,8 @@ case "${optchar}" in
 			MODE="latestSource"
 			EX_COM="${EX_COM}s";;
 		v)
-			VERBOSE="-v";;
+			VERBOSE="-v"
+			EX_COM="${EX_COM}v";;
 		t)
 			TEXT="true"
 			EX_COM="${EX_COM}t";;
@@ -1124,7 +1125,7 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start m
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
 
-###check_tool_for_updates
+check_tool_for_updates
 
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
