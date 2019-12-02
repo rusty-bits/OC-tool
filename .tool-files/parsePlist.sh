@@ -17,10 +17,10 @@ while read -r line; do
 		"<dict")
 			if [ -z "$section" ]; then
 				if [ -n "$key" ]; then
-					section=$key # assumes there is a waiting key
+					section=$key
 					key=""
 				else
-					echo "$line"
+					echo "$line" # no key just echo the line
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
@@ -98,7 +98,7 @@ while read -r line; do
 			done
 			key=${key%</key>}
 			;;
-		"<string") # assumes key and /key on same line
+		"<string")
 			string=${line#<string>}
 			while [ "${line#*</}" != "string>" ]
 			do
@@ -109,7 +109,7 @@ while read -r line; do
 			msg "string|$key" "$string"
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
-		"<integer") # assumes key and /key on same line
+		"<integer")
 			integer=${line#<integer>}
 			while [ "${line#*</}" != "integer>" ]
 			do

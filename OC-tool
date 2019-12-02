@@ -11,6 +11,7 @@ else
 	FINDER=""
 fi
 
+UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
 OUTPUT="$BASE_DIR/OUTPUT"
@@ -306,7 +307,8 @@ missing_iasl() {
 }
 
 build_acpi() { # compile .dsl into .aml if user hasn't already
-	pkg_name=$(echo "$res_name"|cut -f1 -d.)
+	pkg_name=${res_name%%.*}
+
 	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
 	if [ -e "$srce/$res_name" ];then
 		return 0
@@ -321,13 +323,12 @@ build_acpi() { # compile .dsl into .aml if user hasn't already
 }
 
 get_res() { # extract resource from psuedo array (needed for POSIX)
-	res=$(eval echo "\$res$1")
-	res_name=$(echo "$res"|cut -f1 -d,)
-	git_url=$(echo "$res"|cut -f2 -d,)
-	srce=$(echo "$res"|cut -f3 -d,)
-	dest=$(echo "$res"|cut -f4 -d,)
-	parent=$(echo "$res"|cut -f5 -d,)
-	enabled=${res##*,}
+	eval enabled="\$res$1"
+	res_name=${enabled%%,*}; enabled=${enabled#$res_name,}
+	git_url=${enabled%%,*}; enabled=${enabled#$git_url,}
+	srce=${enabled%%,*}; enabled=${enabled#$srce,}
+	dest=${enabled%%,*}; enabled=${enabled#$dest,}
+	parent=${enabled%%,*}; enabled=${enabled#$parent,}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
@@ -559,7 +560,7 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 				set_res "$G$S";;
 		esac
 	done
-	eval G"$G"_NUM=$S
+	eval G"$G"_NUM="$S"
 }
 
 #this is an ugly function, rewrite it if possible
@@ -741,16 +742,13 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 	case "$G" in
 		1|2|3|4)
 			ROW=$((S+3))
-			COL=$(((G-1)*C+1))
-			;;
+			COL=$(((G-1)*C+1));;
 		5|6|7|8)
 			ROW=$((S+BOT+5))
-			COL=$(((G-5)*C+1))
-			;;
+			COL=$(((G-5)*C+1));;
 		9)
 			ROW=2
-			COL=$(((S-1)*C+1))
-			;;
+			COL=$(((S-1)*C+1));;
 	esac
 }
 
@@ -845,7 +843,8 @@ draw_screen() {
 	draw_header
 	for G in $(seq 1 8)
 	do
-		len="$(eval echo \$G"$G"_NUM)"
+#		len="$(eval echo \$G"$G"_NUM)"
+		eval len="\$G${G}_NUM"
 		if [ "$G" -le "4" ];then # BOT = longest group of 1 - 4
 			if [ "$BOT" -lt "$len" ];then BOT="$len";fi
 		else # KEY = longest group of 5 - 7
@@ -893,7 +892,8 @@ text_user_interface() {
 		unselect_MSG
 		case $CHAR in
 			b)
-				S=$(eval echo \$G"$G"_NUM);;
+#				S=$(eval echo \$G"$G"_NUM);;
+				eval S="\$G${G}_NUM";;
 			d)
 				if [ "$TYPE" = "release" ];then
 					TYPE="debug"
@@ -947,11 +947,9 @@ text_user_interface() {
 			sp|nl) # only mark CONFIG_CHANGED if change was done
 				case "$enabled" in
 					true)
-						enabled="false"
-						;;
+						enabled="false";;
 					false)
-						enabled="true"
-						;;
+						enabled="true";;
 				esac
 				CONFIG_CHANGED="-t option"
 				set_res "$G$S";;
@@ -961,7 +959,8 @@ text_user_interface() {
 					if [ "$S" -lt "0" ];then
 						if [ "$G" -gt "4" ];then
 							G=$((G-4))
-							S="$(eval echo \$G"$G"_NUM)"
+#							S="$(eval echo \$G"$G"_NUM)"
+							eval S="\$G${G}_NUM"
 						else
 							S=0
 						fi
@@ -973,7 +972,8 @@ text_user_interface() {
 			B|j) # move down
 				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
 					S=$((S+1))
-					len="$(eval echo \$G"$G"_NUM)"
+#					len="$(eval echo \$G"$G"_NUM)"
+					eval len="\$G${G}_NUM"
 					if [ "$S" -gt "$len" ];then
 						if [ "$G" -lt "5" ];then
 							G=$((G+4))
@@ -1012,7 +1012,8 @@ text_user_interface() {
 				esc="true";;
 		esac
 		if [ "$S" -gt "$(eval echo \$G"$G"_NUM)" ];then
-			S=$(eval echo \$G"$G"_NUM)
+#			S=$(eval echo \$G"$G"_NUM)
+			eval S="\$G${G}_NUM"
 		fi
 		if [ "$S" -lt "0" ];then S=0; fi
 		get_res "$G$S"
@@ -1118,12 +1119,12 @@ fi
 cd "$INPUT"
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 
-if [ "$MODE" != "latestSource" ] && [ "$(uname)" = "Darwin" ]; then # show start messaged
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start messaged
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
 
-check_tool_for_updates
+###check_tool_for_updates
 
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
@@ -1140,14 +1141,10 @@ check_config
 #./parse_json.sh < git_repo.json > git_repo.json.txt
 
 init_res_array
-dest="OC/ACPI"
-add_resource "1" "ACPI" "Add" "Path"
-dest="OC/Kexts"
-add_resource "2" "Kernel" "Add" "BundlePath"
-dest="OC/Drivers"
-add_resource "3" "UEFI" "Drivers"
-dest="OC/Tools"
-add_resource "4" "Misc" "Tools" "Path"
+dest="OC/ACPI"; add_resource "1" "ACPI" "Add" "Path"
+dest="OC/Kexts"; add_resource "2" "Kernel" "Add" "BundlePath"
+dest="OC/Drivers"; add_resource "3" "UEFI" "Drivers"
+dest="OC/Tools"; add_resource "4" "Misc" "Tools" "Path"
 
 USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
 
@@ -1161,11 +1158,11 @@ fi
 
 if [ "$TEXT" = "quit" ];then exit 0;fi # quit without saving changes
 
-if [ "$MODE" != "latestSource" ] && [ "$(uname)" != "Darwin" ]; then
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
 		CONFIG_CHANGED="temp vault disable"
-		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $(uname)\n"
+		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 		msg "\tvault disabled for prebuilts not made on macOS\n"
 	fi
 fi
@@ -1200,4 +1197,4 @@ fi
 
 stop_logging
 
-if [ -n "$FINDER" ] && [ "$(uname)" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click
+if [ -n "$FINDER" ] && [ "$UNAME" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click
