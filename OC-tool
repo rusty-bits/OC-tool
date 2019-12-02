@@ -18,6 +18,7 @@ BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
 INPUT="$BASE_DIR/INPUT/temp"
 CONFIG_PLIST="$INPUT/config.plist"
+CONFIG_TXT="$INPUT/config.plist.txt"
 DOC_DIR="" # repo doc location
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
@@ -107,7 +108,6 @@ check_tool_for_updates() {
 	cd "$BASE_DIR"
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	msg "OC-tool - " # check OC-tool itself first
-#	git fetch --all $VERBOSE $QUIET
 	git fetch --all -q
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE -q
@@ -157,7 +157,7 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		msg "Downloading $zip_name ... "
 		curl -L "$git_url" -o "$zip_name"
@@ -174,7 +174,7 @@ curl_parent() {
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 
 	temp="$res_name" # hold self
 	res_name="$parent"
@@ -460,43 +460,6 @@ check_if_Sample_plist_updated() {
 	fi
 }
 
-parse_plist() { # read plist file hack
-	a=0; in_loop=0
-	while read -r ONE
-	do
-		case "$1" in
-			'')
-				if [ "$a" -eq "0" ]; then
-					case "$ONE" in
-						"<true/>")
-							echo true;;
-						"<false/>")
-							echo false;;
-						*)
-							echo "$ONE"|sed -e 's/<[^>]*>//g';;
-					esac
-					return
-				else
-					a=$((a-1))
-				fi;;
-			*[!0-9]*)
-				case "$ONE" in
-					"<key>$1</key>")
-						if [ "$a" -eq "0" ];then
-							shift
-						else
-							a=$((a-1))
-						fi;;
-					"</array>")
-						if [ "$in_loop" = "1" ];then return; fi;;
-				esac;;
-			*)
-				a=$1; in_loop=1
-				shift;;
-		esac
-	done < "$CONFIG_PLIST"
-}
-
 vault_failed() {
 	msg "${RED}ERROR:${NC} vault build failed, see $LOGFILE for details\n"
 	exit 1
@@ -526,17 +489,17 @@ build_vault() {
 }
 
 find_srce_url() {
-	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		if [ -z "$git_url" ]; then
-			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		fi
 	else
 		if [ -z "$parent" ]; then
-			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		else
-			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2- -d ' '|tr -d '"')
+			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		fi
 	fi
 }
@@ -573,36 +536,30 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 }
 
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
-	i=0; S=1; G=$1
-	res_name="start"
-	until [ -z "$res_name" ]
+	G=$1
+	if [ "$G" -lt "5" ]; then
+		num=$(grep -c "^$2|*$3|[0-9]*|string|$4|" "$CONFIG_TXT")
+	else
+		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")
+	fi
+	for S in $(seq "0" "$((num-1))")
 	do
-		res_name=$(parse_plist "$2" "$3" "$i" "$4")
-		if [ -n "$res_name" ];then
-			case "$1" in
-				1)
-					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
-					dest="OC/ACPI";;
-				2)
-					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
-					dest="OC/Kexts";;
-				3)
-					enabled="true"
-					dest="OC/Drivers";;
-				4)
-					enabled=$(parse_plist "$2" "$3" "$i" "Enabled")
-					dest="OC/Tools";;
-				5|6|7|8)
-					enabled=$(parse_plist "$2" "$3" "$res_name")
-					set_res "$G$S"
-					i=$((i+1));;
-			esac
-			if [ "$G" -lt "5" ];then add_res_array;fi
-			S=$((S+1))
-		fi
-		i=$((i+1))
+		case "$G" in
+			1|2|4)
+				res_name=$(grep "^$2|*$3|$S|string|$4" "$CONFIG_TXT"|cut -f2 -d '"')
+				enabled=$(grep "^$2|*$3|$S|bool|Enabled|" "$CONFIG_TXT"|cut -f2 -d '"')
+				add_res_array;;
+			3)
+				res_name=$(grep "^$2|*$3|$S|string|$4" "$CONFIG_TXT"|cut -f2 -d '"')
+				enabled="true"
+				add_res_array;;
+			5|6|7|8)
+				res_name=$(grep "^$2|Quirks|$S|" "$CONFIG_TXT"|cut -f8 -d '|')
+				enabled=$(grep "|$res_name|" "$CONFIG_TXT"|cut -f2 -d '"')
+				set_res "$G$S";;
+		esac
 	done
-	eval G"$G"_NUM=$((S-1))
+	eval G"$G"_NUM=$S
 }
 
 #this is an ugly function, rewrite it if possible
@@ -610,8 +567,8 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	S=0; G=0
 	while read -r line
 	do
-		S=$((S+1))
 		eval "res0$S=$line,true"
+		S=$((S+1))
 	done < "$TOOL_FILES/no-pre-base-resources"
 	preB=$S
 	if [ "$MODE" = "latestSource" ]; then
@@ -627,8 +584,8 @@ init_res_array() { # base-resources moved into .tool-files for portability
 
 	while read -r line
 	do
-		S=$((S+1))
 		eval "res0$S=$line,true"
+		S=$((S+1))
 	done < "$TOOL_FILES/pre-base-resources"
 	eval G0_NUM=$S
 	for S in $(seq $((preB+1)) "$G0_NUM") # add resources with prebuilts
@@ -636,7 +593,6 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		get_res "0$S"
 		add_res_array
 	done
-	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
 }
 
@@ -656,9 +612,9 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
-	for G in $(seq 0 4)
+	for G in $(seq 0 8)
 	do
-		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
+		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
 			msg "$G$S|$res_name|$git_url|$srce|$dest|$parent|$enabled\n"
@@ -752,25 +708,25 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 #		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		case "$line" in
 			"<key>ACPI</key>")
-				G=1; S=1;
+				G=1; S=0;
 				write_new_array
-				G=5; S=1;
+				G=5; S=0;
 				write_new_quirks;;
 			"<key>Kernel</key>")
-				G=2; S=1;
+				G=2; S=0;
 				write_new_array
-				G=6; S=1;
+				G=6; S=0;
 				write_new_quirks;;
 			"<key>UEFI</key>")
-				G=3; S=1;
+				G=3; S=0;
 				write_new_drivers
-				G=7; S=1;
+				G=7; S=0;
 				write_new_quirks;;
 			"<key>Tools</key>")
-				G=4; S=1;
+				G=4; S=0;
 				write_new_array;;
 			"<key>Booter</key>")
-				G=8; S=1;
+				G=8; S=0;
 				write_new_quirks;;
 			"<key>RequireVault</key>"|"<key>RequireSignature</key>")
 				read -r line
@@ -783,11 +739,11 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 	case "$G" in
 		1|2|3|4)
-			ROW=$((S+2))
+			ROW=$((S+3))
 			COL=$(((G-1)*C+1))
 			;;
 		5|6|7|8)
-			ROW=$((S+BOT+3))
+			ROW=$((S+BOT+5))
 			COL=$(((G-5)*C+1))
 			;;
 		9)
@@ -830,7 +786,7 @@ unselect_MSG() { # clear highlighted resource in TUI
 
 draw_key() {
 	if [ "$R" -gt "30" ];then
-		msg "$NC\033[$((BOT+KEY+3))H\n"
+		msg "$NC\033[$((BOT+KEY+5))H\n"
 		msg "$(cat "$TOOL_FILES/key.msg")\n"
 	fi
 }
@@ -894,7 +850,7 @@ draw_screen() {
 		else # KEY = longest group of 5 - 7
 			if [ "$KEY" -lt "$len" ]; then KEY="$len";fi
 		fi
-		for S in $(seq 1 "$len")
+		for S in $(seq 0 "$len")
 		do
 			get_res "$G$S"
 			set_ROW_COL
@@ -918,7 +874,7 @@ get_CHAR() {
 }
 
 text_user_interface() {
-	git_url=""; srce=""; dest=""
+	git_url=""; srce=""; dest=""; parent=""
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
 	BOT=0; KEY=0
@@ -927,7 +883,7 @@ text_user_interface() {
 	msg "$(tput smcup)"
 	stty -echo
 	draw_screen
-	G=1; S=1; get_res "$G$S"
+	G=1; S=0; get_res "$G$S"
 	set_ROW_COL; set_color
 	select_MSG
 	while [ "$CHAR" != "g" ]
@@ -945,7 +901,7 @@ text_user_interface() {
 				fi
 				draw_header;;
 			e) # jump to kExt quirks
-				G=6; S=1;;
+				G=6; S=0;;
 			i)
 				DESC=""
 				while read -r line
@@ -970,7 +926,6 @@ text_user_interface() {
 				exit 0;;
 			q)
 				stty echo
-				#msg "\033[J${NC}\n" # return to screen buffer
 				CHAR='g'
 				TEXT="quit";;
 			r)
@@ -1002,16 +957,16 @@ text_user_interface() {
 			A|k) # move up
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					S=$((S-1))
-					if [ "$S" -eq "0" ];then
+					if [ "$S" -lt "0" ];then
 						if [ "$G" -gt "4" ];then
 							G=$((G-4))
 							S="$(eval echo \$G"$G"_NUM)"
 						else
-							S=1
+							S=0
 						fi
 					fi
 				else # jump to ACPI group
-					G=1; S=1
+					G=1; S=0
 				fi
 				esc="";;
 			B|j) # move down
@@ -1021,13 +976,13 @@ text_user_interface() {
 					if [ "$S" -gt "$len" ];then
 						if [ "$G" -lt "5" ];then
 							G=$((G+4))
-							S=1
+							S=0
 						else
 							S=$len
 						fi
 					fi
 				else # jump to Booter quirks
-					G=8; S=1
+					G=8; S=0
 				fi
 				esc="";;
 			C|l) # move right
@@ -1042,23 +997,23 @@ text_user_interface() {
 					if [ "$G" -eq "4" ];then G=5;fi
 					esc=""
 				else
-					G=3; S=1
+					G=3; S=0
 				fi;;
 			K) # jump to kext group
-				G=2; S=1;;
+				G=2; S=0;;
 			T) # jump to Tools group
-				G=4; S=1;;
+				G=4; S=0;;
 			U) # jump to UEFI quirke
-				G=7; S=1;;
+				G=7; S=0;;
 			Q) # jump to ACPI quirks
-				G=5; S=1;;
+				G=5; S=0;;
 			esc|'[')
 				esc="true";;
 		esac
 		if [ "$S" -gt "$(eval echo \$G"$G"_NUM)" ];then
 			S=$(eval echo \$G"$G"_NUM)
 		fi
-		if [ "$S" -eq "0" ];then S=1; fi
+		if [ "$S" -lt "0" ];then S=0; fi
 		get_res "$G$S"
 		set_ROW_COL
 		set_color
@@ -1147,20 +1102,21 @@ if [ -p /dev/stdin ]; then # data was piped
 else  #  no input found on stdin
 	if [ -e "$filePath" ]; then
 		EX_COM="${EX_COM} ${filePath}"
-		mkdir -p "$INPUT"
-		cp "${filePath}" "$CONFIG_PLIST"
 	else
 		if [ -n "${filePath}" ]; then
 			msg "config.plist file '${filePath}' not found\n"
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
-			INPUT="$BASE_DIR/INPUT"
-			CONFIG_PLIST="$INPUT/config.plist"
-			filePath="$CONFIG_PLIST"
+			filePath="$BASE_DIR/INPUT/config.plist"
 		fi
 	fi
+	mkdir -p "$INPUT"
+	cp "${filePath}" "$CONFIG_PLIST"
 fi
+cd "$INPUT"
+"$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
+
 if [ "$MODE" != "latestSource" ] && [ "$(uname)" = "Darwin" ]; then # show start messaged
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
@@ -1183,16 +1139,19 @@ check_config
 #./parse_json.sh < git_repo.json > git_repo.json.txt
 
 init_res_array
+dest="OC/ACPI"
 add_resource "1" "ACPI" "Add" "Path"
+dest="OC/Kexts"
 add_resource "2" "Kernel" "Add" "BundlePath"
+dest="OC/Drivers"
 add_resource "3" "UEFI" "Drivers"
+dest="OC/Tools"
 add_resource "4" "Misc" "Tools" "Path"
 
-USE_VAULT=$(parse_plist "Misc" "Security" "RequireVault")
+USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
 
 if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
-#	msg "$(tput smcup)"
 	text_user_interface
 	msg "\033[J\n" # cleanup for TERM types that don't buffer
 	msg "$(tput rmcup)"
