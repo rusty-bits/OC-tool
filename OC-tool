@@ -348,7 +348,7 @@ prepare_resources() {
 
 	for G in $(seq 0 4) # cycle first 5 groups
 	do
-		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)") # cycle through members
+		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
 		do
 			get_res "$G$S"
 			if [ "$enabled" != "false" ];then
@@ -421,7 +421,7 @@ copy_resources() {
 	IGNORE="" # no more ignoring for you
 	for G in $(seq 0 4)
 	do
-		for S in $(seq 1 "$(eval echo \$G"$G"_NUM)")
+		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
 			if [ "$enabled" = "true" ];then
@@ -564,15 +564,15 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 
 #this is an ugly function, rewrite it if possible
 init_res_array() { # base-resources moved into .tool-files for portability
-	S=0; G=0
+	G=0; S="-1"
 	while read -r line
 	do
-		eval "res0$S=$line,true"
 		S=$((S+1))
+		eval "res0$S=$line,true"
 	done < "$TOOL_FILES/no-pre-base-resources"
 	preB=$S
 	if [ "$MODE" = "latestSource" ]; then
-		for S in $(seq 1 $preB) # add resources without prebuilts
+		for S in $(seq 0 $preB) # add resources without prebuilts
 		do
 			get_res "0$S"
 			if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
@@ -584,8 +584,8 @@ init_res_array() { # base-resources moved into .tool-files for portability
 
 	while read -r line
 	do
-		eval "res0$S=$line,true"
 		S=$((S+1))
+		eval "res0$S=$line,true"
 	done < "$TOOL_FILES/pre-base-resources"
 	eval G0_NUM=$S
 	for S in $(seq $((preB+1)) "$G0_NUM") # add resources with prebuilts
@@ -593,6 +593,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		get_res "0$S"
 		add_res_array
 	done
+	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
 }
 
@@ -612,7 +613,7 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
-	for G in $(seq 0 8)
+	for G in $(seq 0 4)
 	do
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
