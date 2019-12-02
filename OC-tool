@@ -804,7 +804,7 @@ draw_header() {
 	else
 		msg "$RED"
 	fi
-	msg "$INV$USE_VAULT$NC\033[K INPUT=${GRN}$CONFIG_PLIST${NC}  "
+	msg "$INV$USE_VAULT$NC\033[K INPUT=${GRN}$filePath${NC}  "
 	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
