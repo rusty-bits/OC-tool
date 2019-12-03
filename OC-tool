@@ -25,14 +25,14 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.1(021219) last checked with OpenCore version DBG-053-2019-11-26"
+VER="2.1(031219) last checked with OpenCore version DBG-053-2019-12-02"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
-REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""
+REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 
-optspec="dhioqrstvVX"
+optspec="dhinoqrstvVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -99,9 +99,14 @@ clone() { # will only clone if pkg is not local
 		pkg_name="$2"
 	fi
 	if [ ! -d "$pkg_name" ]; then
-		msg "Cloning $1 into $pkg_name ... "
-		eval git clone "$1" "$pkg_name"
-		fin
+		if [ -z "$UPDATE" ]; then
+			msg "Cloning $1 into $pkg_name ... "
+			eval git clone "$1" "$pkg_name"
+			fin
+		else
+			msg "\nCan't clone $pkg_name while using -n option.\n"
+			exit 0
+		fi
 	fi
 }
 
@@ -160,15 +165,20 @@ curl_parent() {
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
 	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
-		msg "Downloading $zip_name ... "
-		curl -L "$git_url" -o "$zip_name"
-		shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
-		if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
-		msg "unzipping ... "
-		if [ "${zip_name##*.}" = "zip" ]; then
-			unzip -o "$zip_name"
+		if [ -z "$UPDATE" ]; then
+			msg "Downloading $zip_name ... "
+			curl -L "$git_url" -o "$zip_name"
+			shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
+			if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
+			msg "unzipping ... "
+			if [ "${zip_name##*.}" = "zip" ]; then
+				unzip -o "$zip_name"
+			fi
+			fin
+		else
+			msg "\nCan't download $zip_name while using -n option.\n"
+			exit 0
 		fi
-		fin
 	fi
 	srce="$(pwd)"
 }
@@ -1062,6 +1072,9 @@ case "${optchar}" in
 			exit 0;;
 		i)
 			IGNORE="true";;
+		n)
+			UPDATE="false"
+			EX_COM="${EX_COM}n";;
 		o)
 			FINDER="open"
 			EX_COM="${EX_COM}o";;
@@ -1125,13 +1138,13 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start m
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
 
-check_tool_for_updates
+if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
 
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
 
-if [ "$MODE" = "latestSource" ]; then check_resources_for_updates; fi
+if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then check_resources_for_updates; fi
 
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
@@ -1157,7 +1170,10 @@ if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "${GRN}done in TUI${NC}\n"
 fi
 
-if [ "$TEXT" = "quit" ];then exit 0;fi # quit without saving changes
+if [ "$TEXT" = "quit" ];then # quit without saving changes
+	msg "\nOC-tool quit by user.\n"
+	exit 0
+fi
 
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then

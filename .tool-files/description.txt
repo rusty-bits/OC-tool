@@ -2,7 +2,11 @@ ApfsDriverLoader.efi
 Needed for seeing APFS volumes.
 VboxHfs.efi
 Needed for seeing HFS volumes.
+VBoxHfs.efi
+Needed for seeing HFS volumes.
 HfsPlus.efi
+Needed for seeing HFS volumes.
+HFSPlus.efi
 Needed for seeing HFS volumes.
 FwRuntimeServices.efi
 Replacement for AptioMemoryFix.efi, used for patching boot.efi for NVRAM fixes and better memory management.
@@ -41,7 +45,7 @@ Disable single user mode. This is a security option allowing one to restrict sin
 DisableVariableWrite
 Protect from macOS NVRAM write access. This is a security option allowing one to restrict NVRAM access in macOS. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : This quirk can also be used as an ugly workaround to buggy UEFI runtime services implementations that fail to write variables to NVRAM and break the rest of the operating system.
 DiscardHibernateMap
-Reuse original hibernate memory map. This option forces XNU kernel to ignore newly supplied memory map and assume that it did not change after waking from hibernation. This behaviour is required to work by Windows, which mandates to preserve runtime memory size and location after S4 wake. Note : This may be used to workaround buggy memory maps on older hardware, and is now considered rare legacy. Do not use this unless you fully understand the consequences.
+Reuse original hibernate memory map. This option forces XNU kernel to ignore newly supplied memory map and assume that it did not change after waking from hibernation. This behaviour is required to work by Windows, which mandates to preserve runtime memory size and location after S4 wake. Note : This may be used to workaround buggy memory maps on older hardware, and is now considered rare legacy. Examples of such hardware are Ivy Bridge laptops with Insyde firmware, like Acer V3-571G. Do not use this unless you fully understand the consequences.
 EnableSafeModeSlide
 Patch bootloader to have KASLR enabled in safe mode. This option is relevant to the users that have issues booting to safe mode (e.g. by holding shift or using -x boot argument). By default safe mode forces 0 slide as if the system was launched with slide=0 boot argument. This quirk tries to patch boot.efi to lift that limitation and let some other value (from 1 to 255) be used. This quirk requires ProvideCustomSlide to be enabled. Note : The necessity of this quirk is determined by safe mode availability. If booting to safe mode fails, this option can be tried to be enabled.
 EnableWriteUnprotector
@@ -74,10 +78,10 @@ PanicNoKextDump
 Prevent kernel from printing kext dump in the panic log preventing from observing panic details. Affects 10.13 and above.
 PowerTimeoutKernelPanic
 Disables kernel panic on setPowerState timeout. An additional security measure was added to macOS Catalina (10.15) causing kernel panic on power change timeout for Apple drivers. Sometimes it may cause issues on misconfigured hardware, notably digital audio, which sometimes fails to wake up. For debug kernels setpowerstate_panic=0 boot argument should be used, which is otherwise equivalent to this quirk.
-ThirdPartyTrim
-Patch IOAHCIBlockStorage.kext to force TRIM command support on AHCI SSDs. Note : This option should avoided whenever possible. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
+ThirdPartyDrives
+Apply vendor patches to IOAHCIBlockStorage.kext to enable native features for third-party drives, such as TRIM on SSDs or hibernation support on 10.15 and newer. Note : This option may be avoided on user preference. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
 XhciPortLimit
-Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
+Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should be avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
 AvoidHighAlloc
 Advises allocators to avoid allocations above first 4 GBs of RAM. This is a workaround for select board firmwares, namely GA-Z77P-D3 (rev. 1.1), failing to properly access higher memory in UEFI Boot Services. On these boards this quirk is required for booting entries that need to allocate large memory chunks, such as macOS DMG recovery entries. On unaffected boards it may cause boot failures, and thus strongly not recommended. For known issues refer to acidanthera/bugtracker#449.
 ClearScreenOnModeSwitch
