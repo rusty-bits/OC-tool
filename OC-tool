@@ -481,15 +481,19 @@ build_vault() {
 	if [ ! -e "$RES_DIR/UDK/OcSupportPkg" ]; then
 		mkdir -p "$RES_DIR/UDK/OcSupportPkg"
 		cd "$RES_DIR/UDK/OcSupportPkg"
-		curl -L -O "https://github.com/rusty-bits/OcSupportPkg/releases/download/161119/OcSupportPkg-DEBUG-161119.zip"
-		unzip "OcSupportPkg-DEBUG-161119.zip"
+		ocsupporturl=$(grep "/OcSupportPkg/prebuiltRelease/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		curl -L -O "$ocsupporturl"
+		ocsupportzip=${ocsupporturl##*/}
+		unzip "$ocsupportzip"
 	fi
 	cd "$BUILD_DIR"/OC
 	if ls vault* 1> /dev/null 2>&1; then
 		rm vault.*
 	fi
 	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
-	make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+	if [ "$MODE" = "latestSource" ]; then
+		make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+	fi
 	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 	str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 	off=$((str+16))
