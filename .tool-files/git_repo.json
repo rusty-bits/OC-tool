@@ -7,9 +7,9 @@
       "version" : "0.5.3",
       "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.3/OpenCore-0.5.3-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "c44ad13841a4e9039edb44371dd7a92cb313171aa88ff66b296be3d3bb6bb03e",
       "release" : "https://github.com/acidanthera/OpenCorePkg/releases/download/0.5.3/OpenCore-0.5.3-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "e0d969e13f2d47193d7d7f3eb1d4cc1f7e2274bdbfb8b788a51a0196804892d1"
     },
     {
       "commit" : "8be245fb1a775b6a11766f827b5e9bad50e6247b",
@@ -135,11 +135,11 @@
       "commit" : "20c585c0b93185b2b1247d782d09fd5e8dd627e2",
       "commitdescription" : "",
       "version" : "2.1.4",
-      "dateadded" : "",
+      "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/AppleSupportPkg/releases/download/2.1.4/AppleSupport-2.1.4-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "ed8107782cd77d91adc4bf93eedaf870e4043cc59d1f37489d43327025ac4d89",
       "release" : "https://github.com/acidanthera/AppleSupportPkg/releases/download/2.1.4/AppleSupport-2.1.4-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "18748f5d3897bd2bed186674f8aa4107a1ea12b2037a86b66d6ceebe7667123f"
     },
     {
       "commit" : "",
@@ -173,9 +173,9 @@
       "version" : "1.3.5",
       "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.5/WhateverGreen-1.3.5-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "61b22669a66bc80dd5b3e330c48574c758a26075f35161f622370546d033af93",
       "release" : "https://github.com/acidanthera/WhateverGreen/releases/download/1.3.5/WhateverGreen-1.3.5-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "08c1d75f1e14798b38eab4eb0356d21028b81f32cf20be917d55c070b0f82821"
     },
     {
       "commit" : "f5c4211b160f00b6b495112ae59cc23cec6a541b",
@@ -210,9 +210,9 @@
       "version" : "2.1.0",
       "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/VoodooPS2/releases/download/2.1.0/VoodooPS2Controller-2.1.0-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "eca76c934428085354eb9e0ee9d3e3d62fdfa757e02a3df37c6fa4fc3c687a7c",
       "release" : "https://github.com/acidanthera/VoodooPS2/releases/download/2.1.0/VoodooPS2Controller-2.1.0-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "f88ae45ac83ef2420bd8f56da02815597e64e5064170ed1b958ea216b774e58e"
       },
     {
       "version" : "2.0.4",
@@ -226,7 +226,6 @@
     "prebuiltRelease" : [
     {
       "commit" : "",
-      "commitdescription" : "",
       "version" : "1.0.2",
       "dateadded" : "",
       "debug" : "https://github.com/acidanthera/IntelMausi/releases/download/1.0.2/IntelMausi-1.0.2-DEBUG.zip",
@@ -238,7 +237,6 @@
     "prebuiltDaily" : [
     {
       "commit" : "",
-      "commitdescription" : "",
       "version" : "",
       "dateadded" : "",
       "debug" : "",
@@ -391,9 +389,9 @@
       "version" : "1.4.4",
       "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/AppleALC/releases/download/1.4.4/AppleALC-1.4.4-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "fca36dc5c3e7ee3a35a7c8e7399224187c731458c34ece9b6559ba42eef34776",
       "release" : "https://github.com/acidanthera/AppleALC/releases/download/1.4.4/AppleALC-1.4.4-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "43405de3541aebc95c588c0f424974352c2aa50a00df90269fa177fb2cc5fd4d"
     },
     {
       "commit" : "",
@@ -525,10 +523,10 @@
     {
       "version" : "1.0.3",
       "dateadded" : "20191202",
-      "debug" : "https://github.com/acidanthera/OpenCoreShell/releases/download/v1.0.3/OpenCoreShell-1.0.3-DEBUG.zip",
-      "debug-sha256" : "",
-      "release" : "https://github.com/acidanthera/OpenCoreShell/releases/download/v1.0.3/OpenCoreShell-1.0.3-RELEASE.zip",
-      "release-sha256" : ""
+      "debug" : "https://github.com/acidanthera/OpenCoreShell/releases/download/1.0.3/OpenCoreShell-1.0.3-DEBUG.zip",
+      "debug-sha256" : "a788bb2e8221ef95000a830ef25120bd354e90d22f678d03136ef7aa794b8da4",
+      "release" : "https://github.com/acidanthera/OpenCoreShell/releases/download/1.0.3/OpenCoreShell-1.0.3-RELEASE.zip",
+      "release-sha256" : "260fcc2e59bb8d23a9af3cdf4016b846aa5bd2469089b3d2c10b7ae58c62a901"
     },
     {
       "version" : "1.0.2",
@@ -558,9 +556,9 @@
       "version" : "1.4.0",
       "dateadded" : "20191202",
       "debug" : "https://github.com/acidanthera/Lilu/releases/download/1.4.0/Lilu-1.4.0-DEBUG.zip",
-      "debug-sha256" : "",
+      "debug-sha256" : "2034a76c0b17a7fda71b18eb252b03b7524edbc7167709cb67a54b770fece969",
       "release" : "https://github.com/acidanthera/Lilu/releases/download/1.4.0/Lilu-1.4.0-RELEASE.zip",
-      "release-sha256" : ""
+      "release-sha256" : "f2ea252814449f5297bcfdbee9d771c73329f1c7e7e48659098589ecffd759c9"
     },
     {
       "commit" : "a73034731a3e1a70f0fe99945b53233d94a4d5a0",
