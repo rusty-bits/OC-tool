@@ -163,7 +163,7 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "/$res_name/$MODE/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	sha=$(grep "/$res_name/$MODE/@0/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
 			msg "Downloading $zip_name ... "
@@ -185,7 +185,7 @@ curl_parent() {
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "/$parent/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 
 	temp="$res_name" # hold self
 	res_name="$parent"
@@ -508,7 +508,7 @@ find_srce_url() {
 		fi
 	else
 		if [ -z "$parent" ]; then
-			git_url=$(grep "/$res_name/$MODE/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+			git_url=$(grep "/$res_name/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		else
 			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		fi
