@@ -551,13 +551,20 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	set_res "$G$S"
 }
 
+missing_plist_sec() {
+	msg "\n${RED}ERROR:${NC}\tMissing $1 > $2 section in $filePath\n"
+	msg "\tEvery section is required in the config.plist at this time.\n"
+	exit 1
+}
+
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	G=$1
 	if [ "$G" -lt "5" ]; then
-		num=$(grep -c "^$2|*$3|[0-9]*|string|$4|" "$CONFIG_TXT")
+		num=$(grep -c "^$2|*$3|[0-9]*|string|$4|" "$CONFIG_TXT")||missing_plist_sec $2 $3
 	else
-		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")
+		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")||missing_plist_sec $2 $3
 	fi
+	if [ -n "$DEBUG" ]; then msg "\ndb - in add_resource 2 $2 3 $3\n"; fi
 	for S in $(seq "0" "$((num-1))")
 	do
 		case "$G" in
