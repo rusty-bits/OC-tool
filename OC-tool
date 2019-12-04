@@ -72,8 +72,8 @@ check_requirements() { #required commands moved to .tool-files/requirements for 
 }
 
 check_config() { #config.plist must exist, even with -i option
-	if [ ! -f "$CONFIG_PLIST" ]; then
-		msg "\n${RED}ERROR:${NC}\t$CONFIG_PLIST does not exist\n"
+	if [ ! -f "$BASE_DIR/INPUT/config.plist" ]; then
+		msg "\n${RED}ERROR:${NC}\t$BASE_DIR/INPUT/config.plist does not exist\n"
 		msg "\tEither - copy a config.plist to the INPUT folder,\n"
 		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
 		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file' | ./OC-tool'\n"
@@ -1128,12 +1128,15 @@ else  #  no input found on stdin
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
+			check_config
 			filePath="$BASE_DIR/INPUT/config.plist"
 		fi
 	fi
 	mkdir -p "$INPUT"
 	cp "${filePath}" "$CONFIG_PLIST"
 fi
+
+
 cd "$INPUT"
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 
@@ -1153,7 +1156,6 @@ if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then check_resources_for_up
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 
-check_config
 
 #cd "$TOOL_FILES"
 #./parse_json.sh < git_repo.json > git_repo.json.txt
