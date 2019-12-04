@@ -32,7 +32,8 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 
-optspec="dhinoqrstvVX"
+DEBUG=""
+optspec="dhinoqrstvDVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -596,7 +597,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 			set_res "0$S"
 		done
 	fi
-
+	if [ -n "$DEBUG" ]; then msg "\ndb - no-pre-base ... done\n"; fi
 	while read -r line
 	do
 		S=$((S+1))
@@ -610,6 +611,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	done
 	G0_NUM=$((G0_NUM+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
+	if [ -n "$DEBUG" ]; then msg "\ndb - pre-base ... done\n"; fi
 }
 
 set_build_type() {
@@ -1097,6 +1099,8 @@ case "${optchar}" in
 		t)
 			TEXT="true"
 			EX_COM="${EX_COM}t";;
+		D)
+			DEBUG="true";;
 		V)
 			msg "OC-tool version $VER\n"
 			exit 0;;
@@ -1110,6 +1114,7 @@ done
 eval filePath="\$$OPTIND"
 
 start_logging
+if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
@@ -1135,7 +1140,7 @@ else  #  no input found on stdin
 	mkdir -p "$INPUT"
 	cp "${filePath}" "$CONFIG_PLIST"
 fi
-
+if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 cd "$INPUT"
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
@@ -1156,15 +1161,20 @@ if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then check_resources_for_up
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 
-
+if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
 #cd "$TOOL_FILES"
 #./parse_json.sh < git_repo.json > git_repo.json.txt
 
 init_res_array
+if [ -n "$DEBUG" ]; then msg "\ndb - init_res_array ... done\n"; fi
 dest="OC/ACPI"; add_resource "1" "ACPI" "Add" "Path"
+if [ -n "$DEBUG" ]; then msg "\ndb - add ACPI ... done\n"; fi
 dest="OC/Kexts"; add_resource "2" "Kernel" "Add" "BundlePath"
+if [ -n "$DEBUG" ]; then msg "\ndb - add Kernel ... done\n"; fi
 dest="OC/Drivers"; add_resource "3" "UEFI" "Drivers"
+if [ -n "$DEBUG" ]; then msg "\ndb - add Drivers ... done\n"; fi
 dest="OC/Tools"; add_resource "4" "Misc" "Tools" "Path"
+if [ -n "$DEBUG" ]; then msg "\ndb - add Tools ... done\n"; fi
 
 USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
 
@@ -1201,6 +1211,7 @@ fi
 if [ "$TEXT" = "stop" ];then exit 0;fi # save and quit
 
 prepare_resources
+if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
 set_up_dest_dir
 copy_resources
 
