@@ -25,7 +25,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.1(031219) last checked with OpenCore version DBG-053-2019-12-02"
+VER="2.1(051219) last checked with OpenCore version DBG-053-2019-12-02"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -815,17 +815,22 @@ draw_key() {
 
 draw_header() {
 	if [ "$TYPE" = "debug" ]; then
-		inc_syms="${GRN}include${NC}"
+		inc_syms="${GRN}yes${NC}"
 	else
 		inc_syms="${RED}no${NC}"
 	fi
-	msg "$NC\033[Hmode=$GRN$MODE$NC ${U}d${NC}ebugSyms=${inc_syms} RequireVault="
+	if [ -n "$CONFIG_CHANGED" ]; then
+		CC="${RED}${INV}X${NC}${INV}"
+	else
+		CC="${GRN}${INV} ${NC}${INV}"
+	fi
+	msg "$NC\033[H${CC}summary${NC} mode=$GRN$MODE$NC ${U}d${NC}bgSyms=${inc_syms} RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
 		msg "$RED"
 	fi
-	msg "$INV$USE_VAULT$NC\033[K INPUT=${GRN}$filePath${NC}  "
+	msg "$INV$USE_VAULT$NC\033[K IN=${GRN}$filePath${NC}  "
 	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
@@ -957,6 +962,7 @@ text_user_interface() {
 				draw_screen
 				G=$OLD_G; S=$OLD_S;;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
+				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
 				TEXT='stop';;
 			v) # toggle USE_VAULT
@@ -965,8 +971,8 @@ text_user_interface() {
 				else
 					USE_VAULT="true"
 				fi
-				draw_header
-				CONFIG_CHANGED="-t option";;
+				CONFIG_CHANGED="-t option"
+				draw_header;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
 				case "$enabled" in
 					true)
@@ -975,7 +981,8 @@ text_user_interface() {
 						enabled="true";;
 				esac
 				CONFIG_CHANGED="-t option"
-				set_res "$G$S";;
+				set_res "$G$S"
+				draw_header;;
 			A|k) # move up
 				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 					S=$((S-1))
@@ -1106,7 +1113,7 @@ case "${optchar}" in
 		t)
 			TEXT="true"
 			EX_COM="${EX_COM}t";;
-		D)
+		D) # for when I break stuff
 			DEBUG="true";;
 		V)
 			msg "OC-tool version $VER\n"
