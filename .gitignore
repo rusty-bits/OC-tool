@@ -1,6 +1,8 @@
 .DS_Store
 
 tool.log
+update.log
+
 INPUT/config.plist
 INPUT/temp/config.plist
 INPUT/temp/config.plist.txt
