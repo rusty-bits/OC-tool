@@ -61,9 +61,9 @@ Setup virtual memory at SetVirtualAddresses. Select firmwares access memory by v
 ShrinkMemoryMap
 Attempt to join similar memory map entries. Select firmwares have very large memory maps, which do not fit Apple kernel, permitting up to 64 slots for runtime memory. This quirk attempts to unify contiguous slots of similar types to prevent boot failures. Note : The necessity of this quirk is determined by early boot failures. It is rare to need this quirk on Haswell or newer. Do not use unless you fully understand the consequences.
 AppleCpuPmCfgLock
-Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in AppleIntelCPUPowerManagement.kext, commonly causing early kernel panic, when it is locked from writing. Note : This option should avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in AppleIntelCPUPowerManagement.kext, commonly causing early kernel panic, when it is locked from writing. Note : This option should be avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
 AppleXcpmCfgLock
-Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in XNU kernel, commonly causing early kernel panic, when it is locked from writing (XCPM power management). Note : This option should avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in XNU kernel, commonly causing early kernel panic, when it is locked from writing (XCPM power management). Note : This option should be avoided whenever possible. Modern firmwares provide CFG Lock setting, disabling which is much cleaner. More details about the issue can be found in VerifyMsrE2 notes.
 AppleXcpmExtraMsrs
 Disables multiple MSR access critical for select CPUs, which have no native XCPM support. This is normally used in conjunction with Emulate section on Haswell-E, Broadwell-E, Skylake-X, and similar CPUs. More details on the XCPM patches are outlined in acidanthera/bugtracker#365. Note : Additional not provided patches will be required for Ivy Bridge or Pentium CPUs. It is recommended to use AppleIntelCpuPowerManagement.kext for the former.
 CustomSMBIOSGuid
@@ -71,7 +71,7 @@ Performs GUID patching for UpdateSMBIOSMode Custom mode. Usually relevant for De
 DisableIoMapper
 Disables IOMapper support in XNU (VT-d), which may conflict with the firmware implementation. Note : This option is a preferred alternative to dropping DMAR ACPI table and disabling VT-d in firmware preferences, which does not break VT-d support in other systems in case they need it.
 ExternalDiskIcons
-Apply icon type patches to AppleAHCIPort.kext to force internal disk icons for all AHCI disks. Note : This option should avoided whenever possible. Modern firmwares usually have compatible AHCI controllers.
+Apply icon type patches to AppleAHCIPort.kext to force internal disk icons for all AHCI disks. Note : This option should be avoided whenever possible. Modern firmwares usually have compatible AHCI controllers.
 LapicKernelPanic
 Disables kernel panic on LAPIC interrupts.
 PanicNoKextDump

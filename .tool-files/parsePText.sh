@@ -2,8 +2,8 @@
 
 while read -r line
 do
-#	section=$(echo $line|cut -f1 -d '|')
-	case "${line%%|*}" in
+#	section=$(echo $line|cut -f1 -d '/')
+	case "${line%%/*}" in
 		"ACPI")
 			echo "ACPI"
 			;;

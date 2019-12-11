@@ -11,6 +11,7 @@ else
 	FINDER=""
 fi
 
+TTY_OUT=$(tty)
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -25,7 +26,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.1(081219) last checked with OpenCore version DBG-054-2019-12-06"
+VER="2.1(111219) last checked with OpenCore version DBG-054-2019-12-06"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -37,7 +38,7 @@ optspec="dhinoqrstvDVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
-		echo "$1\c" > "$(tty)"
+		echo "$1\c" > "$TTY_OUT"
 	else
 		echo "$1\c"
 	fi
@@ -290,9 +291,9 @@ build_kext() {
 		if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
 			ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 		fi
-		if [ ! -L "VirtualSMC.kext" ]; then # AsusSMC needs link to Virtual SMC
-			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
-		fi
+#		if [ ! -L "VirtualSMC.kext" ]; then # AsusSMC needs link to Virtual SMC
+#			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
+#		fi
 		a=1
 		while :
 		do
@@ -562,25 +563,25 @@ missing_plist_sec() {
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	G=$1
 	if [ "$G" -lt "5" ]; then
-		num=$(grep -c "^$2|*$3|[0-9]*|string|$4|" "$CONFIG_TXT")||missing_plist_sec $2 $3
+		num=$(grep -c "^$2/*$3/[0-9]*/string/$4/ " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
 	else
-		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")||missing_plist_sec $2 $3
+		num=$(grep -c "^$2/$3/" "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
 	fi
 	if [ -n "$DEBUG" ]; then msg "\ndb - in add_resource 2 $2 3 $3\n"; fi
 	for S in $(seq "0" "$((num-1))")
 	do
 		case "$G" in
 			1|2|4)
-				res_name=$(grep "^$2|*$3|$S|string|$4" "$CONFIG_TXT"|cut -f2 -d '"')
-				enabled=$(grep "^$2|*$3|$S|bool|Enabled|" "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2/*$3/$S/string/$4/ " "$CONFIG_TXT"|cut -f2 -d '"')
+				enabled=$(grep "^$2/*$3/$S/bool/Enabled/ " "$CONFIG_TXT"|cut -f2 -d '"')
 				add_res_array;;
 			3)
-				res_name=$(grep "^$2|*$3|$S|string|$4" "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2/*$3/$S/string/$4/ " "$CONFIG_TXT"|cut -f2 -d '"')
 				enabled="true"
 				add_res_array;;
 			5|6|7|8)
-				res_name=$(grep "^$2|Quirks|$S|" "$CONFIG_TXT"|cut -f8 -d '|')
-				enabled=$(grep "|$res_name|" "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2/Quirks/$S/" "$CONFIG_TXT"|cut -f8 -d '/')
+				enabled=$(grep "/$res_name/ " "$CONFIG_TXT"|cut -f2 -d '"')
 				set_res "$G$S";;
 		esac
 	done
@@ -594,33 +595,23 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	do
 		S=$((S+1))
 		eval "res0$S=$line,true"
+		if [ "$MODE" = "latestSource" ]; then
+				get_res "0$S"
+				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
+				add_res_array
+				res_name="base"
+				set_res "0$S"
+		fi
 	done < "$TOOL_FILES/no-pre-base-resources"
-	preB=$S
-	if [ "$MODE" = "latestSource" ]; then
-		for S in $(seq 0 $preB) # add resources without prebuilts
-		do
-			get_res "0$S"
-			if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
-			add_res_array
-			res_name="base"
-			set_res "0$S"
-		done
-	fi
-	if [ -n "$DEBUG" ]; then msg "\ndb - no-pre-base ... done\n"; fi
 	while read -r line
 	do
 		S=$((S+1))
 		eval "res0$S=$line,true"
-	done < "$TOOL_FILES/pre-base-resources"
-	eval G0_NUM=$S
-	for S in $(seq $((preB+1)) "$G0_NUM") # add resources with prebuilts
-	do
 		get_res "0$S"
 		add_res_array
-	done
-	G0_NUM=$((G0_NUM+1))
+	done < "$TOOL_FILES/pre-base-resources"
+	G0_NUM=$((S+1))
 	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
-	if [ -n "$DEBUG" ]; then msg "\ndb - pre-base ... done\n"; fi
 }
 
 set_build_type() {
@@ -779,7 +770,7 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 
 set_text_header() {
 	eval res91="\\${U}A\\${UO}CPI/\\${U}Q\\${UO}uirks,"
-	eval res92="\\${U}K\\${UO}exts/K\\${U}e\\${UO}rnel,"
+	eval res92="\\${U}K\\${UO}exts/Ker\\${U}n\\${UO}el,"
 	eval res93="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI,"
 	eval res94="\\${U}T\\${UO}ools/\\${U}B\\${UO}ooter,"
 	eval G9_NUM="4"
@@ -865,7 +856,6 @@ redraw_screen() {
 	G=$OLD_G; S=$OLD_S
 }
 
-
 draw_screen() {
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
@@ -903,6 +893,33 @@ get_CHAR() {
 	stty icanon
 }
 
+edit_tree() {
+	TL0=""
+	msg "\033[2J\033[H"
+	while read -r line
+	do
+		case ${line%%/*} in
+			ACPI)
+				if [ "$TL0" != "ACPI" ]; then
+					TL0="ACPI"
+					msg "$TL0\n"
+				fi;;
+			Booter)
+				if [ "$TL0" != "Booter" ]; then
+					TL0="Booter"
+					msg "$TL0\n"
+				fi;;
+			Misc)
+				if [ "$TL0" != "Misc" ]; then
+					TL0="Misc"
+					msg "$TL0\n"
+				fi;;
+			*)
+				TL0="";;
+		esac
+	done < "$CONFIG_TXT"
+}
+
 text_user_interface() {
 	git_url=""; srce=""; dest=""; parent=""
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
@@ -931,8 +948,10 @@ text_user_interface() {
 					TYPE="release"
 				fi
 				draw_header;;
-			e) # jump to kExt quirks
-				G=6; S=0;;
+			e)
+				edit_tree
+				exit 0
+				;;
 			i)
 				DESC=""
 				while read -r line
@@ -949,6 +968,8 @@ text_user_interface() {
 				get_CHAR
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
 				redraw_screen;;
+			n) # jump to kerNel quirks
+				G=6; S=0;;
 			p) # debug dump array
 				stty echo
 				msg "${NC}"

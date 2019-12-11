@@ -7,7 +7,7 @@ dict=0
 item1=""
 
 msg() {
-	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
+	echo "$section/$sub1/$item1/$sub2/$array/$item/$1/ \"$2\""
 	if [ -n "$item1" ]; then item1=$((item1+1)); fi
 }
 
@@ -68,7 +68,9 @@ while read -r line; do
 			item="" # reset item count
 			;;
 		"<array/")
-			msg "$section||||$key|null" ""
+			array="$key"
+			msg "null/" ""
+			array=""
 			key=""
 			;;
 		"<data")
@@ -79,14 +81,14 @@ while read -r line; do
 				data=$data$line
 			done
 			data=${data%</data>}
-			msg "data|$key" "$data"
+			msg "data/$key" "$data"
 			key=""
 			;;
 		"<true/")
-			msg "bool|$key" "true"
+			msg "bool/$key" "true"
 			key="";;
 		"<false/")
-			msg "bool|$key" "false"
+			msg "bool/$key" "false"
 			key=""
 			;;
 		"<key")
@@ -106,7 +108,7 @@ while read -r line; do
 				key=$string$line
 			done
 			string=${string%</string>}
-			msg "string|$key" "$string"
+			msg "string/$key" "$string"
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
 		"<integer")
@@ -117,7 +119,7 @@ while read -r line; do
 				integer=$integer$line
 			done
 			integer=${integer%</integer>}
-			msg "integer|$key" "$integer"
+			msg "integer/$key" "$integer"
 			key="";;
 		*)
 			echo "$line"
