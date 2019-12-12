@@ -26,7 +26,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.1(111219) last checked with OpenCore version DBG-054-2019-12-06"
+VER="2.1(121219) last checked with OpenCore version DBG-054-2019-12-12"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -588,7 +588,6 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	eval G"$G"_NUM="$S"
 }
 
-#this is an ugly function, rewrite it if possible
 init_res_array() { # base-resources moved into .tool-files for portability
 	G=0; S="-1"
 	while read -r line
@@ -898,25 +897,35 @@ edit_tree() {
 	msg "\033[2J\033[H"
 	while read -r line
 	do
-		case ${line%%/*} in
-			ACPI)
-				if [ "$TL0" != "ACPI" ]; then
-					TL0="ACPI"
-					msg "$TL0\n"
-				fi;;
-			Booter)
-				if [ "$TL0" != "Booter" ]; then
-					TL0="Booter"
-					msg "$TL0\n"
-				fi;;
-			Misc)
-				if [ "$TL0" != "Misc" ]; then
-					TL0="Misc"
-					msg "$TL0\n"
-				fi;;
-			*)
-				TL0="";;
-		esac
+		if [ -n "${line##<*}" ]; then
+			section=${line%%/*}
+			if [ "$TL0" != "$section" ]; then
+				TL0="$section"
+				msg "$TL0\n"
+			fi
+		fi
+#		case ${line%%/*} in
+#			ACPI)
+#				if [ "$TL0" != "ACPI" ]; then
+#					TL0="ACPI"
+#					msg "$TL0\n"
+#				fi;;
+#			Booter)
+#				if [ "$TL0" != "Booter" ]; then
+#					TL0="Booter"
+#					msg "$TL0\n"
+#				fi;;
+#			DeviceProperties)
+#				if [ "$TL0" != "Booter" ]; then
+#					TL0="Booter"
+#					msg "$TL0\n"
+#				fi;;
+#			Misc)
+#				if [ "$TL0" != "Misc" ]; then
+#					TL0="Misc"
+#					msg "$TL0\n"
+#				fi;;
+#		esac
 	done < "$CONFIG_TXT"
 }
 
@@ -950,7 +959,6 @@ text_user_interface() {
 				draw_header;;
 			e)
 				edit_tree
-				exit 0
 				;;
 			i)
 				DESC=""
@@ -1213,7 +1221,7 @@ if [ -n "$DEBUG" ]; then msg "\ndb - add Drivers ... done\n"; fi
 dest="OC/Tools"; add_resource "4" "Misc" "Tools" "Path"
 if [ -n "$DEBUG" ]; then msg "\ndb - add Tools ... done\n"; fi
 
-USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
+USE_VAULT=$(grep "/bool/RequireVault/" "$CONFIG_TXT"|cut -f2 -d '"')
 
 if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
