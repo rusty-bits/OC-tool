@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+# turn config.plist into config.plist.txt for fast grep selection and editing
+
 section=""
 array=""
 item=""
@@ -7,7 +9,7 @@ dict=0
 item1=""
 
 msg() {
-	echo "$section/$sub1/$item1/$sub2/$array/$item/$1/ \"$2\""
+	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
 	if [ -n "$item1" ]; then item1=$((item1+1)); fi
 }
 
@@ -20,7 +22,7 @@ while read -r line; do
 					section=$key
 					key=""
 				else
-					echo "$line" # no key just echo the line
+					echo "PLIST|$line" # no key just echo the line
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
@@ -55,7 +57,7 @@ while read -r line; do
 			elif [ -n "$section" ];then
 				section=""
 			else
-				echo "$line"
+				echo "PLIST|$line"
 			fi
 			;;
 		"<array")
@@ -69,7 +71,7 @@ while read -r line; do
 			;;
 		"<array/")
 			array="$key"
-			msg "null/" ""
+			msg "|" ""
 			array=""
 			key=""
 			;;
@@ -81,14 +83,14 @@ while read -r line; do
 				data=$data$line
 			done
 			data=${data%</data>}
-			msg "data/$key" "$data"
+			msg "data|$key" "$data"
 			key=""
 			;;
 		"<true/")
-			msg "bool/$key" "true"
+			msg "bool|$key" "true"
 			key="";;
 		"<false/")
-			msg "bool/$key" "false"
+			msg "bool|$key" "false"
 			key=""
 			;;
 		"<key")
@@ -108,7 +110,7 @@ while read -r line; do
 				key=$string$line
 			done
 			string=${string%</string>}
-			msg "string/$key" "$string"
+			msg "string|$key" "$string"
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
 		"<integer")
@@ -119,10 +121,10 @@ while read -r line; do
 				integer=$integer$line
 			done
 			integer=${integer%</integer>}
-			msg "integer/$key" "$integer"
+			msg "integer|$key" "$integer"
 			key="";;
 		*)
-			echo "$line"
+			echo "PLIST|$line"
 			;;
 	esac
 done < config.plist

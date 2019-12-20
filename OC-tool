@@ -11,6 +11,8 @@ else
 	FINDER=""
 fi
 
+loop_counter=0
+
 TTY_OUT=$(tty)
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
@@ -26,12 +28,14 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.1(121219) last checked with OpenCore version DBG-054-2019-12-12"
+VER="2.2(201219) last checked with OpenCore version DBG-054-2019-12-12"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
+
+EDIT_TEXT_CONFIG=""; G10_NUM="0"
 
 DEBUG=""
 optspec="dhinoqrstvDVX"
@@ -563,25 +567,25 @@ missing_plist_sec() {
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 	G=$1
 	if [ "$G" -lt "5" ]; then
-		num=$(grep -c "^$2/*$3/[0-9]*/string/$4/ " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
+		num=$(grep -c "^$2|*$3|[0-9]*|string|$4| " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
 	else
-		num=$(grep -c "^$2/$3/" "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
+		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
 	fi
 	if [ -n "$DEBUG" ]; then msg "\ndb - in add_resource 2 $2 3 $3\n"; fi
 	for S in $(seq "0" "$((num-1))")
 	do
 		case "$G" in
 			1|2|4)
-				res_name=$(grep "^$2/*$3/$S/string/$4/ " "$CONFIG_TXT"|cut -f2 -d '"')
-				enabled=$(grep "^$2/*$3/$S/bool/Enabled/ " "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
+				enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
 				add_res_array;;
 			3)
-				res_name=$(grep "^$2/*$3/$S/string/$4/ " "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
 				enabled="true"
 				add_res_array;;
 			5|6|7|8)
-				res_name=$(grep "^$2/Quirks/$S/" "$CONFIG_TXT"|cut -f8 -d '/')
-				enabled=$(grep "/$res_name/ " "$CONFIG_TXT"|cut -f2 -d '"')
+				res_name=$(grep "^$2|Quirks|$S|" "$CONFIG_TXT"|cut -f8 -d '|')
+				enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
 				set_res "$G$S";;
 		esac
 	done
@@ -629,12 +633,17 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
 	msg "\033[J\033[0m\n"
-	for G in $(seq 0 4)
+	for G in $(seq 0 10)
 	do
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
-			get_res "$G$S"
-			msg "$G$S|$res_name|$git_url|$srce|$dest|$parent|$enabled\n"
+			if [ "$G" -lt "10" ]; then
+				get_res "$G$S"
+				msg "$G$S|$res_name|$git_url|$srce|$dest|$parent|$enabled\n"
+			else
+				eval line="\$res$G$S"
+				msg "$G$S|$line\n"
+			fi
 		done
 	done
 }
@@ -790,12 +799,16 @@ set_color() { # set TUI section color based on resource
 }
 
 select_MSG() { # draw highligted resource in TUI
-	msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
+	if [ "$G" -ne "10" ]; then
+		msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
+	fi
 }
 
 unselect_MSG() { # clear highlighted resource in TUI
-	msg "\033[${ROW};${COL}H$color $res_name $MSG "
-	MSG=""
+	if [ "$G" -ne "10" ]; then
+		msg "\033[${ROW};${COL}H$color $res_name $MSG "
+		MSG=""
+	fi
 }
 
 draw_key() {
@@ -805,7 +818,7 @@ draw_key() {
 	fi
 }
 
-draw_header() {
+draw_screen_header() {
 	if [ "$TYPE" = "debug" ]; then
 		inc_syms="${GRN}yes${NC}"
 	else
@@ -822,7 +835,10 @@ draw_header() {
 	else
 		msg "$RED"
 	fi
-	msg "$INV$USE_VAULT$NC\033[K IN=${GRN}$filePath${NC}  "
+	msg "$INV$USE_VAULT$NC\033[K IN=${GRN}$filePath${NC}  \n"
+}
+
+draw_col_header() {
 	OLD_G=$G; OLD_S=$S
 	G=9; color=${NC}
 	for S in $(seq 1 4)
@@ -859,7 +875,8 @@ draw_screen() {
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
 	msg "\033[2J\033[H"
-	draw_header
+	draw_screen_header
+	draw_col_header
 	for G in $(seq 1 8)
 	do
 #		len="$(eval echo \$G"$G"_NUM)"
@@ -892,41 +909,151 @@ get_CHAR() {
 	stty icanon
 }
 
-edit_tree() {
-	TL0=""
-	msg "\033[2J\033[H"
+draw_edit_text() {
+	TL0=""; TL1=""; TL2=""
+	L0=-1; L1=-1; L2=-1; L3=-1
+	LM=""
+	if [ "$EDIT_TEXT_CONFIG" = "redraw" ]; then msg "\033[2J"; fi
+	draw_screen_header
+	current_line=0
+	has_higher_level=""
+	L1=-1; L2=-1; L3=-1
+	msg "\033[3H"
+	if [ "$EDIT_TEXT_CONFIG" = "redraw" ]; then
+		msg "\033[0J"
+		EDIT_TEXT_CONFIG="true"
+	fi
+	while [ "$current_line" -le "$G10_NUM" ]
+	do
+		level_flag=">"; sub5=""
+
+		eval line="\$res10$current_line"
+		section=${line%%|*}; line="${line#*|}"
+		sub1=${line%%|*}; line="${line#*|}"
+		sub1n=${line%%|*}; line="${line#*|}"
+		sub2=${line%%|*}; line="${line#*|}"
+		sub3=${line%%|*}; line="${line#*|}"
+		sub4=${line%%|*}; line="${line#*|}"
+		type=${line%%|*}; line="${line#*|}"
+		key=${line%%|*}; val="${line#*\"}"
+		val=${val%\"*}
+
+		if [ "$TL0" != "$section" ]; then # found new section
+			TL0="$section"
+			TL1=""; TL2=""; TL3=""
+			L0=$((L0+1))
+			if [ "$S0" -eq "$L0" ]; then msg "${INV}"; fi
+			msg "$TL0${NC} $level_flag\n" # $S0 $L0 $S1 $L1 $S2 $L2 $S3 $L3\n" # display level 0
+		fi
+
+		if [ "$level" -gt "0" ]; then
+			indent="\t"
+			for N in $(seq 1 "$level")
+			do
+				P=$((N-1))
+				eval LP="\$L$P"
+				eval SP="\$S$P"
+					if [ "$LP" -ne "$SP" ]; then break;fi # skip drawing if not selected
+					eval SS="\$S$N"
+					eval TLL="\$TL$N"
+					depth=1; walk=1
+					while [ "$depth" -le "$N" ] && [ "$walk" -lt "6" ]
+					do
+						eval sub="\$sub$walk"
+						walk=$((walk+1))
+						if [ -n "$sub" ]; then depth=$((depth+1)); fi
+					done
+					if [ -z "$sub" ]; then
+						level_flag="| $val"
+						sub="$key"
+					fi
+					if [ "$TLL" != "$sub" ]; then # found new sub text
+						eval TL$N="\$sub"
+						eval L$N="\$((L$N+1))"
+						eval LL="\$L$N"
+						if [ "${sub##* }" = "+" ];then msg "${GRN}"; fi
+						if [ "${sub##* }" = "-" ];then msg "${RED}"; fi
+						if [ "$level_flag" != ">" ]; then
+							case $type in
+								bool)
+									if [ "$val" = "true" ]; then
+										msg "${GRN}"
+									else
+										msg "${RED}"
+									fi;;
+								data)
+									msg "${YEL}"
+									;;
+								integer)
+									msg "${BLU}"
+									;;
+							esac
+						fi
+						if [ "$LL" -eq "$SS" ]; then # set opts for selected item
+							msg "${INV}"
+							if [ "$level_flag" != ">" ]; then has_higher_level="false"; fi
+						fi
+						msg "$indent$sub${NC} $level_flag\n"
+					fi
+				indent=$indent"\t"
+			done
+		fi
+
+		current_line=$((current_line+1)) # line pointer
+	done
+#	msg "\nL0=$L0 L1=$L1 L2=$L2 L3=$L3 L4=$L4 L5=$L5\n"
+#	msg "S0=$S0 S1=$S1 S2=$S2 S3=$S3 S4=$S4 S5=$S5\n"
+}
+
+add_text_array() {
+	S=0
 	while read -r line
 	do
-		if [ -n "${line##<*}" ]; then
-			section=${line%%/*}
-			if [ "$TL0" != "$section" ]; then
-				TL0="$section"
-				msg "$TL0\n"
+		if [ -n "${line%%PLIST|*}" ]; then
+			section=${line%%|*}; line="${line#*|}"
+			sub1=${line%%|*}; line="${line#*|}"
+			sub1n=${line%%|*}; line="${line#*|}"
+			sub2=${line%%|*}; line="${line#*|}"
+			sub3=${line%%|*}; line="${line#*|}"
+			sub4=${line%%|*}; line="${line#*|}"
+			type=${line%%|*}; line="${line#*|}"
+			key=${line%%|*}; val="${line#*\"}"
+			val=${val%\"*}
+
+			if [ -n "$sub4" ]; then
+				enabled=$(grep "$section|*$sub3|$sub4|bool|Enabled|" $CONFIG_TXT|cut -f2 -d'"')
+				case "$section$sub3" in
+					"ACPIAdd"|"MiscTools")
+						sub4=$(grep "$section|*$sub3|$sub4|string|Path|" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+					"ACPIBlock"|"ACPIPatch"|"BooterMmioWhitelist"|"KernelPatch")
+						sub4=$(grep "$section|*$sub3|$sub4|string|Comment|" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+					"KernelAdd")
+						sub4=$(grep "$section|*$sub3|$sub4|string|BundlePath|" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+					"KernelBlock")
+						sub4=$(grep "$section|*$sub3|$sub4|string|Identifier|" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+					"MiscEntries")
+						sub4=$(grep "$section|*$sub3|$sub4|string|Name|" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+					*)
+#					"UEFIDrivers")
+						sub4=$(grep "$section|.*|$sub3|$sub4|string||" $CONFIG_TXT|cut -f2 -d'"')
+						;;
+				esac
+				if [ "$enabled" = "true" ]; then sub4="$sub4 +"; fi
+				if [ "$enabled" = "false" ]; then sub4="$sub4 -"; fi
 			fi
+
+
+			line="$section|$sub1|$sub1n|$sub2|$sub3|$sub4|$type|$key| \"$val\""
+			eval res10$S="\$line"
+			S=$((S+1))
 		fi
-#		case ${line%%/*} in
-#			ACPI)
-#				if [ "$TL0" != "ACPI" ]; then
-#					TL0="ACPI"
-#					msg "$TL0\n"
-#				fi;;
-#			Booter)
-#				if [ "$TL0" != "Booter" ]; then
-#					TL0="Booter"
-#					msg "$TL0\n"
-#				fi;;
-#			DeviceProperties)
-#				if [ "$TL0" != "Booter" ]; then
-#					TL0="Booter"
-#					msg "$TL0\n"
-#				fi;;
-#			Misc)
-#				if [ "$TL0" != "Misc" ]; then
-#					TL0="Misc"
-#					msg "$TL0\n"
-#				fi;;
-#		esac
 	done < "$CONFIG_TXT"
+	G10_NUM=$((S-1))
 }
 
 text_user_interface() {
@@ -934,7 +1061,7 @@ text_user_interface() {
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
 	BOT=0; KEY=0
-	CHAR=""
+	CHAR=""; moved=""
 	set_text_header
 	msg "$(tput smcup)"
 	stty -echo
@@ -956,9 +1083,20 @@ text_user_interface() {
 				else
 					TYPE="release"
 				fi
-				draw_header;;
+				draw_screen_header;;
 			e)
-				edit_tree
+				if [ -n "$EDIT_TEXT_CONFIG" ]; then
+					#write_text_config
+					EDIT_TEXT_CONFIG=""
+					G=1; S=0
+					redraw_screen
+				else
+					EDIT_TEXT_CONFIG="redraw"
+					moved="true"
+					level=0; S0=0; S1=0; S2=0; S3=0
+					add_text_array
+					G="10"; S=0
+				fi
 				;;
 			i)
 				DESC=""
@@ -1003,63 +1141,124 @@ text_user_interface() {
 					USE_VAULT="true"
 				fi
 				CONFIG_CHANGED="-t option"
-				draw_header;;
+				draw_screen_header;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
-				case "$enabled" in
-					true)
-						enabled="false";;
-					false)
-						enabled="true";;
-				esac
-				CONFIG_CHANGED="-t option"
-				set_res "$G$S"
-				draw_header;;
+				if [ "$G" -ne "10" ]; then
+					case "$enabled" in
+						true)
+							enabled="false";;
+						false)
+							enabled="true";;
+					esac
+					CONFIG_CHANGED="-t option"
+					set_res "$G$S"
+					draw_screen_header
+				fi;;
 			A|k) # move up
-				if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
-					S=$((S-1))
-					if [ "$S" -lt "0" ];then
-						if [ "$G" -gt "4" ];then
-							G=$((G-4))
-#							S="$(eval echo \$G"$G"_NUM)"
-							eval S="\$G${G}_NUM"
-						else
-							S=0
+				if [ "$G" -ne "10" ]; then
+					if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
+						S=$((S-1))
+						if [ "$S" -lt "0" ];then
+							if [ "$G" -gt "4" ];then
+								G=$((G-4))
+								eval S="\$G${G}_NUM"
+							else
+								S=0
+							fi
 						fi
+					else # jump to ACPI group
+						G=1; S=0
 					fi
-				else # jump to ACPI group
-					G=1; S=0
+				else
+					case "$level" in
+						0)
+							S0=$((S0-1))
+							if [ "$S0" -lt "0" ]; then S0=0; fi
+							;;
+						1)
+							S1=$((S1-1))
+							if [ "$S1" -lt "0" ]; then S1=0; fi
+							;;
+						2)
+							S2=$((S2-1))
+							if [ "$S2" -lt "0" ]; then S2=0; fi
+							;;
+						3)
+							S3=$((S3-1))
+							if [ "$S3" -lt "0" ]; then S3=0; fi
+							;;
+					esac
+					moved="true"
 				fi
 				esc="";;
 			B|j) # move down
-				if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
-					S=$((S+1))
-#					len="$(eval echo \$G"$G"_NUM)"
-					eval len="\$G${G}_NUM"
-					if [ "$S" -gt "$len" ];then
-						if [ "$G" -lt "5" ];then
-							G=$((G+4))
-							S=0
-						else
-							S=$len
+				if [ "$G" -ne "10" ]; then
+					if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
+						S=$((S+1))
+						eval len="\$G${G}_NUM"
+						if [ "$S" -gt "$len" ];then
+							if [ "$G" -lt "5" ];then
+								G=$((G+4))
+								S=0
+							else
+								S=$len
+							fi
 						fi
+					else # jump to Booter quirks
+						G=8; S=0
 					fi
-				else # jump to Booter quirks
-					G=8; S=0
+				else
+					case "$level" in
+						0)
+							S0=$((S0+1))
+							if [ "$S0" -gt "$L0" ]; then S0=$L0; fi
+							;;
+						1)
+							S1=$((S1+1))
+							if [ "$S1" -gt "$L1" ]; then S1=$L1; fi
+							;;
+						2)
+							S2=$((S2+1))
+							if [ "$S2" -gt "$L2" ]; then S2=$L2; fi
+							;;
+						3)
+							S3=$((S3+1))
+							if [ "$S3" -gt "$L3" ]; then S3=$L3; fi
+							;;
+					esac
+					moved="true"
 				fi
 				esc="";;
 			C|l) # move right
-				G=$((G+1))
-				if [ "$G" -eq "5" ];then G=4;fi
-				if [ "$G" -eq "9" ];then G=8;fi
+				if [ "$G" -ne "10" ]; then
+					G=$((G+1))
+					if [ "$G" -eq "5" ];then G=4;fi
+					if [ "$G" -eq "9" ];then G=8;fi
+				else
+					if [ -z "$has_higher_level" ]; then
+						level=$((level+1))
+						if [ "$level" -gt "5" ]; then level=5; fi
+						eval S$level=0
+						EDIT_TEXT_CONFIG="redraw"
+						moved="true"
+					fi
+				fi
 				esc="";;
 			D|h) # move left
-				if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
-					G=$((G-1))
-					if [ "$G" -eq "0" ];then G=1;fi
-					if [ "$G" -eq "4" ];then G=5;fi
-					esc=""
+				if [ "$G" -ne "10" ]; then
+					if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
+						G=$((G-1))
+						if [ "$G" -eq "0" ];then G=1;fi
+						if [ "$G" -eq "4" ];then G=5;fi
+						esc=""
+					else
+						G=3; S=0
+					fi
 				else
-					G=3; S=0
+					level=$((level-1))
+					if [ "$level" -lt "0" ]; then level=0; fi
+					EDIT_TEXT_CONFIG="redraw"
+					moved="true"
 				fi;;
 			K) # jump to kext group
 				G=2; S=0;;
@@ -1072,15 +1271,22 @@ text_user_interface() {
 			esc|'[')
 				esc="true";;
 		esac
-		if [ "$S" -gt "$(eval echo \$G"$G"_NUM)" ];then
-#			S=$(eval echo \$G"$G"_NUM)
-			eval S="\$G${G}_NUM"
+		temp=$(eval echo \$G${G}_NUM)
+		if [ "$S" -gt "$temp" ];then
+			S="$temp"
 		fi
 		if [ "$S" -lt "0" ];then S=0; fi
-		get_res "$G$S"
-		set_ROW_COL
-		set_color
-		select_MSG
+		if [ "$G" -lt "10" ]; then
+			get_res "$G$S"
+			set_ROW_COL
+			set_color
+			select_MSG
+		else
+			if [ -n "$moved" ]; then
+				draw_edit_text
+				moved=""
+			fi
+		fi
 	done
 	stty echo
 	msg "${NC}"
@@ -1221,7 +1427,7 @@ if [ -n "$DEBUG" ]; then msg "\ndb - add Drivers ... done\n"; fi
 dest="OC/Tools"; add_resource "4" "Misc" "Tools" "Path"
 if [ -n "$DEBUG" ]; then msg "\ndb - add Tools ... done\n"; fi
 
-USE_VAULT=$(grep "/bool/RequireVault/" "$CONFIG_TXT"|cut -f2 -d '"')
+USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
 
 if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
