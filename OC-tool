@@ -171,6 +171,7 @@ unzip_failed() {
 	msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
 	msg "\twhich is able to unzip on some systems, but apparently not this one\n"
 	msg "\t${YEL}unzip${NC} command will need to be installed to continue\n"
+	msg "\tand you may need to use the X option to clear out any partially unzipped files"
 	exit 1
 }
 
