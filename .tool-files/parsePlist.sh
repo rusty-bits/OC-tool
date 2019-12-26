@@ -9,8 +9,9 @@ dict=0
 item1=""
 
 msg() {
-	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
-	if [ -n "$item1" ]; then item1=$((item1+1)); fi
+	echo "$section|$sub1|$sub2|$array|$item|$1| \"$2\""
+#	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
+#	if [ -n "$item1" ]; then item1=$((item1+1)); fi
 }
 
 #while IFS='' read -r line; do

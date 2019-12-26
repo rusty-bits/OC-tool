@@ -331,13 +331,13 @@
 			</dict>
 			<dict>
 				<key>BundlePath</key>
-				<string>AppleALC.kext</string>
+				<string>BrcmPatchRAM.kext</string>
 				<key>Comment</key>
 				<string>Sound</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
-				<string>Contents/MacOS/AppleALC</string>
+				<string>Contents/MacOS/BrcmPatchRAM</string>
 				<key>MaxKernel</key>
 				<string></string>
 				<key>MinKernel</key>

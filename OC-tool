@@ -28,7 +28,7 @@ DOC_DIR="" # repo doc location
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.2(201219) last checked with OpenCore version DBG-054-2019-12-12"
+VER="2.2(221219) last checked with OpenCore version DBG-054-2019-12-17"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -180,7 +180,7 @@ curl_parent() {
 			if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
 			msg "unzipping ... "
 			if [ "${zip_name##*.}" = "zip" ]; then
-				unzip -o "$zip_name"
+				tar xvf "$zip_name"
 			fi
 			fin
 		else
@@ -492,7 +492,7 @@ build_vault() {
 		ocsupporturl=$(grep "/OcSupportPkg/prebuiltRelease/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		curl -L -O "$ocsupporturl"
 		ocsupportzip=${ocsupporturl##*/}
-		unzip "$ocsupportzip"
+		tar xvf "$ocsupportzip"
 	fi
 	cd "$BUILD_DIR"/OC
 	if ls vault* 1> /dev/null 2>&1; then
@@ -565,30 +565,30 @@ missing_plist_sec() {
 }
 
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
-	G=$1
+	G=$1; S=0
 	if [ "$G" -lt "5" ]; then
 		num=$(grep -c "^$2|*$3|[0-9]*|string|$4| " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
+		for S in $(seq "0" "$((num-1))")
+		do
+			case "$G" in
+				1|2|4)
+					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
+					enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
+					add_res_array;;
+				3)
+					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
+					enabled="true"
+					add_res_array;;
+			esac
+		done
 	else
-		num=$(grep -c "^$2|$3|" "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
+		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
+		do
+			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
+			set_res "$G$S"
+			S=$((S+1))
+		done
 	fi
-	if [ -n "$DEBUG" ]; then msg "\ndb - in add_resource 2 $2 3 $3\n"; fi
-	for S in $(seq "0" "$((num-1))")
-	do
-		case "$G" in
-			1|2|4)
-				res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-				enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
-				add_res_array;;
-			3)
-				res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-				enabled="true"
-				add_res_array;;
-			5|6|7|8)
-				res_name=$(grep "^$2|Quirks|$S|" "$CONFIG_TXT"|cut -f8 -d '|')
-				enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
-				set_res "$G$S";;
-		esac
-	done
 	eval G"$G"_NUM="$S"
 }
 
@@ -829,7 +829,7 @@ draw_screen_header() {
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}summary${NC} mode=$GRN$MODE$NC ${U}d${NC}bgSyms=${inc_syms} RequireVault="
+	msg "$NC\033[H${CC}$TUI_MODE${NC} mode=$GRN$MODE$NC ${U}d${NC}bgSyms=${inc_syms} RequireVault="
 	if [ "$USE_VAULT" = "true" ];then
 		msg "$GRN"
 	else
@@ -930,7 +930,6 @@ draw_edit_text() {
 		eval line="\$res10$current_line"
 		section=${line%%|*}; line="${line#*|}"
 		sub1=${line%%|*}; line="${line#*|}"
-		sub1n=${line%%|*}; line="${line#*|}"
 		sub2=${line%%|*}; line="${line#*|}"
 		sub3=${line%%|*}; line="${line#*|}"
 		sub4=${line%%|*}; line="${line#*|}"
@@ -943,6 +942,7 @@ draw_edit_text() {
 			TL1=""; TL2=""; TL3=""
 			L0=$((L0+1))
 			if [ "$S0" -eq "$L0" ]; then msg "${INV}"; fi
+#			msg "$L0|$L1|$L2|$L3 $S0|$S1|$S2|$S3 "
 			msg "$TL0${NC} $level_flag\n" # $S0 $L0 $S1 $L1 $S2 $L2 $S3 $L3\n" # display level 0
 		fi
 
@@ -989,6 +989,7 @@ draw_edit_text() {
 									;;
 							esac
 						fi
+#						msg "$L0|$L1|$L2|$L3 $S0|$S1|$S2|$S3 "
 						if [ "$LL" -eq "$SS" ]; then # set opts for selected item
 							msg "${INV}"
 							if [ "$level_flag" != ">" ]; then has_higher_level="false"; fi
@@ -998,9 +999,9 @@ draw_edit_text() {
 				indent=$indent"\t"
 			done
 		fi
-
 		current_line=$((current_line+1)) # line pointer
 	done
+
 #	msg "\nL0=$L0 L1=$L1 L2=$L2 L3=$L3 L4=$L4 L5=$L5\n"
 #	msg "S0=$S0 S1=$S1 S2=$S2 S3=$S3 S4=$S4 S5=$S5\n"
 }
@@ -1012,7 +1013,6 @@ add_text_array() {
 		if [ -n "${line%%PLIST|*}" ]; then
 			section=${line%%|*}; line="${line#*|}"
 			sub1=${line%%|*}; line="${line#*|}"
-			sub1n=${line%%|*}; line="${line#*|}"
 			sub2=${line%%|*}; line="${line#*|}"
 			sub3=${line%%|*}; line="${line#*|}"
 			sub4=${line%%|*}; line="${line#*|}"
@@ -1020,7 +1020,7 @@ add_text_array() {
 			key=${line%%|*}; val="${line#*\"}"
 			val=${val%\"*}
 
-			if [ -n "$sub4" ]; then
+			if [ -n "" ]; then
 				enabled=$(grep "$section|*$sub3|$sub4|bool|Enabled|" $CONFIG_TXT|cut -f2 -d'"')
 				case "$section$sub3" in
 					"ACPIAdd"|"MiscTools")
@@ -1041,6 +1041,7 @@ add_text_array() {
 					*)
 #					"UEFIDrivers")
 						sub4=$(grep "$section|.*|$sub3|$sub4|string||" $CONFIG_TXT|cut -f2 -d'"')
+						key="null"
 						;;
 				esac
 				if [ "$enabled" = "true" ]; then sub4="$sub4 +"; fi
@@ -1048,7 +1049,7 @@ add_text_array() {
 			fi
 
 
-			line="$section|$sub1|$sub1n|$sub2|$sub3|$sub4|$type|$key| \"$val\""
+			line="$section|$sub1|$sub2|$sub3|$sub4|$type|$key| \"$val\""
 			eval res10$S="\$line"
 			S=$((S+1))
 		fi
@@ -1087,13 +1088,15 @@ text_user_interface() {
 			e)
 				if [ -n "$EDIT_TEXT_CONFIG" ]; then
 					#write_text_config
+					TUI_MODE="summary"
 					EDIT_TEXT_CONFIG=""
 					G=1; S=0
 					redraw_screen
 				else
+					TUI_MODE=" plist "
 					EDIT_TEXT_CONFIG="redraw"
 					moved="true"
-					level=0; S0=0; S1=0; S2=0; S3=0
+					level=0; S0=0; S1=-1; S2=-1; S3=-1
 					add_text_array
 					G="10"; S=0
 				fi
@@ -1128,7 +1131,12 @@ text_user_interface() {
 				TEXT="quit";;
 			r)
 				OLD_G=$G; OLD_S=$S
-				draw_screen
+				if [ "$G" -lt "10" ]; then
+					draw_screen
+				else
+					draw_edit_text
+					moved=""
+				fi
 				G=$OLD_G; S=$OLD_S;;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
@@ -1170,25 +1178,14 @@ text_user_interface() {
 						G=1; S=0
 					fi
 				else
-					case "$level" in
-						0)
-							S0=$((S0-1))
-							if [ "$S0" -lt "0" ]; then S0=0; fi
-							;;
-						1)
-							S1=$((S1-1))
-							if [ "$S1" -lt "0" ]; then S1=0; fi
-							;;
-						2)
-							S2=$((S2-1))
-							if [ "$S2" -lt "0" ]; then S2=0; fi
-							;;
-						3)
-							S3=$((S3-1))
-							if [ "$S3" -lt "0" ]; then S3=0; fi
-							;;
-					esac
-					moved="true"
+					eval SN="\$S$level"
+					SN=$((SN-1))
+					if [ "$SN" -lt "0" ]; then
+						SN=0
+					else
+						moved="true"
+					fi
+					eval S$level=$SN
 				fi
 				esc="";;
 			B|j) # move down
@@ -1208,25 +1205,15 @@ text_user_interface() {
 						G=8; S=0
 					fi
 				else
-					case "$level" in
-						0)
-							S0=$((S0+1))
-							if [ "$S0" -gt "$L0" ]; then S0=$L0; fi
-							;;
-						1)
-							S1=$((S1+1))
-							if [ "$S1" -gt "$L1" ]; then S1=$L1; fi
-							;;
-						2)
-							S2=$((S2+1))
-							if [ "$S2" -gt "$L2" ]; then S2=$L2; fi
-							;;
-						3)
-							S3=$((S3+1))
-							if [ "$S3" -gt "$L3" ]; then S3=$L3; fi
-							;;
-					esac
-					moved="true"
+					eval SN="\$S$level"
+					eval LN="\$L$level"
+					SN=$((SN+1))
+					if [ "$SN" -gt "$LN" ]; then
+						SN=$LN
+					else
+						moved="true"
+					fi
+					eval S$level=$SN
 				fi
 				esc="";;
 			C|l) # move right
@@ -1349,6 +1336,7 @@ case "${optchar}" in
 			EX_COM="${EX_COM}v";;
 		t)
 			TEXT="true"
+			TUI_MODE="summary"
 			EX_COM="${EX_COM}t";;
 		D) # for when I break stuff
 			DEBUG="true";;

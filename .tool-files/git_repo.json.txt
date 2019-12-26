@@ -165,6 +165,7 @@
 /AirportBrcmFixup.kext/prebuiltRelease/@0/debug-sha256 "4a5fa0b308bb34651760da299b4e04d05cc9d39e234580dde944354c79a72b24"
 /AirportBrcmFixup.kext/prebuiltRelease/@0/release "https://github.com/acidanthera/AirportBrcmFixup/releases/download/2.0.4/AirportBrcmFixup-2.0.4-RELEASE.zip"
 /AirportBrcmFixup.kext/prebuiltRelease/@0/release-sha256 "023e6603f5473ead5a85eb2bf2c1f74c4c2fa7ce10f2531b2543f71035f4e20a"
+/BrcmPatchRAM.kext/latestSource "https://github.com/acidanthera/BrcmPatchRAM"
 /GdbSyms.efi/latestSource "https://github.com/acidanthera/OcSupportPkg"
 /GdbSyms.efi/parent "OcSupportPkg"
 /GdbSyms.efi/path ""
