@@ -166,6 +166,14 @@ curl_failed() { # is this needed?
 	exit 1
 }
 
+unzip_failed() {
+	msg "\n${RED}ERROR:$NC\tfailed to unzip $zip_name\n"
+	msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
+	msg "\twhich is able to unzip on some systems, but apparently not this one\n"
+	msg "\t${YEL}unzip${NC} command will need to be installed to continue\n"
+	exit 1
+}
+
 curl_parent() {
 	zip_name="${git_url##*/}"
 	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
@@ -185,7 +193,7 @@ curl_parent() {
 				if [ -z "$HAS_UNZIP" ]; then
 					unzip -o "$zip_name"
 				else
-					tar -xvf "$zip_name"
+					tar -xvf "$zip_name"||unzip_failed
 				fi
 			fi
 			fin
