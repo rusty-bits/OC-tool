@@ -9,7 +9,7 @@ dict=0
 item1=""
 
 msg() {
-	echo "$section|$sub1|$sub2|$array|$item|$1| \"$2\""
+	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$1\""
 #	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
 #	if [ -n "$item1" ]; then item1=$((item1+1)); fi
 }
@@ -72,7 +72,7 @@ while read -r line; do
 			;;
 		"<array/")
 			array="$key"
-			msg "|" ""
+			msg ""
 			array=""
 			key=""
 			;;
@@ -84,14 +84,17 @@ while read -r line; do
 				data=$data$line
 			done
 			data=${data%</data>}
-			msg "data|$key" "$data"
+			type="data"
+			msg "$data"
 			key=""
 			;;
 		"<true/")
-			msg "bool|$key" "true"
+			type="bool"
+			msg "true"
 			key="";;
 		"<false/")
-			msg "bool|$key" "false"
+			type="bool"
+			msg "false"
 			key=""
 			;;
 		"<key")
@@ -111,7 +114,8 @@ while read -r line; do
 				key=$string$line
 			done
 			string=${string%</string>}
-			msg "string|$key" "$string"
+			type="string"
+			msg "$string"
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
 		"<integer")
@@ -122,7 +126,8 @@ while read -r line; do
 				integer=$integer$line
 			done
 			integer=${integer%</integer>}
-			msg "integer|$key" "$integer"
+			type="integer"
+			msg "$integer"
 			key="";;
 		*)
 			echo "PLIST|$line"

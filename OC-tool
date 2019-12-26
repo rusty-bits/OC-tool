@@ -24,6 +24,7 @@ INPUT="$BASE_DIR/INPUT/temp"
 CONFIG_PLIST="$INPUT/config.plist"
 CONFIG_TXT="$INPUT/config.plist.txt"
 DOC_DIR="" # repo doc location
+HAS_UNZIP=""
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
@@ -179,8 +180,13 @@ curl_parent() {
 			shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
 			if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
 			msg "unzipping ... "
+			command -v unzip||HAS_UNZIP="false"
 			if [ "${zip_name##*.}" = "zip" ]; then
-				tar xvf "$zip_name"
+				if [ -z "$HAS_UNZIP" ]; then
+					unzip -o "$zip_name"
+				else
+					tar -xvf "$zip_name"
+				fi
 			fi
 			fin
 		else
