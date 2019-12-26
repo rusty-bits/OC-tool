@@ -268,8 +268,53 @@
     }
   ]
   },
-  "BrcmPatchRAM.kext" : {
-	  "latestSource" : "https://github.com/acidanthera/BrcmPatchRAM"
+  "BrcmPatchRAM" : {
+    "latestSource" : "https://github.com/acidanthera/BrcmPatchRAM",
+    "prebuiltRelease" : [
+    {
+      "commit" : "b8e9df6f95e4c02b64d0a61b1ce887c27037f8c1",
+      "version" : "2.5.0",
+      "debug" : "https://github.com/acidanthera/BrcmPatchRAM/releases/download/2.5.0/BrcmPatchRAM-2.5.0-DEBUG.zip",
+      "debug-sha256" : "51fe329c5e2f30cef15719b8fe07df5195e3f42d0b1e9220a8091a034b0a5106",
+      "release" : "https://github.com/acidanthera/BrcmPatchRAM/releases/download/2.5.0/BrcmPatchRAM-2.5.0-RELEASE.zip",
+      "release-sha256" : "5e7f3bf6c25ba98feec1ff7eb9ece6cc048f7e770794f5c707a84f0148812c14"
+    }
+	]
+  },
+  "BrcmBluetoothInjector.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmFirmwareData.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmFirmwareRepo.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmNonPatchRAM.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmNonPatchRAM2.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmPatchRAM2.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
+  },
+  "BrcmPatchRAM3.kext" : {
+	  "buildScheme" : "BrcmPatchRAM",
+	  "parent" : "BrcmPatchRAM",
+	  "path" : ""
   },
   "GdbSyms.efi" : {
     "latestSource" : "https://github.com/acidanthera/OcSupportPkg",
@@ -712,5 +757,9 @@
   "Shell.efi" : {
     "parent" : "OpenCoreShell",
     "path" : "Tools"
+  },
+  "USBInjectAll.kext" : {
+  "latestSource" : "https://github.com/ReddestDream/OS-X-USB-Inject-All",
+  "buildScheme" : "USBInjectAll"
   }
 }

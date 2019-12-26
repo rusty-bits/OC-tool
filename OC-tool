@@ -304,10 +304,16 @@ build_kext() {
 #		if [ ! -L "VirtualSMC.kext" ]; then # AsusSMC needs link to Virtual SMC
 #			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
 #		fi
+		buildScheme=$(grep "/$res_name/buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+#		if [ -n "$buildScheme" ]; then buildScheme="-scheme "$buildScheme" -sdk macosx "; fi
 		a=1
 		while :
 		do
-		xcodebuild -config "$XCODE_CONFIG" build && break
+			if [ -z "$buildScheme" ]; then
+				xcodebuild -config "$XCODE_CONFIG" build && break
+			else
+				xcodebuild -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
+			fi
 			if [ "$a" -eq "5" ]; then return 1; fi
 			git_sha=$(git rev-parse @|cut -c -7)
 			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
