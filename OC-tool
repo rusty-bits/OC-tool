@@ -1,4 +1,5 @@
 #!/bin/sh -e
+# shellcheck disable=SC2034
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -10,8 +11,6 @@ if [ "$INI" != "$BASE_DIR" ];then # double-click from finder
 else
 	FINDER=""
 fi
-
-loop_counter=0
 
 TTY_OUT=$(tty)
 UNAME=$(uname)
@@ -603,12 +602,14 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 			esac
 		done
 	else
+# shellcheck disable=SC2013
 		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
 		do
 			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
 			set_res "$G$S"
 			S=$((S+1))
 		done
+		S=$((S-1))
 	fi
 	eval G"$G"_NUM="$S"
 }
