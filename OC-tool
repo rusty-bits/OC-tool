@@ -43,9 +43,9 @@ optspec="dhinoqrstvDVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
-		echo "$1\c" > "$TTY_OUT"
+		printf "%b" "$1" > "$TTY_OUT"
 	else
-		echo "$1\c"
+		printf "%b" "$1"
 	fi
 }
 
@@ -989,8 +989,8 @@ draw_edit_text() {
 						sub="$key"
 					fi
 					if [ "$TLL" != "$sub" ]; then # found new sub text
-						eval TL$N="\$sub"
-						eval L$N="\$((L$N+1))"
+						eval "TL$N=\$sub"
+						eval "L$N=\$((L$N+1))"
 						eval LL="\$L$N"
 						if [ "${sub##* }" = "+" ];then msg "${GRN}"; fi
 						if [ "${sub##* }" = "-" ];then msg "${RED}"; fi
@@ -1040,34 +1040,6 @@ add_text_array() {
 			type=${line%%|*}; line="${line#*|}"
 			key=${line%%|*}; val="${line#*\"}"
 			val=${val%\"*}
-
-			if [ -n "" ]; then
-				enabled=$(grep "$section|*$sub3|$sub4|bool|Enabled|" $CONFIG_TXT|cut -f2 -d'"')
-				case "$section$sub3" in
-					"ACPIAdd"|"MiscTools")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Path|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"ACPIBlock"|"ACPIPatch"|"BooterMmioWhitelist"|"KernelPatch")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Comment|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"KernelAdd")
-						sub4=$(grep "$section|*$sub3|$sub4|string|BundlePath|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"KernelBlock")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Identifier|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"MiscEntries")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Name|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					*)
-#					"UEFIDrivers")
-						sub4=$(grep "$section|.*|$sub3|$sub4|string||" $CONFIG_TXT|cut -f2 -d'"')
-						key="null"
-						;;
-				esac
-				if [ "$enabled" = "true" ]; then sub4="$sub4 +"; fi
-				if [ "$enabled" = "false" ]; then sub4="$sub4 -"; fi
-			fi
 
 
 			line="$section|$sub1|$sub2|$sub3|$sub4|$type|$key| \"$val\""
@@ -1234,7 +1206,7 @@ text_user_interface() {
 					else
 						moved="true"
 					fi
-					eval S$level=$SN
+					eval "S$level=$SN"
 				fi
 				esc="";;
 			C|l) # move right
