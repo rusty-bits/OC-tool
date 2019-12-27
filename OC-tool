@@ -1,4 +1,5 @@
 #!/bin/sh -e
+# shellcheck disable=SC2034
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -10,8 +11,6 @@ if [ "$INI" != "$BASE_DIR" ];then # double-click from finder
 else
 	FINDER=""
 fi
-
-loop_counter=0
 
 TTY_OUT=$(tty)
 UNAME=$(uname)
@@ -29,7 +28,7 @@ HAS_UNZIP=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.3(261219) last checked with OpenCore version DBG-054-2019-12-21"
+VER="2.3(271219) last checked with OpenCore version DBG-054-2019-12-21"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -43,9 +42,9 @@ optspec="dhinoqrstvDVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
-		echo "$1\c" > "$TTY_OUT"
+		printf "%b" "$1" > "$TTY_OUT"
 	else
-		echo "$1\c"
+		printf "%b" "$1"
 	fi
 }
 
@@ -603,12 +602,14 @@ add_resource() { #add_resource "Group" "Section" "subsec" "Path"
 			esac
 		done
 	else
+# shellcheck disable=SC2013
 		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
 		do
 			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
 			set_res "$G$S"
 			S=$((S+1))
 		done
+		S=$((S-1))
 	fi
 	eval G"$G"_NUM="$S"
 }
@@ -989,8 +990,8 @@ draw_edit_text() {
 						sub="$key"
 					fi
 					if [ "$TLL" != "$sub" ]; then # found new sub text
-						eval TL$N="\$sub"
-						eval L$N="\$((L$N+1))"
+						eval "TL$N=\$sub"
+						eval "L$N=\$((L$N+1))"
 						eval LL="\$L$N"
 						if [ "${sub##* }" = "+" ];then msg "${GRN}"; fi
 						if [ "${sub##* }" = "-" ];then msg "${RED}"; fi
@@ -1040,34 +1041,6 @@ add_text_array() {
 			type=${line%%|*}; line="${line#*|}"
 			key=${line%%|*}; val="${line#*\"}"
 			val=${val%\"*}
-
-			if [ -n "" ]; then
-				enabled=$(grep "$section|*$sub3|$sub4|bool|Enabled|" $CONFIG_TXT|cut -f2 -d'"')
-				case "$section$sub3" in
-					"ACPIAdd"|"MiscTools")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Path|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"ACPIBlock"|"ACPIPatch"|"BooterMmioWhitelist"|"KernelPatch")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Comment|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"KernelAdd")
-						sub4=$(grep "$section|*$sub3|$sub4|string|BundlePath|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"KernelBlock")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Identifier|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					"MiscEntries")
-						sub4=$(grep "$section|*$sub3|$sub4|string|Name|" $CONFIG_TXT|cut -f2 -d'"')
-						;;
-					*)
-#					"UEFIDrivers")
-						sub4=$(grep "$section|.*|$sub3|$sub4|string||" $CONFIG_TXT|cut -f2 -d'"')
-						key="null"
-						;;
-				esac
-				if [ "$enabled" = "true" ]; then sub4="$sub4 +"; fi
-				if [ "$enabled" = "false" ]; then sub4="$sub4 -"; fi
-			fi
 
 
 			line="$section|$sub1|$sub2|$sub3|$sub4|$type|$key| \"$val\""
@@ -1234,7 +1207,7 @@ text_user_interface() {
 					else
 						moved="true"
 					fi
-					eval S$level=$SN
+					eval "S$level=$SN"
 				fi
 				esc="";;
 			C|l) # move right
@@ -1403,9 +1376,11 @@ fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 cd "$INPUT"
+cat config.plist|tr -d '\r' > config.plist.tmp # strip CRLF on windows
+mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 
-if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start messaged
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
