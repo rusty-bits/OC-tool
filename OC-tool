@@ -1376,9 +1376,11 @@ fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 cd "$INPUT"
+cat config.plist|tr -d '\r' > config.plist.tmp # strip CRLF on windows
+mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 
-if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start messaged
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
