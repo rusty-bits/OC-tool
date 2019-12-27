@@ -185,8 +185,10 @@ curl_parent() {
 		if [ -z "$UPDATE" ]; then
 			msg "Downloading $zip_name ... "
 			curl -L "$git_url" -o "$zip_name"
-			shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
-			if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
+			if [ -z "$HAS_SHASUM" ]; then
+				shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
+				if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
+			fi
 			msg "unzipping ... "
 			command -v unzip||HAS_UNZIP="false"
 			if [ "${zip_name##*.}" = "zip" ]; then
@@ -382,7 +384,14 @@ prepare_resources() {
 		clone "https://github.com/acidanthera/audk" "UDK"
 
 	else
+		HAS_SHASUM=""
 		msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
+		command -v shasum||HAS_SHASUM="false"
+		if [ -n "$HAS_SHASUM" ]; then
+			msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
+			msg "\tDownloading will continue, but there is no way to check zip file sums\n"
+			msg "\tinstall the shasum command if this is an issue\n\n"
+		fi
 	fi
 
 	for G in $(seq 0 4) # cycle first 5 groups
@@ -390,7 +399,7 @@ prepare_resources() {
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
 		do
 			get_res "$G$S"
-			if [ "$enabled" != "false" ];then
+			if [ "$enabled" != "false" ]; then
 				if [ -z "$srce" ]; then
 					case "$MODE" in
 						"latestSource")
