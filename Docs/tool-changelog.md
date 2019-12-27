@@ -1,3 +1,22 @@
+## ver 2.3(271219)  
+- **changed echo to printf in msg command**  
+some platforms, such as git bash for Windows, use a version of echo that needs -e for escape characters, switched to using printf which should be more consistent on all platforms  
+
+- **strip \r character from config.plist if it exists**  
+git bash for Windows may use CRLF or just LF depending on configuration, strip off the extra character for compatibility  
+
+- **added check for unzip command**  
+unzip command not installed by default on all systems, try using tar command instead  
+
+- **added support for acidanthera/BrcmPatchRAM**  
+parts may need to be installed to /Library/Extensions, but that onus will be placed on the end user  
+
+- **added support for ReddestDream's fork of USBInjectAll.kext**  
+includes support for later machines, such as iMac19,1  
+
+## ver 2.1(021219)  
+- **begin adding edit mode in TUI for whole config.plist**  
+
 ## ver 2.0(231119)  
 - **Oc-tool no longer downloads `HFSPlus.efi` when it is not requested in config.plist**  
 and the `HFSPlus.efi` will now be placed in the `resources` folder instead of `extras`  
