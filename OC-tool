@@ -129,9 +129,24 @@ check_tool_for_updates() {
 	msg "${GRN}OK${NC}\n"
 }
 
-check_resources_for_updates() {
-	msg "\n${GRN}Checking existing resources${NC} ... \n"
+check_lilu_for_updates() {
 	res_updated=""
+	msg "\n${GRN}Checking existing resources${NC} ... \n"
+	if [ -d "$RES_DIR/Kext_builds/Lilu" ]; then
+		cd "$RES_DIR/Kext_builds/Lilu"
+		git fetch --all -q
+		if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
+			new_hash=$(git rev-parse @|cut -c -7)
+			msg "${GRN}Lilu updated to ${NC}$new_hash\n"
+			echo "$(date) Lilu updated to $new_hash" >> "$BASE_DIR/update.log"
+			msg "${YEL}All kexts will be rebuilt${NC}\n"
+			rm -rf "$RES_DIR/Kext_builds"
+			res_updated="true"
+		fi
+	fi
+}
+
+check_resources_for_updates() {
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	if [ -d "$RES_DIR" ]; then
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
@@ -141,9 +156,6 @@ check_resources_for_updates() {
 			msg "\033[2K\r${git_dir##*/} - "
 			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 				git pull $VERBOSE -q
-				new_hash=$(git rev-parse @|cut -c -7)
-				msg "${GRN}updated to ${NC}$new_hash\n"
-				echo "$(date) ${git_dir##*/} updated to $new_hash" >> "$BASE_DIR/update.log"
 				res_updated="true"
 			else
 				msg "${GRN}OK${NC}"
@@ -1400,7 +1412,10 @@ if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
 
-if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then check_resources_for_updates; fi
+if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then
+	check_lilu_for_updates
+	check_resources_for_updates
+fi
 
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
