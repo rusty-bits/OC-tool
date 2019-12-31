@@ -28,7 +28,7 @@ HAS_UNZIP=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.3(291219) last checked with OpenCore version DBG-054-2019-12-26"
+VER="2.3(311219) last checked with OpenCore version DBG-054-2019-12-26"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -850,7 +850,7 @@ select_MSG() { # draw highligted resource in TUI
 unselect_MSG() { # clear highlighted resource in TUI
 	if [ "$G" -ne "10" ]; then
 		msg "\033[${ROW};${COL}H$color $res_name $MSG "
-		MSG=""
+#		MSG=""
 	fi
 }
 
@@ -893,28 +893,8 @@ draw_col_header() {
 	G=$OLD_G; S=$OLD_S
 }
 
-redraw_screen() {
-	OLD_G=$G; OLD_S=$S
-	if [ "$G" -lt "5" ];then
-		draw_screen
-	else
-		for S in $(seq $((OLD_S)) "$KEY"); do
-			msg "\033[$((ROW+1))H\033[2K"
-			for G in $(seq 5 8); do
-				get_res "$G$S"
-				set_ROW_COL
-				set_color
-				unselect_MSG
-			done
-		done
-	fi
-	msg "\033[J"
-	draw_key
-	draw_footer
-	G=$OLD_G; S=$OLD_S
-}
-
 draw_screen() {
+	OLD_G=$G; OLD_S=$S
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
 	msg "\033[2J\033[H"
@@ -939,6 +919,7 @@ draw_screen() {
 	done
 	draw_key
 	draw_footer
+	G=$OLD_G; S=$OLD_S
 }
 
 draw_footer() {
@@ -1081,17 +1062,19 @@ text_user_interface() {
 	set_text_header
 	msg "$(tput smcup)"
 	stty -echo
+	G=1; S=0
 	draw_screen
-	G=1; S=0; get_res "$G$S"
+	get_res "$G$S"
 	set_ROW_COL; set_color
 	select_MSG
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
-		unselect_MSG
+		moved=""
 		case $CHAR in
 			b)
 #				S=$(eval echo \$G"$G"_NUM);;
+				moved="true"
 				eval S="\$G${G}_NUM";;
 			d)
 				if [ "$TYPE" = "release" ];then
@@ -1101,16 +1084,16 @@ text_user_interface() {
 				fi
 				draw_screen_header;;
 			e)
+				moved="true"
 				if [ -n "$EDIT_TEXT_CONFIG" ]; then
 					#write_text_config
 					TUI_MODE="summary"
 					EDIT_TEXT_CONFIG=""
+					draw_screen
 					G=1; S=0
-					redraw_screen
 				else
 					TUI_MODE=" plist "
 					EDIT_TEXT_CONFIG="redraw"
-					moved="true"
 					level=0; S0=0; S1=-1; S2=-1; S3=-1
 					add_text_array
 					G="10"; S=0
@@ -1128,11 +1111,13 @@ text_user_interface() {
 				done < "$TOOL_FILES/description.txt"
 				if [ -z "$DESC" ];then DESC="No description found.";fi
 				msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
+				moved="true"
 				select_MSG
 				get_CHAR
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
-				redraw_screen;;
+				draw_screen;;
 			n) # jump to kerNel quirks
+				moved="true"
 				G=6; S=0;;
 			p) # debug dump array
 				stty echo
@@ -1145,14 +1130,14 @@ text_user_interface() {
 				CHAR='g'
 				TEXT="quit";;
 			r)
-				OLD_G=$G; OLD_S=$S
 				if [ "$G" -lt "10" ]; then
 					draw_screen
+					moved="true"
 				else
 					draw_edit_text
 					moved=""
 				fi
-				G=$OLD_G; S=$OLD_S;;
+				;;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
@@ -1167,6 +1152,8 @@ text_user_interface() {
 				draw_screen_header;;
 			sp|nl) # only mark CONFIG_CHANGED if change was done
 				if [ "$G" -ne "10" ]; then
+					unselect_MSG
+					moved="changed"
 					case "$enabled" in
 						true)
 							enabled="false";;
@@ -1179,6 +1166,7 @@ text_user_interface() {
 				fi;;
 			A|k) # move up
 				if [ "$G" -ne "10" ]; then
+					moved="true"
 					if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
 						S=$((S-1))
 						if [ "$S" -lt "0" ];then
@@ -1205,6 +1193,7 @@ text_user_interface() {
 				esc="";;
 			B|j) # move down
 				if [ "$G" -ne "10" ]; then
+					moved="true"
 					if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
 						S=$((S+1))
 						eval len="\$G${G}_NUM"
@@ -1236,6 +1225,7 @@ text_user_interface() {
 					G=$((G+1))
 					if [ "$G" -eq "5" ];then G=4;fi
 					if [ "$G" -eq "9" ];then G=8;fi
+					moved="true"
 				else
 					if [ -z "$has_higher_level" ]; then
 						level=$((level+1))
@@ -1248,6 +1238,7 @@ text_user_interface() {
 				esc="";;
 			D|h) # move left
 				if [ "$G" -ne "10" ]; then
+					moved="true"
 					if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
 						G=$((G-1))
 						if [ "$G" -eq "0" ];then G=1;fi
@@ -1263,30 +1254,35 @@ text_user_interface() {
 					moved="true"
 				fi;;
 			K) # jump to kext group
+				moved="true"
 				G=2; S=0;;
 			T) # jump to Tools group
+				moved="true"
 				G=4; S=0;;
 			U) # jump to UEFI quirke
+				moved="true"
 				G=7; S=0;;
 			Q) # jump to ACPI quirks
+				moved="true"
 				G=5; S=0;;
 			esc|'[')
 				esc="true";;
 		esac
-		temp=$(eval echo \$G${G}_NUM)
+#		temp=$(eval echo \$G${G}_NUM)
+		eval temp="\$G${G}_NUM"
 		if [ "$S" -gt "$temp" ];then
 			S="$temp"
 		fi
 		if [ "$S" -lt "0" ];then S=0; fi
-		if [ "$G" -lt "10" ]; then
-			get_res "$G$S"
-			set_ROW_COL
-			set_color
-			select_MSG
-		else
-			if [ -n "$moved" ]; then
+		if [ -n "$moved" ]; then
+			if [ "$G" -lt "10" ]; then
+				unselect_MSG
+				get_res "$G$S"
+				set_ROW_COL
+				set_color
+				select_MSG
+			else
 				draw_edit_text
-				moved=""
 			fi
 		fi
 	done
