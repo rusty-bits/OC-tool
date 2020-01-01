@@ -203,6 +203,18 @@
   "UsbKbDxe.efi" : {
     "latestSource" : "https://github.com/acidanthera/AppleSupportPkg"
   },
+  "VoodooInput.kext" : {
+  "latestSource" : "https://github.com/acidanthera/VoodooInput",
+  "prebuiltRelease" : [
+    {
+      "version" : "1.0.1",
+      "debug" : "https://github.com/acidanthera/VoodooInput/releases/download/1.0.1/VoodooInput-1.0.1-DEBUG.zip",
+      "debug-sha256" : "2d536e91446184ecac6aae8e607fb86d537f43de41e34926b0b9e96233917728",
+      "release" : "https://github.com/acidanthera/VoodooInput/releases/download/1.0.1/VoodooInput-1.0.1-RELEASE.zip",
+      "release-sha256" : "1027569f709d04dcc2ecc9ecce1bfb908fcfcee7954af8122a1cc67156ebf440"
+      }
+  ]
+  },
   "VoodooPS2Controller.kext" : {
   "latestSource" : "https://github.com/acidanthera/VoodooPS2",
   "prebuiltRelease" : [
