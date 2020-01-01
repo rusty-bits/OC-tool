@@ -28,7 +28,7 @@ HAS_UNZIP=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.3(311219) last checked with OpenCore version DBG-054-2019-12-26"
+VER="2.4(010120) last checked with OpenCore version DBG-054-2019-12-26"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -156,6 +156,9 @@ check_resources_for_updates() {
 			msg "\033[2K\r${git_dir##*/} - "
 			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 				git pull $VERBOSE -q
+				new_hash=$(git rev-parse @|cut -c -7)
+				msg "${GRN}updated to ${NC}$new_hash\n"
+				echo "$(date) ${git_dir##*/} updated to $new_hash" >> "$BASE_DIR/update.log"
 				res_updated="true"
 			else
 				msg "${GRN}OK${NC}"
@@ -933,125 +936,60 @@ get_CHAR() {
 	stty icanon
 }
 
-draw_edit_text() {
-	TL0=""; TL1=""; TL2=""
-	L0=-1; L1=-1; L2=-1; L3=-1
-	LM=""
-	if [ "$EDIT_TEXT_CONFIG" = "redraw" ]; then msg "\033[2J"; fi
-	draw_screen_header
-	current_line=0
-	has_higher_level=""
-	L1=-1; L2=-1; L3=-1
-	msg "\033[3H"
-	if [ "$EDIT_TEXT_CONFIG" = "redraw" ]; then
-		msg "\033[0J"
-		EDIT_TEXT_CONFIG="true"
+draw_edit_key() {
+	if [ -z "$type" ]; then
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; fi
+		msg "$key${NC} >\n"
+	else
+		case $type in
+			bool)
+				if [ "$val" = "true" ]; then
+					msg "${GRN}"
+				else
+					msg "${RED}"
+				fi;;
+			data)
+				msg "${YEL}"
+				;;
+			integer)
+				msg "${BLU}"
+				;;
+		esac
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; fi
+		msg "$key${NC} | $val\n"
 	fi
-	while [ "$current_line" -le "$G10_NUM" ]
-	do
-		level_flag=">"; sub5=""
-
-		eval line="\$res10$current_line"
-		section=${line%%|*}; line="${line#*|}"
-		sub1=${line%%|*}; line="${line#*|}"
-		sub2=${line%%|*}; line="${line#*|}"
-		sub3=${line%%|*}; line="${line#*|}"
-		sub4=${line%%|*}; line="${line#*|}"
-		type=${line%%|*}; line="${line#*|}"
-		key=${line%%|*}; val="${line#*\"}"
-		val=${val%\"*}
-
-		if [ "$TL0" != "$section" ]; then # found new section
-			TL0="$section"
-			TL1=""; TL2=""; TL3=""
-			L0=$((L0+1))
-			if [ "$S0" -eq "$L0" ]; then msg "${INV}"; fi
-#			msg "$L0|$L1|$L2|$L3 $S0|$S1|$S2|$S3 "
-			msg "$TL0${NC} $level_flag\n" # $S0 $L0 $S1 $L1 $S2 $L2 $S3 $L3\n" # display level 0
-		fi
-
-		if [ "$level" -gt "0" ]; then
-			indent="\t"
-			for N in $(seq 1 "$level")
-			do
-				P=$((N-1))
-				eval LP="\$L$P"
-				eval SP="\$S$P"
-					if [ "$LP" -ne "$SP" ]; then break;fi # skip drawing if not selected
-					eval SS="\$S$N"
-					eval TLL="\$TL$N"
-					depth=1; walk=1
-					while [ "$depth" -le "$N" ] && [ "$walk" -lt "6" ]
-					do
-						eval sub="\$sub$walk"
-						walk=$((walk+1))
-						if [ -n "$sub" ]; then depth=$((depth+1)); fi
-					done
-					if [ -z "$sub" ]; then
-						level_flag="| $val"
-						sub="$key"
-					fi
-					if [ "$TLL" != "$sub" ]; then # found new sub text
-						eval "TL$N=\$sub"
-						eval "L$N=\$((L$N+1))"
-						eval LL="\$L$N"
-						if [ "${sub##* }" = "+" ];then msg "${GRN}"; fi
-						if [ "${sub##* }" = "-" ];then msg "${RED}"; fi
-						if [ "$level_flag" != ">" ]; then
-							case $type in
-								bool)
-									if [ "$val" = "true" ]; then
-										msg "${GRN}"
-									else
-										msg "${RED}"
-									fi;;
-								data)
-									msg "${YEL}"
-									;;
-								integer)
-									msg "${BLU}"
-									;;
-							esac
-						fi
-#						msg "$L0|$L1|$L2|$L3 $S0|$S1|$S2|$S3 "
-						if [ "$LL" -eq "$SS" ]; then # set opts for selected item
-							msg "${INV}"
-							if [ "$level_flag" != ">" ]; then has_higher_level="false"; fi
-						fi
-						msg "$indent$sub${NC} $level_flag\n"
-					fi
-				indent=$indent"\t"
-			done
-		fi
-		current_line=$((current_line+1)) # line pointer
-	done
-
-#	msg "\nL0=$L0 L1=$L1 L2=$L2 L3=$L3 L4=$L4 L5=$L5\n"
-#	msg "S0=$S0 S1=$S1 S2=$S2 S3=$S3 S4=$S4 S5=$S5\n"
 }
 
-add_text_array() {
-	S=0
+draw_edit_text() {
+	msg "\033[2J"
+	draw_screen_header
+	msg "\033[3H"
 	while read -r line
 	do
-		if [ -n "${line%%PLIST|*}" ]; then
-			section=${line%%|*}; line="${line#*|}"
-			sub1=${line%%|*}; line="${line#*|}"
-			sub2=${line%%|*}; line="${line#*|}"
-			sub3=${line%%|*}; line="${line#*|}"
-			sub4=${line%%|*}; line="${line#*|}"
-			type=${line%%|*}; line="${line#*|}"
-			key=${line%%|*}; val="${line#*\"}"
-			val=${val%\"*}
+		L0="${line%%|*}"; line="${line#*|}"
+		L1="${line%%|*}"; line="${line#*|}"
+		L2="${line%%|*}"; line="${line#*|}"
+		L3="${line%%|*}"; line="${line#*|}"
+		type="${line%%|*}"; line="${line#*|}"
+		key=${line%%|*}; val="${line#*|}"
 
-
-			line="$section|$sub1|$sub2|$sub3|$sub4|$type|$key| \"$val\""
-			eval res10$S="\$line"
-			S=$((S+1))
+		if [ "$L1" -eq "0" ]; then
+			if [ "$L0" -eq "$S0" ]; then msg "${INV}"; fi
+			msg "$key${NC} >\n"
+			if [ "$level" -eq "0" ]; then LLEN=$L0; fi
+		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
+			if [ "$L1" -eq "$S1" ]; then selected="true"; fi
+			draw_edit_key
+		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
+			if [ "$L2" -eq "$S2" ]; then selected="true"; fi
+			draw_edit_key
+		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
+			if [ "$L3" -eq "$S3" ]; then selected="true"; fi
+			draw_edit_key
 		fi
-	done < "$CONFIG_TXT"
-	G10_NUM=$((S-1))
+	done < "$INPUT/edit_text.txt"
 }
+
 
 text_user_interface() {
 	git_url=""; srce=""; dest=""; parent=""
@@ -1094,8 +1032,7 @@ text_user_interface() {
 				else
 					TUI_MODE=" plist "
 					EDIT_TEXT_CONFIG="redraw"
-					level=0; S0=0; S1=-1; S2=-1; S3=-1
-					add_text_array
+					level=0; S0=1; S1=0; S2=0; S3=0
 					G="10"; S=0
 				fi
 				;;
@@ -1183,8 +1120,8 @@ text_user_interface() {
 				else
 					eval SN="\$S$level"
 					SN=$((SN-1))
-					if [ "$SN" -lt "0" ]; then
-						SN=0
+					if [ "$SN" -lt "1" ]; then
+						SN=1
 					else
 						moved="true"
 					fi
@@ -1210,10 +1147,9 @@ text_user_interface() {
 					fi
 				else
 					eval SN="\$S$level"
-					eval LN="\$L$level"
 					SN=$((SN+1))
-					if [ "$SN" -gt "$LN" ]; then
-						SN=$LN
+					if [ "$SN" -gt "$LLEN" ]; then
+						SN=$LLEN
 					else
 						moved="true"
 					fi
@@ -1229,9 +1165,8 @@ text_user_interface() {
 				else
 					if [ -z "$has_higher_level" ]; then
 						level=$((level+1))
-						if [ "$level" -gt "5" ]; then level=5; fi
-						eval S$level=0
-						EDIT_TEXT_CONFIG="redraw"
+						if [ "$level" -gt "3" ]; then level=3; fi
+						eval S$level=1
 						moved="true"
 					fi
 				fi
@@ -1248,10 +1183,11 @@ text_user_interface() {
 						G=3; S=0
 					fi
 				else
-					level=$((level-1))
-					if [ "$level" -lt "0" ]; then level=0; fi
-					EDIT_TEXT_CONFIG="redraw"
-					moved="true"
+					if [ "$level" -gt "0" ]; then
+						eval S$level=0
+						level=$((level-1))
+						moved="true"
+					fi
 				fi;;
 			K) # jump to kext group
 				moved="true"

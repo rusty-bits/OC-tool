@@ -6,15 +6,83 @@ section=""
 array=""
 item=""
 dict=0
-item1=""
+L0=0
+C0=""
+P=0
 
-msg() {
-	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$1\""
-#	echo "$section|$sub1|$item1|$sub2|$array|$item|$1| \"$2\""
-#	if [ -n "$item1" ]; then item1=$((item1+1)); fi
+get_next() {
+	next=""
+	while [ -z "$next" ]
+	do
+		case $P in
+			0)
+				if [ -n "$sub1" ]; then next=$sub1; fi
+				P=1;;
+			1)
+				if [ -n "$sub2" ]; then next="$sub2"; fi
+				P=2;;
+			2)
+				if [ -n "$array" ]; then next="$array"; fi
+				P=3;;
+			3)
+				if [ -n "$item" ]; then next="$item"; fi
+				P=4;;
+			4)
+				next="$key"
+				if [ -z "$next" ]; then next="error"; fi
+				P=5
+				;;
+			5)
+				next="error 5"
+				;;
+		esac
+	done
 }
 
-#while IFS='' read -r line; do
+write_out() {
+	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
+	if [ "$P" -lt "5" ]; then
+		echo "$L0|$L1|$L2|$L3||$1|" >> edit_text.txt
+	else
+		echo "$L0|$L1|$L2|$L3|$type|$1|$val" >> edit_text.txt
+	fi
+}
+
+msg() {
+	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> config.plist.txt
+	P=0
+	if [ "$C0" != "$section" ]; then # reset level
+		C0=$section; C1=""; C2=""; C3=""
+		L0=$((L0+1)); L1=0; L2=0; L3=0
+		write_out "$C0"
+	fi
+	get_next
+	if [ "$next" != "$C1" ]; then
+		C1="$next"; C2=""; C3=""
+		L1=$((L1+1)); L2=0; L3=0
+		write_out "\t$C1"
+	fi
+	if [ "$P" -lt "5" ]; then
+		get_next
+		if [ "$next" != "$C2" ]; then
+			C2="$next"; C3=""
+			L2=$((L2+1)); L3=0
+			write_out "\t\t$C2"
+		fi
+	fi
+	if [ "$P" -lt "5" ]; then
+		get_next
+		if [ "$next" != "$C3" ]; then
+			C3="$next"
+			L3=$((L3+1))
+			write_out "\t\t\t$C3"
+		fi
+	fi
+}
+
+rm -rf config.plist.txt
+rm -rf edit_text.txt
+
 while read -r line; do
 	case "${line%%>*}" in
 		"<dict")
@@ -23,18 +91,16 @@ while read -r line; do
 					section=$key
 					key=""
 				else
-					echo "PLIST|$line" # no key just echo the line
+					echo "PLIST|$line" >> config.plist.txt # no key just echo the line
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
 				case $dict in
 					"1")
 						sub1="$key"
-						item1="0"
 						;;
 					"2")
 						sub2="$key"
-						item2="0"
 						;;
 				esac
 				key=""
@@ -58,7 +124,7 @@ while read -r line; do
 			elif [ -n "$section" ];then
 				section=""
 			else
-				echo "PLIST|$line"
+				echo "PLIST|$line" >> config.plist.txt
 			fi
 			;;
 		"<array")
@@ -72,7 +138,8 @@ while read -r line; do
 			;;
 		"<array/")
 			array="$key"
-			msg ""
+			val=""
+			msg
 			array=""
 			key=""
 			;;
@@ -85,16 +152,19 @@ while read -r line; do
 			done
 			data=${data%</data>}
 			type="data"
-			msg "$data"
+			val="$data"
+			msg
 			key=""
 			;;
 		"<true/")
 			type="bool"
-			msg "true"
+			val="true"
+			msg
 			key="";;
 		"<false/")
 			type="bool"
-			msg "false"
+			val="false"
+			msg
 			key=""
 			;;
 		"<key")
@@ -115,7 +185,8 @@ while read -r line; do
 			done
 			string=${string%</string>}
 			type="string"
-			msg "$string"
+			val="$string"
+			msg
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
 		"<integer")
@@ -127,10 +198,11 @@ while read -r line; do
 			done
 			integer=${integer%</integer>}
 			type="integer"
-			msg "$integer"
+			val="$integer"
+			msg
 			key="";;
 		*)
-			echo "PLIST|$line"
+			echo "PLIST|$line" >> config.plist.txt
 			;;
 	esac
 done < config.plist
