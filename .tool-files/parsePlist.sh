@@ -60,14 +60,14 @@ msg() {
 	if [ "$next" != "$C1" ]; then
 		C1="$next"; C2=""; C3=""
 		L1=$((L1+1)); L2=0; L3=0
-		write_out "\t$C1"
+		write_out "$C1"
 	fi
 	if [ "$P" -lt "5" ]; then
 		get_next
 		if [ "$next" != "$C2" ]; then
 			C2="$next"; C3=""
 			L2=$((L2+1)); L3=0
-			write_out "\t\t$C2"
+			write_out "$C2"
 		fi
 	fi
 	if [ "$P" -lt "5" ]; then
@@ -75,7 +75,7 @@ msg() {
 		if [ "$next" != "$C3" ]; then
 			C3="$next"
 			L3=$((L3+1))
-			write_out "\t\t\t$C3"
+			write_out "$C3"
 		fi
 	fi
 }

@@ -98,6 +98,11 @@ set_up_dest_dir() {
 	fin
 }
 
+update_log() {
+	new_hash=$(git rev-parse @|cut -c -7)
+	echo "$(date) $1 $2 - $new_hash" >> "$BASE_DIR/update.log"
+}
+
 clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
 		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
@@ -109,6 +114,9 @@ clone() { # will only clone if pkg is not local
 			msg "Cloning $1 into $pkg_name ... "
 			eval git clone "$1" "$pkg_name"
 			fin
+			cd "$pkg_name"
+			update_log "Cloned" "$pkg_name"
+			cd ..
 		else
 			msg "\nCan't clone $pkg_name while using -n option.\n"
 			exit 0
@@ -124,6 +132,7 @@ check_tool_for_updates() {
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE -q
 		msg "${GRN}updated${NC}\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
+		update_log "Updated" "OC-tool"
 		exit 2
 	fi
 	msg "${GRN}OK${NC}\n"
@@ -138,11 +147,15 @@ check_lilu_for_updates() {
 		if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 			new_hash=$(git rev-parse @|cut -c -7)
 			msg "${GRN}Lilu updated to ${NC}$new_hash\n"
-			echo "$(date) Lilu updated to $new_hash" >> "$BASE_DIR/update.log"
+			echo "$(date) Updated Lilu - $new_hash" >> "$BASE_DIR/update.log"
 			msg "${YEL}All kexts will be rebuilt${NC}\n"
 			rm -rf "$RES_DIR/Kext_builds"
 			res_updated="true"
 		fi
+	else
+		msg "${YEL}no existing Lilu found${NC}\n"
+		msg "Any existing kexts will be rebuilt to insure they are current\n"
+		rm -rf "$RES_DIR/Kext_builds"
 	fi
 }
 
@@ -158,7 +171,7 @@ check_resources_for_updates() {
 				git pull $VERBOSE -q
 				new_hash=$(git rev-parse @|cut -c -7)
 				msg "${GRN}updated to ${NC}$new_hash\n"
-				echo "$(date) ${git_dir##*/} updated to $new_hash" >> "$BASE_DIR/update.log"
+				echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
 				res_updated="true"
 			else
 				msg "${GRN}OK${NC}"
@@ -938,7 +951,7 @@ get_CHAR() {
 
 draw_edit_key() {
 	if [ -z "$type" ]; then
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; fi
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="$key"; fi
 		msg "$key${NC} >\n"
 	else
 		case $type in
@@ -955,17 +968,30 @@ draw_edit_key() {
 				msg "${BLU}"
 				;;
 		esac
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; fi
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; res_name="$key"; fi
 		msg "$key${NC} | $val\n"
 	fi
 }
 
-draw_edit_text() {
-	msg "\033[2J"
-	draw_screen_header
-	msg "\033[3H"
+load_edit_text() {
+	num=0
 	while read -r line
 	do
+		eval "res10$num=\$line"
+		num=$((num+1))
+	done < "$INPUT/edit_text.txt"
+	num=$((num-1))
+	eval "G10_NUM=$num"
+}
+
+draw_edit_text() {
+	num=0
+	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
+	draw_screen_header
+	msg "\033[3H"
+	while [ "$num" -lt "$G10_NUM" ]
+	do
+		eval line="\$res10$num"
 		L0="${line%%|*}"; line="${line#*|}"
 		L1="${line%%|*}"; line="${line#*|}"
 		L2="${line%%|*}"; line="${line#*|}"
@@ -974,20 +1000,25 @@ draw_edit_text() {
 		key=${line%%|*}; val="${line#*|}"
 
 		if [ "$L1" -eq "0" ]; then
-			if [ "$L0" -eq "$S0" ]; then msg "${INV}"; fi
-			msg "$key${NC} >\n"
+			if [ "$L0" -eq "$S0" ]; then selected="true"; fi
+			draw_edit_key
 			if [ "$level" -eq "0" ]; then LLEN=$L0; fi
 		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L1" -eq "$S1" ]; then selected="true"; fi
-			draw_edit_key
+			msg "\t"; draw_edit_key
+			if [ "$level" -eq "1" ]; then LLEN=$L1; fi
 		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L2" -eq "$S2" ]; then selected="true"; fi
-			draw_edit_key
+			msg "\t\t"; draw_edit_key
+			if [ "$level" -eq "2" ]; then LLEN=$L2; fi
 		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
 			if [ "$L3" -eq "$S3" ]; then selected="true"; fi
-			draw_edit_key
+			msg "\t\t\t"; draw_edit_key
+			if [ "$level" -eq "3" ]; then LLEN=$L3; fi
 		fi
-	done < "$INPUT/edit_text.txt"
+#	done < "$INPUT/edit_text.txt"
+	num=$((num+1))
+	done
 }
 
 
@@ -1008,7 +1039,6 @@ text_user_interface() {
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
-		moved=""
 		case $CHAR in
 			b)
 #				S=$(eval echo \$G"$G"_NUM);;
@@ -1022,17 +1052,24 @@ text_user_interface() {
 				fi
 				draw_screen_header;;
 			e)
-				moved="true"
-				if [ -n "$EDIT_TEXT_CONFIG" ]; then
+				moved="redraw"
+				if [ "$TUI_MODE" != "summary" ]; then
 					#write_text_config
 					TUI_MODE="summary"
-					EDIT_TEXT_CONFIG=""
 					draw_screen
 					G=1; S=0
 				else
 					TUI_MODE=" plist "
-					EDIT_TEXT_CONFIG="redraw"
+					load_edit_text
 					level=0; S0=1; S1=0; S2=0; S3=0
+					case "$G" in
+						1)
+							level=0; S0=1
+							;;
+						2)
+							level=0; S0=4
+							;;
+					esac
 					G="10"; S=0
 				fi
 				;;
@@ -1048,11 +1085,15 @@ text_user_interface() {
 				done < "$TOOL_FILES/description.txt"
 				if [ -z "$DESC" ];then DESC="No description found.";fi
 				msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
-				moved="true"
+				moved="redraw"
 				select_MSG
 				get_CHAR
 				if [ "$CHAR" = "esc" ];then esc="true"; fi
-				draw_screen;;
+				if [ "$G" -lt "10" ]; then
+					draw_screen
+				else
+					draw_edit_text
+				fi;;
 			n) # jump to kerNel quirks
 				moved="true"
 				G=6; S=0;;
@@ -1167,7 +1208,7 @@ text_user_interface() {
 						level=$((level+1))
 						if [ "$level" -gt "3" ]; then level=3; fi
 						eval S$level=1
-						moved="true"
+						moved="redraw"
 					fi
 				fi
 				esc="";;
@@ -1186,7 +1227,7 @@ text_user_interface() {
 					if [ "$level" -gt "0" ]; then
 						eval S$level=0
 						level=$((level-1))
-						moved="true"
+						moved="redraw"
 					fi
 				fi;;
 			K) # jump to kext group
@@ -1220,6 +1261,7 @@ text_user_interface() {
 			else
 				draw_edit_text
 			fi
+			moved=""
 		fi
 	done
 	stty echo
