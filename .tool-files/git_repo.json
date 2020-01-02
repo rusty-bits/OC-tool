@@ -761,6 +761,9 @@
   "NVMeFix.kext" : {
 	  "latestSource" : "https://github.com/acidanthera/NVMeFix"
   },
+  "DebugEnhancer.kext" : {
+    "latestSource" : "https://github.com/acidanthera/DebugEnhancer"
+  },
   "BOOTx64.efi" : {
     "parent" : "OpenCorePkg",
     "path" : "EFI/BOOT"
