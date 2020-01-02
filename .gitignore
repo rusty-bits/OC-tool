@@ -3,9 +3,13 @@
 tool.log
 update.log
 
+.tool-files/h.e
+
 INPUT/config.plist
 INPUT/temp/config.plist
 INPUT/temp/config.plist.txt
+INPUT/temp/edit_text.txt
+
 Docs/config.plist
 Docs/SampleFull.plist
 

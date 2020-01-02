@@ -758,6 +758,9 @@
     }
   ]
   },
+  "NVMeFix.kext" : {
+	  "latestSource" : "https://github.com/acidanthera/NVMeFix"
+  },
   "BOOTx64.efi" : {
     "parent" : "OpenCorePkg",
     "path" : "EFI/BOOT"

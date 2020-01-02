@@ -425,6 +425,7 @@
 /AtherosE2200Ethernet/latestSource "https://github.com/Mieze/AtherosE2200Ethernet"
 /AtherosE2200Ethernet/prebuiltRelease/@0/debug "https://github.com/Mieze/AtherosE2200Ethernet/releases/download/2.2.2/AtherosE2200Ethernet-V2.2.2.zip"
 /AtherosE2200Ethernet/prebuiltRelease/@0/debug-sha256 "a50449953db3e3171f7645918c5f34fb3da7af0e0a9c7ec50b34550f5baf635a"
+/NVMeFix.kext/latestSource "https://github.com/acidanthera/NVMeFix"
 /BOOTx64.efi/parent "OpenCorePkg"
 /BOOTx64.efi/path "EFI/BOOT"
 /OpenCore.efi/parent "OpenCorePkg"

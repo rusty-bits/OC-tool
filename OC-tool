@@ -339,11 +339,10 @@ build_kext() {
 		if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
 			ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 		fi
-#		if [ ! -L "VirtualSMC.kext" ]; then # AsusSMC needs link to Virtual SMC
-#			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
-#		fi
+		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
+			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
+		fi
 		buildScheme=$(grep "/$res_name/buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-#		if [ -n "$buildScheme" ]; then buildScheme="-scheme "$buildScheme" -sdk macosx "; fi
 		a=1
 		while :
 		do
@@ -1371,7 +1370,7 @@ fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 cd "$INPUT"
-cat config.plist|tr -d '\r' > config.plist.tmp # strip CRLF on windows
+tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
 mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 
