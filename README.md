@@ -21,11 +21,13 @@ e.g. `cp Docs/SampleFull.plist INPUT/config.plist`
 
 **Requirements**  
 
-- access to a POSIX shell such as `sh`, `bash`, `ksh`, `ash`, or `dash` should all work. I myself use `zsh`, which seems to be the default in macOS Catalina, and it works fine even though I'm told it's not strictly POSIX compliant.  
+- access to a POSIX shell such as `sh`, `bash`, `ksh`, `ash`, or `dash` should all work. I myself use `zsh` with no problems, even though it's not strictly POSIX compliant.  
+
+It will also run on Windows under [WSL](https://docs.microsoft.com/en-us/windows/wsl) or by using [Git for Windows](https://gitforwindows.org)
 
 That's it. Nothing more is needed to have `OC-tool` make a working EFI folder from the prebuilt releases on [Acidanthera's github](https://github.com/acidanthera). `git`, `grep`, `curl`, `cp`, `cut`, `tr`, etc used by OC-tool should already exist on those shells.  
 
-Now, if you want the latest build made yourself from source you will need additional tools/dependencies, and as far as I know will have to use macOC as well.  If there is a good way to run Xcode on Linux let me know ...  
+Now, if you want the latest build made yourself from source you will need additional tools/dependencies, and as far as I know will have to use macOS as well.  If there is a good way to run Xcode on Linux let me know ...  
 
 - To build from source `Xcode` with `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line.  You can build/install these yourself, or you can run the get-deps.sh in the .tool-files folder which uses code from acidanthera to get prebuilt dependencies.    
 `.tool-files/get-deps.sh` while in the `OC-tool` directory  
