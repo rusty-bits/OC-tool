@@ -391,15 +391,15 @@ build_acpi() { # compile .dsl into .aml if user hasn't already
 
 get_res() { # extract resource from psuedo array (needed for POSIX)
 	eval enabled="\$res$1"
-	res_name=${enabled%%,*}; enabled=${enabled#$res_name,}
-	git_url=${enabled%%,*}; enabled=${enabled#$git_url,}
-	srce=${enabled%%,*}; enabled=${enabled#$srce,}
-	dest=${enabled%%,*}; enabled=${enabled#$dest,}
-	parent=${enabled%%,*}; enabled=${enabled#$parent,}
+	res_name=${enabled%%|*}; enabled=${enabled#*|}
+	git_url=${enabled%%|*}; enabled=${enabled#*|}
+	srce=${enabled%%|*}; enabled=${enabled#*|}
+	dest=${enabled%%|*}; enabled=${enabled#*|}
+	parent=${enabled%%|*}; enabled=${enabled#*|}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1='$res_name','$git_url','$srce','$dest','$parent','$enabled'"
+	eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
 }
 
 prepare_resources() {
@@ -655,7 +655,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	while read -r line
 	do
 		S=$((S+1))
-		eval "res0$S=$line,true"
+		eval "res0$S=\$line\|true"
 		if [ "$MODE" = "latestSource" ]; then
 				get_res "0$S"
 				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
@@ -667,12 +667,12 @@ init_res_array() { # base-resources moved into .tool-files for portability
 	while read -r line
 	do
 		S=$((S+1))
-		eval "res0$S=$line,true"
+		eval "res0$S=\$line\|true"
 		get_res "0$S"
 		add_res_array
 	done < "$TOOL_FILES/pre-base-resources"
 	G0_NUM=$((S+1))
-	eval "res0$G0_NUM=config.plist,,'$INPUT',OC,,true"
+	eval "res0$G0_NUM=config.plist\|\|'$INPUT'\|OC\|\|true"
 }
 
 set_build_type() {
@@ -695,13 +695,8 @@ print_res_array() { # debug aid to list psuedo array
 	do
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
-			if [ "$G" -lt "10" ]; then
-				get_res "$G$S"
-				msg "$G$S|$res_name|$git_url|$srce|$dest|$parent|$enabled\n"
-			else
 				eval line="\$res$G$S"
 				msg "$G$S|$line\n"
-			fi
 		done
 	done
 }
@@ -828,18 +823,18 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 		5|6|7|8)
 			ROW=$((S+BOT+5))
 			COL=$(((G-5)*C+1));;
-		9)
+		CH)
 			ROW=2
 			COL=$(((S-1)*C+1));;
 	esac
 }
 
 set_text_header() {
-	eval res91="\\${U}A\\${UO}CPI/\\${U}Q\\${UO}uirks,"
-	eval res92="\\${U}K\\${UO}exts/Ker\\${U}n\\${UO}el,"
-	eval res93="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI,"
-	eval res94="\\${U}T\\${UO}ools/\\${U}B\\${UO}ooter,"
-	eval G9_NUM="4"
+	eval resCH1="\\${U}A\\${UO}CPI/\\${U}Q\\${UO}uirks\|"
+	eval resCH2="\\${U}K\\${UO}exts/Ker\\${U}n\\${UO}el\|"
+	eval resCH3="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI\|"
+	eval resCH4="\\${U}T\\${UO}ools/\\${U}B\\${UO}ooter\|"
+	eval GCH_NUM="4"
 }
 
 set_color() { # set TUI section color based on resource
@@ -853,7 +848,7 @@ set_color() { # set TUI section color based on resource
 		*)
 			color="$BLU"; MSG="$enabled";;
 	esac
-	if [ "$G" = "9" ];then color="$NC";fi
+	if [ "$G" = "CH" ];then color="$NC";fi
 }
 
 select_MSG() { # draw highligted resource in TUI
@@ -898,12 +893,13 @@ draw_screen_header() {
 
 draw_col_header() {
 	OLD_G=$G; OLD_S=$S
-	G=9; color=${NC}
+	G='CH'; color=${NC}
 	for S in $(seq 1 4)
 	do
 		get_res "$G$S"
 		set_ROW_COL
-		unselect_MSG
+		msg "\033[${ROW};${COL}H$color $res_name $MSG "
+		#unselect_MSG
 	done
 	G=$OLD_G; S=$OLD_S
 }
@@ -968,7 +964,11 @@ draw_edit_key() {
 				;;
 		esac
 		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; res_name="$key"; fi
-		msg "$key${NC} | $val\n"
+		if [ "$key" = "$val" ]; then
+			msg "$val${NC}\n"
+		else
+			msg "$key${NC} | $val\n"
+		fi
 	fi
 }
 

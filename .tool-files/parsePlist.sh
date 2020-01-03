@@ -25,11 +25,14 @@ get_next() {
 				if [ -n "$array" ]; then next="$array"; fi
 				P=3;;
 			3)
-				if [ -n "$item" ]; then next="$item"; fi
+				if [ -n "$item" ]; then next="$C0$C1$item"; fi
+				if [ -z "$key" ]; then next="$val"; fi
 				P=4;;
 			4)
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
+				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "$C0$C1$item|$val" >> edit_subs.txt; fi
+				if [ "$key" = "BundlePath" ]; then echo "$C0$C1$item|$val" >> edit_subs.txt; fi
 				P=5
 				;;
 			5)
@@ -42,9 +45,9 @@ get_next() {
 write_out() {
 	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
 	if [ "$P" -lt "5" ]; then
-		echo "$L0|$L1|$L2|$L3||$1|" >> edit_text.txt
+		echo "$L0|$L1|$L2|$L3||$1|" >> edit_text.tmp
 	else
-		echo "$L0|$L1|$L2|$L3|$type|$1|$val" >> edit_text.txt
+		echo "$L0|$L1|$L2|$L3|$type|$1|$val" >> edit_text.tmp
 	fi
 }
 
@@ -82,6 +85,8 @@ msg() {
 
 rm -rf config.plist.txt
 rm -rf edit_text.txt
+rm -rf edit_text.tmp
+rm -rf edit_subs.txt
 
 while read -r line; do
 	case "${line%%>*}" in
@@ -206,3 +211,11 @@ while read -r line; do
 			;;
 	esac
 done < config.plist
+
+com=""
+while read -r line
+do
+	com="$com -e s/${line%|*}/${line#*|}/"
+done < edit_subs.txt
+
+eval sed $com edit_text.tmp > edit_text.txt
