@@ -1,3 +1,10 @@
+## ver 2.4(010120)  
+- **added support for NVMeFix.kext**  
+
+- **added support for DebugEnhancer.kext**  
+
+- **fixed more typos and made small performance improvements**  
+
 ## ver 2.3(271219)  
 - **changed echo to printf in msg command**  
 some platforms, such as git bash for Windows, use a version of echo that needs -e for escape characters, switched to using printf which should be more consistent on all platforms  
