@@ -28,7 +28,7 @@ HAS_UNZIP=""
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.4(030120) last checked with OpenCore version DBG-054-2020-01-02"
+VER="2.4(040120) last checked with OpenCore version DBG-054-2020-01-04"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -139,21 +139,21 @@ check_tool_for_updates() {
 }
 
 check_lilu_for_updates() {
-	res_updated=""
-	msg "\n${GRN}Checking existing resources${NC} ... \n"
+	msg "\n${GRN}Checking Lilu${NC} ... "
 	if [ -d "$RES_DIR/Kext_builds/Lilu" ]; then
 		cd "$RES_DIR/Kext_builds/Lilu"
 		git fetch --all -q
 		if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 			new_hash=$(git rev-parse @|cut -c -7)
-			msg "${GRN}Lilu updated to ${NC}$new_hash\n"
+			msg "\n${GRN}Lilu updated to ${NC}$new_hash\n"
 			echo "$(date) Updated Lilu - $new_hash" >> "$BASE_DIR/update.log"
 			msg "${YEL}All kexts will be rebuilt${NC}\n"
 			rm -rf "$RES_DIR/Kext_builds"
-			res_updated="true"
+		else
+			fin
 		fi
 	else
-		msg "${YEL}no existing Lilu found${NC}\n"
+		msg "\n${YEL}no existing Lilu found${NC}\n"
 		msg "Any existing kexts will be rebuilt to insure they are current\n"
 		rm -rf "$RES_DIR/Kext_builds"
 	fi
@@ -161,6 +161,8 @@ check_lilu_for_updates() {
 
 check_resources_for_updates() {
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
+	res_updated=""
+	msg "\n${GRN}Checking other existing resources${NC} ... \n"
 	if [ -d "$RES_DIR" ]; then
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
@@ -946,7 +948,15 @@ get_CHAR() {
 
 draw_edit_key() {
 	if [ -z "$type" ]; then
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="$key"; fi
+		case "${key#* }" in
+			+)
+				msg "${GRN}"
+				;;
+			-)
+				msg "${RED}"
+				;;
+		esac
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; fi
 		msg "$key${NC} >\n"
 	else
 		case $type in

@@ -25,14 +25,14 @@ get_next() {
 				if [ -n "$array" ]; then next="$array"; fi
 				P=3;;
 			3)
-				if [ -n "$item" ]; then next="$C0$C1$item"; fi
+				if [ -n "$item" ]; then next="${C0}_${C1}_$item"; fi
 				if [ -z "$key" ]; then next="$val"; fi
 				P=4;;
 			4)
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
-				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "$C0$C1$item|$val" >> edit_subs.txt; fi
-				if [ "$key" = "BundlePath" ]; then echo "$C0$C1$item|$val" >> edit_subs.txt; fi
+				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "${C0}_${C1}_$item|$val" >> edit_subs.txt; fi
+				if [ "$key" = "BundlePath" ]; then echo "${C0}_${C1}_$item|$val" >> edit_subs.txt; fi
 				P=5
 				;;
 			5)
@@ -215,7 +215,15 @@ done < config.plist
 com=""
 while read -r line
 do
-	com="$com -e s/${line%|*}/${line#*|}/"
+	old="${line%|*}"
+	new="${line#*|}"
+	s1="${line%%_*}"; line="${line#*_}"
+	s2="${line%%_*}"; line="${line#*_}"
+	s3="${line%|*}"
+	en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
+	if [ "$en" = "true" ]; then new="$new\ +"; fi
+	if [ "$en" = "false" ]; then new="$new\ -"; fi
+	com="$com -e s/$old/$new/"
 done < edit_subs.txt
 
 eval sed $com edit_text.tmp > edit_text.txt

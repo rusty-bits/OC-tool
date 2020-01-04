@@ -520,8 +520,8 @@
     "path" : ""
   },
   "FwRuntimeServices.efi" : {
-    "latestSource" : "https://github.com/acidanthera/AppleSupportPkg",
-    "parent" : "AppleSupportPkg",
+    "latestSource" : "https://github.com/acidanthera/OpenCorePkg",
+    "parent" : "OpenCorePkg",
     "path" : "Drivers"
   },
   "SSDT-PLUG.aml" : {
