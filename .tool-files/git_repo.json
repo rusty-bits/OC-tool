@@ -3,6 +3,15 @@
     "latestSource" : "https://github.com/acidanthera/OpenCorePkg",
     "prebuiltRelease" : [
     {
+      "commit" : "9902913a0f0df4ca509315a5e1391ee4c8eda846",
+      "version" : "0.5.4",
+      "dateadded" : "20200104",
+      "debug" : "https://github.com/rusty-bits/OpenCorePkg/releases/download/040120/OpenCorePkg040120.zip",
+      "debug-sha256" : "24a8f5bc086c094123a16ea688de0e203a27b257e1a5d40863fce8f34f8eeabd",
+      "release" : "https://github.com/rusty-bits/OpenCorePkg/releases/download/040120/OpenCorePkg040120.zip",
+      "release-sha256" : "24a8f5bc086c094123a16ea688de0e203a27b257e1a5d40863fce8f34f8eeabd"
+    },
+    {
       "commit" : "58b19a86dbf89372f2fce5c9f801e6a5ac4a2155",
       "version" : "0.5.3",
       "dateadded" : "20191202",
@@ -522,7 +531,7 @@
   "FwRuntimeServices.efi" : {
     "latestSource" : "https://github.com/acidanthera/OpenCorePkg",
     "parent" : "OpenCorePkg",
-    "path" : "Drivers"
+    "path" : "EFI/OC/Drivers"
   },
   "SSDT-PLUG.aml" : {
     "latestSource" : "UDK/OpenCorePkg/Docs/AcpiSamples/SSDT-PLUG.dsl"
