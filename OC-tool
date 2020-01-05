@@ -35,8 +35,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 
-EDIT_TEXT_CONFIG=""; G10_NUM="0"
-
+EDIT_TEXT_CONFIG=""; EDIT_LOADED=""; G10_NUM="0"
 DEBUG=""
 optspec="dhinoqrstvDVX"
 
@@ -948,7 +947,7 @@ get_CHAR() {
 
 draw_edit_key() {
 	if [ -z "$type" ]; then
-		case "${key#* }" in
+		case "${key##* }" in
 			+)
 				msg "${GRN}"
 				;;
@@ -956,8 +955,8 @@ draw_edit_key() {
 				msg "${RED}"
 				;;
 		esac
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; fi
-		msg "$key${NC} >\n"
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; res_num="$num"; head_line="$num"; fi
+		msg "$key${NC} >  \n"
 	else
 		case $type in
 			bool)
@@ -973,11 +972,11 @@ draw_edit_key() {
 				msg "${BLU}"
 				;;
 		esac
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; res_name="$key"; fi
+		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; res_name="$key"; res_num="$num"; fi
 		if [ "$key" = "$val" ]; then
-			msg "$val${NC}\n"
+			msg "$val${NC}  \n"
 		else
-			msg "$key${NC} | $val\n"
+			msg "$key${NC} | $val  \n"
 		fi
 	fi
 }
@@ -991,6 +990,21 @@ load_edit_text() {
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	eval "G10_NUM=$num"
+	EDIT_LOADED="true"
+}
+
+get_edit_res() {
+	eval line="\$res10$1"
+	L0="${line%%|*}"; line="${line#*|}"
+	L1="${line%%|*}"; line="${line#*|}"
+	L2="${line%%|*}"; line="${line#*|}"
+	L3="${line%%|*}"; line="${line#*|}"
+	type="${line%%|*}"; line="${line#*|}"
+	val=${line%%|*}; key="${line#*|}"
+}
+
+set_edit_res() {
+	eval res10$1="\$L0\|\$L1\|\$L2\|\$L3\|\$type\|\$val\|\$key"
 }
 
 draw_edit_text() {
@@ -1000,13 +1014,7 @@ draw_edit_text() {
 	msg "\033[3H"
 	while [ "$num" -lt "$G10_NUM" ]
 	do
-		eval line="\$res10$num"
-		L0="${line%%|*}"; line="${line#*|}"
-		L1="${line%%|*}"; line="${line#*|}"
-		L2="${line%%|*}"; line="${line#*|}"
-		L3="${line%%|*}"; line="${line#*|}"
-		type="${line%%|*}"; line="${line#*|}"
-		key=${line%%|*}; val="${line#*|}"
+		get_edit_res "$num"
 
 		if [ "$L1" -eq "0" ]; then
 			if [ "$L0" -eq "$S0" ]; then selected="true"; fi
@@ -1032,6 +1040,7 @@ draw_edit_text() {
 
 
 text_user_interface() {
+	load_edit_text
 	git_url=""; srce=""; dest=""; parent=""
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
@@ -1069,7 +1078,7 @@ text_user_interface() {
 					G=1; S=0
 				else
 					TUI_MODE=" plist "
-					load_edit_text
+					if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
 					level=0; S0=1; S1=0; S2=0; S3=0
 					case "$G" in
 						1)
@@ -1137,7 +1146,7 @@ text_user_interface() {
 				fi
 				CONFIG_CHANGED="-t option"
 				draw_screen_header;;
-			sp|nl) # only mark CONFIG_CHANGED if change was done
+			sp) # only mark CONFIG_CHANGED if change was done  sp|nl
 				if [ "$G" -ne "10" ]; then
 					unselect_MSG
 					moved="changed"
@@ -1150,7 +1159,49 @@ text_user_interface() {
 					CONFIG_CHANGED="-t option"
 					set_res "$G$S"
 					draw_screen_header
-				fi;;
+				else
+					get_edit_res "$head_line"
+					case "${key##* }" in
+						"-"|"+")
+							temp=${key%?}
+							case "${key##* }" in
+								"-")
+									key="$temp+";;
+								"+")
+									key="$temp-";;
+							esac
+							set_edit_res "$head_line"
+							num="$head_line"
+							while [ "$key" != "Enabled" ]
+							do
+								num=$((num+1))
+								get_edit_res "$num"
+							done
+							case "$val" in
+								true)
+									val="false";;
+								false)
+									val="true";;
+							esac
+							set_edit_res "$num"
+							moved="changed"
+							;;
+						*)
+							get_edit_res "$res_num"
+							if [ "$type" = "bool" ]; then
+								case "$val" in
+									true)
+										val="false";;
+									false)
+										val="true";;
+								esac
+								set_edit_res "$res_num"
+								moved="changed"
+							fi
+							;;
+					esac
+				fi
+				;;
 			A|k) # move up
 				if [ "$G" -ne "10" ]; then
 					moved="true"

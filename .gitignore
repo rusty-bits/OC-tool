@@ -4,6 +4,7 @@ tool.log
 update.log
 
 .tool-files/h.e
+.tool-files/k.e
 
 INPUT/config.plist
 INPUT/temp/*

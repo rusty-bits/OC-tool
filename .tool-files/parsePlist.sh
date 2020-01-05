@@ -31,8 +31,10 @@ get_next() {
 			4)
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
-				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "${C0}_${C1}_$item|$val" >> edit_subs.txt; fi
-				if [ "$key" = "BundlePath" ]; then echo "${C0}_${C1}_$item|$val" >> edit_subs.txt; fi
+				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "BundlePath" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				P=5
 				;;
 			5)
@@ -45,9 +47,9 @@ get_next() {
 write_out() {
 	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
 	if [ "$P" -lt "5" ]; then
-		echo "$L0|$L1|$L2|$L3||$1|" >> edit_text.tmp
+		echo "$L0|$L1|$L2|$L3|||$1 " >> edit_text.tmp
 	else
-		echo "$L0|$L1|$L2|$L3|$type|$1|$val" >> edit_text.tmp
+		echo "$L0|$L1|$L2|$L3|$type|$val|$1" >> edit_text.tmp
 	fi
 }
 
@@ -223,7 +225,8 @@ do
 	en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
 	if [ "$en" = "true" ]; then new="$new\ +"; fi
 	if [ "$en" = "false" ]; then new="$new\ -"; fi
-	com="$com -e s/$old/$new/"
+	com="$com -e s/'$old '/'$new'/"
 done < edit_subs.txt
+echo $com > com1.txt
 
 eval sed $com edit_text.tmp > edit_text.txt
