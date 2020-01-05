@@ -24,6 +24,7 @@ CONFIG_PLIST="$INPUT/config.plist"
 CONFIG_TXT="$INPUT/config.plist.txt"
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
+SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
@@ -272,18 +273,20 @@ build_shell_tool() { #possible to automate this function?
 	clone "$git_url"
 	cd "$pkg_name"
 	srce="$(pwd)/UDK/Build/Shell/$AUDK_BUILD_DIR/X64"
-	if [ -f "$srce/Shell.efi" ]; then return 0; fi
-	clone "https://github.com/tianocore/edk2 -b UDK2018 --depth=1" "UDK"
+	if [ -f "$srce/$SHELL_EFI" ]; then return 0; fi
+	clone "https://github.com/acidanthera/audk -b master --depth=1" "UDK"
 	cd UDK
-	msg "Making UDK2018 BaseTools ... "
+	msg "Making audk BaseTools for Shell.efi ... "
 	make_base_tools; fin
 
-	msg "Patching UDK2018 ... "
+	msg "Patching audk for Shell.efi ... "
 	for p in ../Patches/* ; do
 		git apply "$p"||echo "$p ignored, does not apply or alread done"
+		git add *
+		git commit -m "Applied patch $p"
 	done; fin
 
-	msg "Building $AUDK_CONFIG Shell.efi (OpenCoreShell.efi) ... "
+	msg "Building $AUDK_CONFIG Shell.efi ($SHELL_EFI) ... "
 	build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p ShellPkg/ShellPkg.dsc
 	fin
 }
@@ -507,6 +510,7 @@ copy_resources() {
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
+						if [ "$dest_name" = "Shell.efi" ]; then res_name="$SHELL_EFI" ;fi
 						msg "Copying $dest_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
@@ -710,7 +714,6 @@ write_new_array() { # write array section changes to new plist
 		do
 			read -r line
 			echo "$line" >> "$OUT"
-	#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
 				if [ "$enabled" = "ignored" ]; then
@@ -757,7 +760,6 @@ write_new_quirks() { # write quirks section changes to new plist
 	done
 	while [ "$line" != "</dict>" ]
 	do
-#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		if [ "$line" = "<key>$res_name</key>" ];then
 			read -r line
 			case "$enabled" in
@@ -785,7 +787,6 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 	while read -r line
 	do
 		echo "$line" >> "$OUT"
-#		key=$(echo "$line"|sed -e 's/<[^>]*>//g')
 		case "$line" in
 			"<key>ACPI</key>")
 				G=1; S=0;
@@ -830,7 +831,7 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 	esac
 }
 
-set_text_header() {
+set_text_header() { # eval to avoid unused var in shellcheck
 	eval resCH1="\\${U}A\\${UO}CPI/\\${U}Q\\${UO}uirks\|"
 	eval resCH2="\\${U}K\\${UO}exts/Ker\\${U}n\\${UO}el\|"
 	eval resCH3="\\${U}D\\${UO}rivers/\\${U}U\\${UO}EFI\|"
@@ -914,7 +915,6 @@ draw_screen() {
 	draw_col_header
 	for G in $(seq 1 8)
 	do
-#		len="$(eval echo \$G"$G"_NUM)"
 		eval len="\$G${G}_NUM"
 		if [ "$G" -le "4" ];then # BOT = longest group of 1 - 4
 			if [ "$BOT" -lt "$len" ];then BOT="$len";fi
@@ -983,8 +983,15 @@ draw_edit_key() {
 
 load_edit_text() {
 	num=0
+	qn=5
 	while read -r line
 	do
+#		if [ "${line##*|}" = "Quirks" ]; then
+#			get_res "${qn}0"
+#			res_name="$num"
+#			set_res "${qn}0"
+#			qn=$((qn+1))
+#		fi
 		eval "res10$num=\$line"
 		num=$((num+1))
 	done < "$INPUT/edit_text.txt"
@@ -1033,17 +1040,15 @@ draw_edit_text() {
 			msg "\t\t\t"; draw_edit_key
 			if [ "$level" -eq "3" ]; then LLEN=$L3; fi
 		fi
-#	done < "$INPUT/edit_text.txt"
 	num=$((num+1))
 	done
 }
 
-
 text_user_interface() {
-	load_edit_text
 	git_url=""; srce=""; dest=""; parent=""
 	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
 	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
+	load_edit_text
 	BOT=0; KEY=0
 	CHAR=""; moved=""
 	set_text_header
