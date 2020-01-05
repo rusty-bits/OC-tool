@@ -510,7 +510,7 @@ copy_resources() {
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
-						if [ "$dest_name" = "Shell.efi" ]; then res_name="$SHELL_EFI" ;fi
+						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="$SHELL_EFI" ;fi
 						msg "Copying $dest_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
