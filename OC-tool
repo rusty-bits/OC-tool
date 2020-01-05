@@ -622,9 +622,12 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 }
 
 missing_plist_sec() {
-	msg "\n${RED}ERROR:${NC}\tMissing $1 > $2 section in $filePath\n"
-	msg "\tEvery section is required in the config.plist at this time.\n"
-	exit 1
+	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $filePath\n"
+	msg "\tWill continue build, but please note this warning from the Configuration.pdf\n"
+	msg "\t${U}Note: Currently most properties try to have defined values even if not specified\n"
+	msg "\tin the configuration for safety reasons. This behaviour should not be relied upon, and\n"
+	msg "\tall fields must be properly specified in the configuration.${NC}\n"
+	num=1
 }
 
 add_resource() { #add_resource "Group" "Section" "subsec" "Path"
@@ -716,6 +719,8 @@ write_new_array() { # write array section changes to new plist
 		do
 			read -r line
 			echo "$line" >> "$OUT"
+			if [ -n "$DEBUG" ]; then msg "db - $line ... new_arr1\n"; fi
+			if [ "$line" = "<array/>" ]; then return 0; fi
 			if [ "$line" = "<key>Enabled</key>" ];then
 				read -r line
 				if [ "$enabled" = "ignored" ]; then
@@ -728,6 +733,7 @@ write_new_array() { # write array section changes to new plist
 		S=$((S+1))
 		read -r line
 		echo "$line" >> "$OUT"
+		if [ -n "$DEBUG" ]; then msg "db - $line ... new_array2\n"; fi
 	done
 }
 
@@ -736,6 +742,7 @@ write_new_drivers() { # write driver section changes to new plist
 	do
 		read -r line
 		echo "$line" >> "$OUT"
+		if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv1\n"; fi
 	done
 	get_res "$G$S"
 	while [ "$line" != "</array>" ]
@@ -744,11 +751,13 @@ write_new_drivers() { # write driver section changes to new plist
 		if [ "$line" = "<string>$res_name</string>" ];then
 			if [ "$enabled" = "true" ];then
 				echo "$line" >> "$OUT"
+				if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv2\n"; fi
 			fi
 			S=$((S+1))
 			get_res "$G$S"
 		else
 			echo "$line" >> "$OUT"
+			if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv3\n"; fi
 		fi
 	done
 }
@@ -759,6 +768,7 @@ write_new_quirks() { # write quirks section changes to new plist
 	do
 		read -r line
 		echo "$line" >> "$OUT"
+		if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks1\n"; fi
 	done
 	while [ "$line" != "</dict>" ]
 	do
@@ -774,11 +784,13 @@ write_new_quirks() { # write quirks section changes to new plist
 				*)
 					echo "$line" >> "$OUT";;
 			esac
+			if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks2\n"; fi
 			S=$((S+1))
 			get_res "$G$S"
 		fi
 		read -r line
 		echo "$line" >> "$OUT"
+		if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks3\n"; fi
 	done
 }
 
@@ -789,6 +801,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 	while read -r line
 	do
 		echo "$line" >> "$OUT"
+		if [ -n "$DEBUG" ]; then msg "\ndb - $line ... new_conf1\n"; fi
 		case "$line" in
 			"<key>ACPI</key>")
 				G=1; S=0;
@@ -1501,6 +1514,7 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 fi
 
 if [ -n "$CONFIG_CHANGED" ]; then
+	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
 	command -v "plutil"&&plutil -convert xml1 "$BASE_DIR/Docs/config.plist"
 	get_res "0$G0_NUM" # update location for config.plist file
