@@ -282,8 +282,8 @@ build_shell_tool() { #possible to automate this function?
 	msg "Patching audk for Shell.efi ... "
 	for p in ../Patches/* ; do
 		git apply "$p"||echo "$p ignored, does not apply or alread done"
-		git add *
-		git commit -m "Applied patch $p"
+#		git add *
+#		git commit -m "Applied patch $p"
 	done; fin
 
 	msg "Building $AUDK_CONFIG Shell.efi ($SHELL_EFI) ... "
@@ -523,9 +523,11 @@ copy_resources() {
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
-	mkdir -p "$BASE_DIR"/Docs
-	cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
+#	mkdir -p "$BASE_DIR"/Docs
+	diff "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
+	cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
+	msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
 	msg "\tYou may want to check it for any changes that could apply to\n"
 	msg "\t$filePath\n"
 }
