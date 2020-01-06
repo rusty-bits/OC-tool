@@ -600,6 +600,8 @@
 		<dict>
 			<key>AllowNvramReset</key>
 			<false/>
+			<key>AuthRestart</key>
+			<false/>
 			<key>ExposeSensitiveData</key>
 			<integer>6</integer>
 			<key>HaltLevel</key>
@@ -740,7 +742,6 @@
 			<string>HfsPlus.efi</string>
 			<string>ApfsDriverLoader.efi</string>
 			<string>FwRuntimeServices.efi</string>
-			<string>VirtualSmc.efi</string>
 		</array>
 		<key>Input</key>
 		<dict>
@@ -770,6 +771,8 @@
 			<key>AppleImageConversion</key>
 			<false/>
 			<key>AppleKeyMap</key>
+			<false/>
+			<key>AppleSmcIo</key>
 			<false/>
 			<key>AppleUserInterfaceTheme</key>
 			<false/>
