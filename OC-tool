@@ -1,5 +1,6 @@
 #!/bin/sh -e
-# shellcheck disable=SC2034
+
+# testing shellcheck disable=SC2034
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -29,15 +30,15 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.4(070120) last checked with OpenCore version DBG-054-2020-01-07"
+VER="2.4(080120) last checked with OpenCore version DBG-054-2020-01-07"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 
-EDIT_TEXT_CONFIG=""; EDIT_LOADED=""; G10_NUM="0"
-DEBUG=""; edit_char=""
+EDIT_LOADED=""; G10_NUM="0"
+DEBUG=""
 optspec="dhinoqrstvDVX"
 
 msg() { #write $1 to screen if not quiet
@@ -524,8 +525,8 @@ copy_resources() {
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
 #	mkdir -p "$BASE_DIR"/Docs
-	echo " < old Docs/Sample.plist\n > new Docs/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"
-	diff "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" >> "$BASE_DIR/Docs/diff_Sample.txt"||true
+#	printf "%b" " < old Docs/Sample.plist\n > new Docs/Sample.plist\t\t$(date)\n" > "$BASE_DIR/Docs/diff_Sample.txt"
+	diff -u "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
 	cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
 	msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
@@ -985,8 +986,8 @@ draw_edit_key() {
 				fi;;
 			data)
 				msg "${YEL}"
-				add_msg=$(printf $val|base64 --decode|hexdump -v -e '1/1 "%02x "')
-				add_msg="| $add_msg| $(printf $val|base64 --decode|hexdump -v -e '"%_p"')  "
+				add_msg=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x "')
+				add_msg="| $add_msg| $(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"')  "
 				;;
 			integer)
 				msg "${BLU}"
@@ -1003,7 +1004,7 @@ draw_edit_key() {
 
 load_edit_text() {
 	num=0
-	qn=5
+#	qn=5
 	while read -r line
 	do
 #		if [ "${line##*|}" = "Quirks" ]; then
@@ -1035,12 +1036,7 @@ set_edit_res() {
 }
 
 edit_var() {
-	CHAR=""
-	while [ "$CHAR" != "nl" ]
-	do
-		get_CHAR
-	done
-	edit_res_num=""
+	msg "."
 }
 
 draw_edit_text() {
@@ -1116,235 +1112,252 @@ text_user_interface() {
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
-		case $CHAR in
-			b)
-				moved="true"
-				eval S="\$G${G}_NUM";;
-			d)
-				if [ "$TYPE" = "release" ];then
-					TYPE="debug"
-				else
-					TYPE="release"
-				fi
-				draw_screen_header;;
-			e)
-				moved="redraw"
-				if [ "$TUI_MODE" != "summary" ]; then
-					#write_text_config
-					TUI_MODE="summary"
-					draw_screen
-					G=1; S=0
-				else
-					TUI_MODE=" plist "
-					if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
-					level=0; S0=1; S1=0; S2=0; S3=0
-					G="10"; S=0
-				fi;;
-			n) # jump to kerNel quirks
-				moved="true"
-				G=6; S=0;;
-			p) # debug dump array
-				stty echo
-				msg "${NC}"
-				msg "$(tput rmcup)"
-				print_res_array
-				exit 0;;
-			q)
-				stty echo
-				CHAR='g'
-				TEXT="quit";;
-			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
-				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
-				CHAR='g'
-				TEXT='stop';;
-			v) # toggle USE_VAULT
-				if [ "$USE_VAULT" = "true" ];then
-					USE_VAULT="false"
-				else
-					USE_VAULT="true"
-				fi
-				CONFIG_CHANGED="-t option"
-				draw_screen_header;;
-			K) # jump to kext group
-				moved="true"
-				G=2; S=0;;
-			T) # jump to Tools group
-				moved="true"
-				G=4; S=0;;
-			U) # jump to UEFI quirke
-				moved="true"
-				G=7; S=0;;
-			Q) # jump to ACPI quirks
-				moved="true"
-				G=5; S=0;;
-			esc|'[')
-				esc="true";;
-			*)
-				if [ "$G" -lt 10 ]; then
-					case "$CHAR" in # key press actions for summary screen
-						i)
-							show_description
-							draw_screen;;
-						r)
-							draw_screen
-							moved="true";;
-						A|k) # move up
-							moved="true"
-							if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
-								S=$((S-1))
-								if [ "$S" -lt "0" ];then
-									if [ "$G" -gt "4" ];then
-										G=$((G-4))
-										eval S="\$G${G}_NUM"
-									else
-										S=0
-									fi
-								fi
-							else # jump to ACPI group
-								G=1; S=0
-							fi
-							esc="";;
-						B|j) # move down
-							moved="true"
-							if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
-								S=$((S+1))
-								eval len="\$G${G}_NUM"
-								if [ "$S" -gt "$len" ];then
-									if [ "$G" -lt "5" ];then
-										G=$((G+4))
-										S=0
-									else
-										S=$len
-									fi
-								fi
-							else # jump to Booter quirks
-								G=8; S=0
-							fi
-							esc="";;
-						C|l) # move right
-							G=$((G+1))
-							if [ "$G" -eq "5" ];then G=4;fi
-							if [ "$G" -eq "9" ];then G=8;fi
-							moved="true"
-							esc="";;
-						D|h) # move left
-							moved="true"
-							if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
-								G=$((G-1))
-								if [ "$G" -eq "0" ];then G=1;fi
-								if [ "$G" -eq "4" ];then G=5;fi
-								esc=""
-							else
-								G=3; S=0
-							fi
-							esc="";;
-						sp|nl) # toggle enabled
-							unselect_MSG
-							moved="changed"
-							case "$enabled" in
-								true)
-									enabled="false";;
-								false)
-									enabled="true";;
-							esac
-							CONFIG_CHANGED="-t option"
-							set_res "$G$S"
-							draw_screen_header;;
-					esac
-				else
-					case "$CHAR" in # key press actions for edit plist screen
-						i)
-							show_description
-							draw_edit_text;;
-						r)
-							moved="redraw"
-							draw_edit_text
-							moved="";;
-						A|k) # move up
-							eval SN="\$S$level"
-							SN=$((SN-1))
-							if [ "$SN" -lt "1" ]; then
-								SN=1
-							else
+		if [ -n "$edit_res_num" ]; then
+			case $CHAR in
+				nl|esc)
+					edit_res_num=""
+					moved="true";;
+				sp)
+					msg " ";;
+				*)
+					msg "$CHAR";;
+			esac
+		else
+			case $CHAR in
+				b)
+					moved="true"
+					eval S="\$G${G}_NUM";;
+				d)
+					if [ "$TYPE" = "release" ];then
+						TYPE="debug"
+					else
+						TYPE="release"
+					fi
+					draw_screen_header;;
+				e)
+					moved="redraw"
+					if [ "$TUI_MODE" != "summary" ]; then
+						#write_text_config
+						TUI_MODE="summary"
+						draw_screen
+						G=1; S=0
+					else
+						TUI_MODE=" plist "
+						if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
+						level=0; S0=1; S1=0; S2=0; S3=0
+						G="10"; S=0
+					fi;;
+				n) # jump to kerNel quirks
+					moved="true"
+					G=6; S=0;;
+				p) # debug dump array
+					stty echo
+					msg "${NC}"
+					msg "$(tput rmcup)"
+					print_res_array
+					exit 0;;
+				q)
+					stty echo
+					CHAR='g'
+					TEXT="quit";;
+				s) # exit loop with 'g' then save Docs/config.plist if changed then stop
+					if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
+					CHAR='g'
+					TEXT='stop';;
+				v) # toggle USE_VAULT
+					if [ "$USE_VAULT" = "true" ];then
+						USE_VAULT="false"
+					else
+						USE_VAULT="true"
+					fi
+					CONFIG_CHANGED="-t option"
+					draw_screen_header;;
+				K) # jump to kext group
+					moved="true"
+					G=2; S=0;;
+				T) # jump to Tools group
+					moved="true"
+					G=4; S=0;;
+				U) # jump to UEFI quirke
+					moved="true"
+					G=7; S=0;;
+				Q) # jump to ACPI quirks
+					moved="true"
+					G=5; S=0;;
+				esc|'[')
+					esc="true";;
+				*)
+					if [ "$G" -lt 10 ]; then
+						case "$CHAR" in # key press actions for summary screen
+							i)
+								show_description
+								draw_screen;;
+							r)
+								draw_screen
+								moved="true";;
+							A|k) # move up
 								moved="true"
-							fi
-							eval S$level=$SN
-							esc="";;
-						B|j) # move down
-							eval SN="\$S$level"
-							SN=$((SN+1))
-							if [ "$SN" -gt "$LLEN" ]; then
-								SN=$LLEN
-							else
+								if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
+									S=$((S-1))
+									if [ "$S" -lt "0" ];then
+										if [ "$G" -gt "4" ];then
+											G=$((G-4))
+											eval S="\$G${G}_NUM"
+										else
+											S=0
+										fi
+									fi
+								else # jump to ACPI group
+									G=1; S=0
+								fi
+								esc="";;
+							B|j) # move down
 								moved="true"
-							fi
-							eval "S$level=$SN"
-							esc="";;
-						C|l) # move right
-							if [ -z "$has_higher_level" ]; then
-								level=$((level+1))
-								if [ "$level" -gt "3" ]; then level=3; fi
-								eval S$level=1
+								if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
+									S=$((S+1))
+									eval len="\$G${G}_NUM"
+									if [ "$S" -gt "$len" ];then
+										if [ "$G" -lt "5" ];then
+											G=$((G+4))
+											S=0
+										else
+											S=$len
+										fi
+									fi
+								else # jump to Booter quirks
+									G=8; S=0
+								fi
+								esc="";;
+							C|l) # move right
+								G=$((G+1))
+								if [ "$G" -eq "5" ];then G=4;fi
+								if [ "$G" -eq "9" ];then G=8;fi
+								moved="true"
+								esc="";;
+							D|h) # move left
+								moved="true"
+								if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
+									G=$((G-1))
+									if [ "$G" -eq "0" ];then G=1;fi
+									if [ "$G" -eq "4" ];then G=5;fi
+									esc=""
+								else
+									G=3; S=0
+								fi
+								esc="";;
+							sp|nl) # toggle enabled
+								unselect_MSG
+								moved="changed"
+								case "$enabled" in
+									true)
+										enabled="false";;
+									false)
+										enabled="true";;
+								esac
+								CONFIG_CHANGED="-t option"
+								set_res "$G$S"
+								draw_screen_header;;
+							ht)
+								G=$((G+1))
+								if [ "$G" -gt "8" ]; then G=1; fi
+								moved="true";;
+						esac
+					else
+						case "$CHAR" in # key press actions for edit plist screen
+							i)
+								show_description
+								draw_edit_text;;
+							r)
 								moved="redraw"
-							fi
-							esc="";;
-						D|h) # move left
-							if [ "$level" -gt "0" ]; then
-								eval S$level=0
-								level=$((level-1))
-								moved="redraw"
-							fi
-							esc="";;
-						sp) # only mark CONFIG_CHANGED if change was done  sp|nl
-							get_edit_res "$head_line"
-							case "${key##* }" in
-								"-"|"+")
-									temp=${key%?}
-									case "${key##* }" in
-										"-")
-											key="$temp+";;
-										"+")
-											key="$temp-";;
-									esac
-									set_edit_res "$head_line"
-									num="$head_line"
-									while [ "$key" != "Enabled" ]
-									do
-										num=$((num+1))
-										get_edit_res "$num"
-									done
-									case "$val" in
-										true)
-											val="false";;
-										false)
-											val="true";;
-									esac
-									set_edit_res "$num"
-									moved="changed"
-									;;
-								*)
-									get_edit_res "$res_num"
-									if [ "$type" = "bool" ]; then
+								draw_edit_text
+								moved="";;
+							A|k) # move up
+								eval SN="\$S$level"
+								SN=$((SN-1))
+								if [ "$SN" -lt "1" ]; then
+									SN=1
+								else
+									moved="true"
+								fi
+								eval S$level=$SN
+								esc="";;
+							B|j) # move down
+								eval SN="\$S$level"
+								SN=$((SN+1))
+								if [ "$SN" -gt "$LLEN" ]; then
+									SN=$LLEN
+								else
+									moved="true"
+								fi
+								eval "S$level=$SN"
+								esc="";;
+							C|l) # move right
+								if [ -z "$has_higher_level" ]; then
+									level=$((level+1))
+									if [ "$level" -gt "3" ]; then level=3; fi
+									eval S$level=1
+									moved="redraw"
+								fi
+								esc="";;
+							D|h) # move left
+								if [ "$level" -gt "0" ]; then
+									eval S$level=0
+									level=$((level-1))
+									moved="redraw"
+								fi
+								esc="";;
+							sp) # only mark CONFIG_CHANGED if change was done  sp|nl
+								get_edit_res "$head_line"
+								case "${key##* }" in
+									"-"|"+")
+										temp=${key%?}
+										case "${key##* }" in
+											"-")
+												key="$temp+";;
+											"+")
+												key="$temp-";;
+										esac
+										set_edit_res "$head_line"
+										num="$head_line"
+										while [ "$key" != "Enabled" ]
+										do
+											num=$((num+1))
+											get_edit_res "$num"
+										done
 										case "$val" in
 											true)
 												val="false";;
 											false)
 												val="true";;
 										esac
-										set_edit_res "$res_num"
+										set_edit_res "$num"
 										moved="changed"
-									fi
-									;;
-							esac;; # end case sp
-						nl)
-							get_edit_res "$res_num"
-							if [ "$type" = "string" ]; then
+										;;
+									*)
+										get_edit_res "$res_num"
+										if [ "$type" = "bool" ]; then
+											case "$val" in
+												true)
+													val="false";;
+												false)
+													val="true";;
+											esac
+											set_edit_res "$res_num"
+											moved="changed"
+										fi
+										;;
+								esac;; # end case sp
+							nl)
+								get_edit_res "$res_num"
+								if [ "$type" = "string" ]; then
 									edit_res_num="$res_num"
-								moved="changed"
-							fi;;
-					esac
-				fi
-		esac
+									moved="changed"
+									msg "$(tput cnorm)"
+								fi;;
+						esac
+					fi
+			esac
+		fi
 		eval temp="\$G${G}_NUM"
 		if [ "$S" -gt "$temp" ];then
 			S="$temp"
