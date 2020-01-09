@@ -230,6 +230,7 @@ curl_parent() {
 				fi
 			fi
 			fin
+			echo "$(date) Downloaded $zip_name - $(printf '%b' $sha|cut -c -7)" >> "$BASE_DIR/update.log"
 		else
 			msg "\nCan't download $zip_name while using -n option.\n"
 			exit 0
