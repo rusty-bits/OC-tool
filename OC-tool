@@ -30,7 +30,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.4(080120) last checked with OpenCore version DBG-054-2020-01-07"
+VER="2.4(090120) last checked with OpenCore version DBG-054-2020-01-08"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -274,26 +274,31 @@ build_shell_tool() { #possible to automate this function?
 	clone "$git_url"
 	cd "$pkg_name"
 	srce="$(pwd)/UDK/Build/Shell/$AUDK_BUILD_DIR/X64"
-	if [ -f "$srce/$SHELL_EFI" ]; then return 0; fi
-	clone "https://github.com/acidanthera/audk -b master --depth=1" "UDK"
-	cd UDK
-	msg "Making audk BaseTools for Shell.efi ... "
-	make_base_tools; fin
+#	if [ -f "$srce/$SHELL_EFI" ]; then return 0; fi
+	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
+		[ ! -e "$srce/$SHELL_EFI" ]; then
+		rm -rf "$srce"
+		clone "https://github.com/acidanthera/audk -b master --depth=1" "UDK"
+		cd UDK
+		msg "Making audk BaseTools for Shell.efi ... "
+		make_base_tools; fin
 
-	msg "Patching audk for Shell.efi ... "
-	for p in ../Patches/* ; do
-		git apply "$p"||echo "$p ignored, does not apply or alread done"
-#		git add *
-#		git commit -m "Applied patch $p"
-	done; fin
+		msg "Patching audk for Shell.efi ... "
+		for p in ../Patches/* ; do
+			git apply "$p"||echo "$p ignored, does not apply or alread done"
+		done; fin
 
-	msg "Building $AUDK_CONFIG Shell.efi ($SHELL_EFI) ... "
-	build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p ShellPkg/ShellPkg.dsc
-	fin
+		msg "Building $AUDK_CONFIG Shell.efi ($SHELL_EFI) ... "
+		build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p ShellPkg/ShellPkg.dsc
+		fin
+		cd ..
+		git rev-parse HEAD > git"$AUDK_CONFIG"sha
+		BASE_TOOLS="" # insure other drivers use non-patched UDK
+	fi
 }
 
 build_driver() {
-	cd "$RES_DIR"/UDK
+	cd "$RES_DIR/UDK"
 	clone "$git_url"
 	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 	cd "$pkg_name"
@@ -301,7 +306,7 @@ build_driver() {
 		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
 		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
 		if [ -f "$pkg_name.dsc" ]; then
-			if [ -z "$BASE_TOOLS" ]; then #no need to build again
+			if [ -z "$BASE_TOOLS" ]; then #tools not built yet
 				msg "Making base tools ... "
 				cd ..
 				make_base_tools; fin
@@ -695,7 +700,7 @@ set_build_type() {
 		r|release)
 			TYPE="release"; XCODE_CONFIG="Release";;
 		*)
-			msg "need to specify ${U}debug${NC} or ${U}release${NC} after ...\n"
+			msg "Invalid build type selected in set_build_type()\n"
 			exit 1;;
 	esac
 	AUDK_CONFIG=$(echo $XCODE_CONFIG|tr "[:lower:]" "[:upper:]")
