@@ -230,7 +230,7 @@ curl_parent() {
 				fi
 			fi
 			fin
-			echo "$(date) Downloaded $zip_name - $(printf '%b' $sha|cut -c -7)" >> "$BASE_DIR/update.log"
+			echo "$(date) Downloaded $zip_name - $(printf "%b" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
 		else
 			msg "\nCan't download $zip_name while using -n option.\n"
 			exit 0
@@ -969,42 +969,85 @@ get_CHAR() {
 	stty icanon
 }
 
+compute_data_vals() {
+	case $data_field in
+		1)
+			val="$e_val"
+			hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x"')
+			cb64_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+		2)
+			hex_val="$e_val"
+			val=$(printf "%b" "$hex_val"|xxd -p -r|base64)
+			cb64_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+		3)
+			if [ -z "$cb64_touched" ]; then
+				cb64_val="$e_val"
+				val=$(printf "%b" "$cb64_val"|base64)
+				hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x "')
+			fi;;
+		esac
+}
+
+draw_edit_val() {
+	if [ "$key" = "$val" ]; then
+		msg "\033[${S}H${e_text}$e_val${NC}\033[K"
+	else
+		if [ "$type" = "data" ]; then
+			compute_data_vals
+			msg "\033[${S}H${e_text}$key${NC} | $val | $hex_val | $cb64_val\033[K"
+			if [ -n "$e_split" ]; then
+				case $data_field in
+					1)
+						msg "\033[${S}H${e_text}$key${NC} | "
+						printf "%.${e_split}s" "$val" > "$TTY_OUT";;
+					2)
+						msg "\033[${S}H${e_text}$key${NC} | $val | "
+						printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
+					3)
+						msg "\033[${S}H${e_text}$key${NC} | $val | $hex_val | "
+						printf "%.${e_split}s" "$cb64_val" > "$TTY_OUT";;
+				esac
+			fi
+		else
+			msg "\033[${S}H${e_text}$key${NC} | $e_val\033[K"
+			if [ -n "$e_split" ]; then
+				msg "\033[${S}H${e_text}$key${NC} | "
+				printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
+			fi
+		fi
+	fi
+}
+
 draw_edit_key() {
+	S=$((S+1))
 	if [ -z "$type" ]; then
 		case "${key##* }" in
 			+)
-				msg "${GRN}"
+				e_text="${e_text}${GRN}"
 				;;
 			-)
-				msg "${RED}"
+				e_text="${e_text}${RED}"
 				;;
 		esac
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; res_num="$num"; head_line="$num"; fi
-		msg "$key${NC} >  "
+		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; res_num="$num"; head_line="$num"; fi
+		msg "\033[${S}H${e_text}$key${NC} >  "
 	else
-		add_msg="  "
 		case $type in
 			bool)
-				if [ "$val" = "true" ]; then
-					msg "${GRN}"
+				if [ "$e_val" = "true" ]; then
+					e_text="${e_text}${GRN}"
 				else
-					msg "${RED}"
+					e_text="${e_text}${RED}"
 				fi;;
 			data)
-				msg "${YEL}"
-				add_msg=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x "')
-				add_msg="| $add_msg| $(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"')  "
+				e_text="${e_text}${YEL}"
 				;;
 			integer)
-				msg "${BLU}"
+				e_text="${e_text}${BLU}"
 				;;
 		esac
-		if [ -n "$selected" ]; then msg "${INV}"; selected=""; has_higher_level="false"; res_name="$key"; res_num="$num"; fi
-		if [ "$key" = "$val" ]; then
-			msg "$val${NC} $add_msg"
-		else
-			msg "$key${NC} | $val $add_msg"
-		fi
+		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; res_name="$key"; res_num="$num"; fi
+		draw_edit_val
 	fi
 }
 
@@ -1041,39 +1084,128 @@ set_edit_res() {
 	eval res10$1="\$L0\|\$L1\|\$L2\|\$L3\|\$type\|\$val\|\$key"
 }
 
-edit_var() {
-	msg "."
+split_val() {
+	val1=$(printf "%.${e_split}b" "$e_val")
+	val2="${e_val#$val1}"
+}
+
+edit_val() {
+	old_val="$val"
+	e_split="${#e_val}"
+	cb64_touched="false"
+	draw_edit_val
+	while :
+	do
+		get_CHAR
+		case $CHAR in
+			del)
+				split_val
+				e_val="${val1%?}$val2"
+				e_split=$((e_split-1))
+				if [ "$data_field" -eq "3" ]; then cb64_touched=""; else cb64_touched="false"; fi
+				if [ "$e_split" -lt "0" ]; then e_split="0"; fi;;
+			esc)
+				get_CHAR
+				case $CHAR in
+					"[")
+						get_CHAR
+						case $CHAR in
+							C)
+								e_split=$((e_split+1))
+								if [ "$e_split" -gt "${#e_val}" ]; then e_split="${#e_val}"; fi;;
+							D)
+								e_split=$((e_split-1))
+								if [ "$e_split" -lt "0" ]; then e_split="0"; fi;;
+						esac;;
+					esc)
+						val="$old_val"
+						e_val="$val"
+						data_field="1"
+						draw_edit_val
+						msg "$(tput civis)"
+						break;;
+				esac;;
+			ht)
+				if [ "$type" = "data" ]; then
+					case $data_field in
+						1)
+							e_val="$hex_val"
+							data_field="2";;
+						2)
+							e_val="$cb64_val"
+							data_field="3";;
+						3)
+							e_val="$val"
+							data_field="1";;
+					esac
+					e_split="${#e_val}"
+				fi;;
+			nl)
+				if [ "$type" != "data" ]; then val="$e_val"; fi
+				msg "$(tput civis)"
+				break;;
+			sp)
+				split_val
+				e_val="$val1 $val2"
+				if [ "$data_field" -eq "3" ]; then cb64_touched=""; else cb64_touched="false"; fi
+				e_split=$((e_split+1));;
+			[0-9] )
+				split_val
+				e_val="$val1$CHAR$val2"
+				if [ "$data_field" -eq "3" ]; then cb64_touched=""; else cb64_touched="false"; fi
+				e_split=$((e_split+1));;
+			[a-fA-F] )
+				if [ "$type" != "integer" ]; then
+					split_val
+					e_val="$val1$CHAR$val2"
+					if [ "$data_field" -eq "3" ]; then cb64_touched=""; else cb64_touched="false"; fi
+					e_split=$((e_split+1))
+				fi;;
+			*)
+				if [ "$type" != "integer" ] && [ "$data_field" != "2" ]; then
+					split_val
+					e_val="$val1$CHAR$val2"
+					if [ "$data_field" -eq "3" ]; then cb64_touched=""; else cb64_touched="false"; fi
+					e_split=$((e_split+1))
+				fi;;
+		esac
+		draw_edit_val
+	done
+	edit_res_num=""
+	data_field="1"
+	e_split=""
 }
 
 draw_edit_text() {
-	num=0
+	num=0; S=2
+	data_field="1"
 	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
 	draw_screen_header
-	msg "\033[3H"
 	while [ "$num" -lt "$G10_NUM" ]
 	do
-		get_edit_res "$num"
-
+		e_text=""
+		get_edit_res "$num"; e_val="$val"
 		if [ "$L1" -eq "0" ]; then
 			if [ "$L0" -eq "$S0" ]; then selected="true"; fi
-			msg "\n"; draw_edit_key
+			e_text="$e_text"; draw_edit_key
 			if [ "$level" -eq "0" ]; then LLEN=$L0; fi
 		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L1" -eq "$S1" ]; then selected="true"; fi
-			msg "\n\t"; draw_edit_key
+			e_text="\t$e_text"; draw_edit_key
 			if [ "$level" -eq "1" ]; then LLEN=$L1; fi
 		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L2" -eq "$S2" ]; then selected="true"; fi
-			msg "\n\t\t"; draw_edit_key
+			e_text="\t\t$e_text"; draw_edit_key
 			if [ "$level" -eq "2" ]; then LLEN=$L2; fi
 		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
 			if [ "$L3" -eq "$S3" ]; then selected="true"; fi
-			msg "\n\t\t\t"; draw_edit_key
+			e_text="\t\t\t$e_text"; draw_edit_key
 			if [ "$level" -eq "3" ]; then LLEN=$L3; fi
 		fi
 		if [ -n "$has_higher_level" ]; then
 			if [ "$edit_res_num" -eq "$num" ]; then
-				edit_var
+				edit_val
+				set_edit_res "$num"
 			fi
 		fi
 	num=$((num+1))
@@ -1091,7 +1223,7 @@ show_description() {
 			break
 		fi
 	done < "$TOOL_FILES/description.txt"
-	if [ -z "$DESC" ];then DESC="No description found.";fi
+	if [ -z "$DESC" ]; then DESC="No description found."; fi
 	msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 	moved="redraw"
 	select_MSG
@@ -1118,201 +1250,193 @@ text_user_interface() {
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
-		if [ -n "$edit_res_num" ]; then
-			case $CHAR in
-				nl|esc)
-					edit_res_num=""
-					moved="true";;
-				sp)
-					msg " ";;
-				*)
-					msg "$CHAR";;
-			esac
-		else
-			case $CHAR in
-				b)
-					moved="true"
-					eval S="\$G${G}_NUM";;
-				d)
-					if [ "$TYPE" = "release" ];then
-						TYPE="debug"
-					else
-						TYPE="release"
-					fi
-					draw_screen_header;;
-				e)
-					moved="redraw"
-					if [ "$TUI_MODE" != "summary" ]; then
-						#write_text_config
-						TUI_MODE="summary"
-						draw_screen
-						G=1; S=0
-					else
-						TUI_MODE=" plist "
-						if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
-						level=0; S0=1; S1=0; S2=0; S3=0
-						G="10"; S=0
-					fi;;
-				n) # jump to kerNel quirks
-					moved="true"
-					G=6; S=0;;
-				p) # debug dump array
-					stty echo
-					msg "${NC}"
-					msg "$(tput rmcup)"
-					print_res_array
-					exit 0;;
-				q)
-					stty echo
-					CHAR='g'
-					TEXT="quit";;
-				s) # exit loop with 'g' then save Docs/config.plist if changed then stop
-					if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
-					CHAR='g'
-					TEXT='stop';;
-				v) # toggle USE_VAULT
-					if [ "$USE_VAULT" = "true" ];then
-						USE_VAULT="false"
-					else
-						USE_VAULT="true"
-					fi
-					CONFIG_CHANGED="-t option"
-					draw_screen_header;;
-				K) # jump to kext group
-					moved="true"
-					G=2; S=0;;
-				T) # jump to Tools group
-					moved="true"
-					G=4; S=0;;
-				U) # jump to UEFI quirke
-					moved="true"
-					G=7; S=0;;
-				Q) # jump to ACPI quirks
-					moved="true"
-					G=5; S=0;;
-				esc|'[')
-					esc="true";;
-				*)
-					if [ "$G" -lt 10 ]; then
-						case "$CHAR" in # key press actions for summary screen
-							i)
-								show_description
-								draw_screen;;
-							r)
-								draw_screen
-								moved="true";;
-							A|k) # move up
-								moved="true"
-								if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
-									S=$((S-1))
-									if [ "$S" -lt "0" ];then
-										if [ "$G" -gt "4" ];then
-											G=$((G-4))
-											eval S="\$G${G}_NUM"
-										else
-											S=0
-										fi
+		case $CHAR in
+			b)
+				moved="true"
+				eval S="\$G${G}_NUM";;
+			d)
+				if [ "$TYPE" = "release" ];then
+					TYPE="debug"
+				else
+					TYPE="release"
+				fi
+				draw_screen_header;;
+			e)
+				moved="redraw"
+				if [ "$TUI_MODE" != "summary" ]; then
+					#write_text_config
+					TUI_MODE="summary"
+					draw_screen
+					G=1; S=0
+				else
+					TUI_MODE=" plist "
+					if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
+					level=0; S0=1; S1=0; S2=0; S3=0
+					G="10"; S=0
+				fi;;
+			n) # jump to kerNel quirks
+				moved="true"
+				G=6; S=0;;
+			p) # debug dump array
+				stty echo
+				msg "${NC}"
+				msg "$(tput rmcup)"
+				print_res_array
+				exit 0;;
+			q)
+				stty echo
+				CHAR='g'
+				TEXT="quit";;
+			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
+				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
+				CHAR='g'
+				TEXT='stop';;
+			v) # toggle USE_VAULT
+				if [ "$USE_VAULT" = "true" ];then
+					USE_VAULT="false"
+				else
+					USE_VAULT="true"
+				fi
+				CONFIG_CHANGED="-t option"
+				draw_screen_header;;
+			K) # jump to kext group
+				moved="true"
+				G=2; S=0;;
+			T) # jump to Tools group
+				moved="true"
+				G=4; S=0;;
+			U) # jump to UEFI quirke
+				moved="true"
+				G=7; S=0;;
+			Q) # jump to ACPI quirks
+				moved="true"
+				G=5; S=0;;
+			esc|'[')
+				esc="true";;
+			*)
+				if [ "$G" -lt 10 ]; then
+					case "$CHAR" in # key press actions for summary screen
+						i)
+							show_description
+							draw_screen;;
+						r)
+							draw_screen
+							moved="true";;
+						A|k) # move up
+							moved="true"
+							if [ -n "$esc" ] || [ "$CHAR" = "k" ]; then
+								S=$((S-1))
+								if [ "$S" -lt "0" ];then
+									if [ "$G" -gt "4" ];then
+										G=$((G-4))
+										eval S="\$G${G}_NUM"
+									else
+										S=0
 									fi
-								else # jump to ACPI group
-									G=1; S=0
 								fi
-								esc="";;
-							B|j) # move down
-								moved="true"
-								if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
-									S=$((S+1))
-									eval len="\$G${G}_NUM"
-									if [ "$S" -gt "$len" ];then
-										if [ "$G" -lt "5" ];then
-											G=$((G+4))
-											S=0
-										else
-											S=$len
-										fi
+							else # jump to ACPI group
+								G=1; S=0
+							fi
+							esc="";;
+						B|j) # move down
+							moved="true"
+							if [ -n "$esc" ] || [ "$CHAR" = "j" ]; then
+								S=$((S+1))
+								eval len="\$G${G}_NUM"
+								if [ "$S" -gt "$len" ];then
+									if [ "$G" -lt "5" ];then
+										G=$((G+4))
+										S=0
+									else
+										S=$len
 									fi
-								else # jump to Booter quirks
-									G=8; S=0
 								fi
-								esc="";;
-							C|l) # move right
-								G=$((G+1))
-								if [ "$G" -eq "5" ];then G=4;fi
-								if [ "$G" -eq "9" ];then G=8;fi
+							else # jump to Booter quirks
+								G=8; S=0
+							fi
+							esc="";;
+						C|l) # move right
+							G=$((G+1))
+							if [ "$G" -eq "5" ];then G=4;fi
+							if [ "$G" -eq "9" ];then G=8;fi
+							moved="true"
+							esc="";;
+						D|h) # move left
+							moved="true"
+							if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
+								G=$((G-1))
+								if [ "$G" -eq "0" ];then G=1;fi
+								if [ "$G" -eq "4" ];then G=5;fi
+								esc=""
+							else
+								G=3; S=0
+							fi
+							esc="";;
+						sp|nl) # toggle enabled
+							unselect_MSG
+							moved="changed"
+							case "$enabled" in
+								true)
+									enabled="false";;
+								false)
+									enabled="true";;
+							esac
+							CONFIG_CHANGED="-t option"
+							set_res "$G$S"
+							draw_screen_header;;
+						ht)
+							G=$((G+1))
+							if [ "$G" -gt "8" ]; then G=1; fi
+							moved="true";;
+					esac
+				else
+					case "$CHAR" in # key press actions for edit plist screen
+						i)
+							show_description
+							draw_edit_text;;
+						r)
+							moved="redraw"
+							draw_edit_text
+							moved="";;
+						A|k) # move up
+							eval SN="\$S$level"
+							SN=$((SN-1))
+							if [ "$SN" -lt "1" ]; then
+								SN=1
+							else
 								moved="true"
-								esc="";;
-							D|h) # move left
+							fi
+							eval S$level=$SN
+							esc="";;
+						B|j) # move down
+							eval SN="\$S$level"
+							SN=$((SN+1))
+							if [ "$SN" -gt "$LLEN" ]; then
+								SN=$LLEN
+							else
 								moved="true"
-								if [ -n "$esc" ] || [ "$CHAR" = "h" ]; then
-									G=$((G-1))
-									if [ "$G" -eq "0" ];then G=1;fi
-									if [ "$G" -eq "4" ];then G=5;fi
-									esc=""
-								else
-									G=3; S=0
-								fi
-								esc="";;
-							sp|nl) # toggle enabled
-								unselect_MSG
-								moved="changed"
-								case "$enabled" in
-									true)
-										enabled="false";;
-									false)
-										enabled="true";;
-								esac
-								CONFIG_CHANGED="-t option"
-								set_res "$G$S"
-								draw_screen_header;;
-							ht)
-								G=$((G+1))
-								if [ "$G" -gt "8" ]; then G=1; fi
-								moved="true";;
-						esac
-					else
-						case "$CHAR" in # key press actions for edit plist screen
-							i)
-								show_description
-								draw_edit_text;;
-							r)
+							fi
+							eval "S$level=$SN"
+							esc="";;
+						C|l) # move right
+							if [ -z "$has_higher_level" ]; then
+								level=$((level+1))
+								if [ "$level" -gt "3" ]; then level=3; fi
+								eval S$level=1
 								moved="redraw"
-								draw_edit_text
-								moved="";;
-							A|k) # move up
-								eval SN="\$S$level"
-								SN=$((SN-1))
-								if [ "$SN" -lt "1" ]; then
-									SN=1
-								else
-									moved="true"
-								fi
-								eval S$level=$SN
-								esc="";;
-							B|j) # move down
-								eval SN="\$S$level"
-								SN=$((SN+1))
-								if [ "$SN" -gt "$LLEN" ]; then
-									SN=$LLEN
-								else
-									moved="true"
-								fi
-								eval "S$level=$SN"
-								esc="";;
-							C|l) # move right
-								if [ -z "$has_higher_level" ]; then
-									level=$((level+1))
-									if [ "$level" -gt "3" ]; then level=3; fi
-									eval S$level=1
-									moved="redraw"
-								fi
-								esc="";;
-							D|h) # move left
-								if [ "$level" -gt "0" ]; then
-									eval S$level=0
-									level=$((level-1))
-									moved="redraw"
-								fi
-								esc="";;
-							sp) # only mark CONFIG_CHANGED if change was done  sp|nl
+							fi
+							esc="";;
+						D|h) # move left
+							if [ "$level" -gt "0" ]; then
+								eval S$level=0
+								level=$((level-1))
+								moved="redraw"
+							fi
+							esc="";;
+						sp) # only mark CONFIG_CHANGED if change was done  sp|nl
+							get_edit_res "$res_num"
+							if [ "$type" = "" ] || \
+							{ [ "$type" = "bool" ] && [ "$key" = "Enabled" ]; }; then
 								get_edit_res "$head_line"
 								case "${key##* }" in
 									"-"|"+")
@@ -1339,31 +1463,29 @@ text_user_interface() {
 										set_edit_res "$num"
 										moved="changed"
 										;;
-									*)
-										get_edit_res "$res_num"
-										if [ "$type" = "bool" ]; then
-											case "$val" in
-												true)
-													val="false";;
-												false)
-													val="true";;
-											esac
-											set_edit_res "$res_num"
-											moved="changed"
-										fi
-										;;
-								esac;; # end case sp
-							nl)
-								get_edit_res "$res_num"
-								if [ "$type" = "string" ]; then
+								esac
+							elif [ "$type" = "bool" ]; then
+								case "$val" in
+									true)
+										val="false";;
+									false)
+										val="true";;
+								esac
+								set_edit_res "$res_num"
+								moved="changed"
+							fi
+							;; # end case sp
+						nl|ht)
+							get_edit_res "$res_num"
+							case $type in
+								"string"|"integer"|"data")
 									edit_res_num="$res_num"
 									moved="changed"
-									msg "$(tput cnorm)"
-								fi;;
-						esac
-					fi
-			esac
-		fi
+									msg "$(tput cnorm)";;
+							esac;;
+					esac
+				fi
+		esac
 		eval temp="\$G${G}_NUM"
 		if [ "$S" -gt "$temp" ];then
 			S="$temp"
