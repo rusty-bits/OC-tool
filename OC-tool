@@ -30,7 +30,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.5(110120) last checked with OpenCore version DBG-054-2020-01-11"
+VER="2.5(120120) last checked with OpenCore version DBG-054-2020-01-11"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -1002,7 +1002,7 @@ compute_data_vals() {
 	case $data_field in
 		1)
 			val="$e_val"
-			hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x"')
+			hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
 			cb64_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
 		2)
 			hex_val="$e_val"
@@ -1012,7 +1012,7 @@ compute_data_vals() {
 			if [ -z "$cb64_touched" ]; then
 				cb64_val="$e_val"
 				val=$(printf "%b" "$cb64_val"|base64)
-				hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 "%02x "')
+				hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
 			fi;;
 		esac
 }
@@ -1023,17 +1023,17 @@ draw_edit_val() {
 	else
 		if [ "$type" = "data" ]; then
 			compute_data_vals
-			msg "\033[${S}H${e_text}$key${NC} | $val | $hex_val | $cb64_val\033[K"
+			msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $cb64_val\033[K"
 			if [ -n "$e_split" ]; then
 				case $data_field in
 					1)
 						msg "\033[${S}H${e_text}$key${NC} | "
 						printf "%.${e_split}s" "$val" > "$TTY_OUT";;
 					2)
-						msg "\033[${S}H${e_text}$key${NC} | $val | "
+						msg "\033[${S}H${e_text}$key${NC} | $val |"
 						printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
 					3)
-						msg "\033[${S}H${e_text}$key${NC} | $val | $hex_val | "
+						msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | "
 						printf "%.${e_split}s" "$cb64_val" > "$TTY_OUT";;
 				esac
 			fi
@@ -1058,7 +1058,8 @@ draw_edit_key() {
 				e_text="${e_text}${RED}"
 				;;
 		esac
-		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; res_name="${key% ?}"; res_num="$num"; head_line="$num"; fi
+		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
+			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
 		msg "\033[${S}H${e_text}$key${NC} >  "
 	else
 		case $type in
@@ -1075,7 +1076,8 @@ draw_edit_key() {
 				e_text="${e_text}${BLU}"
 				;;
 		esac
-		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; res_name="$key"; res_num="$num"; fi
+		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; \
+			res_name="$key"; res_num="$num"; res_type="$type"; fi
 		draw_edit_val
 	fi
 }
@@ -1095,6 +1097,11 @@ load_edit_text() {
 				G=8;;
 			"Quirks")
 				eval G${G}_START="$num";;
+			"Tools")
+				G4_START="$num";;
+			"Add"|"Drivers")
+				g=$((G-4))
+				eval G${g}_START="$num"e;;
 		esac
 		eval "res10$num=\$line"
 		num=$((num+1))
@@ -1166,6 +1173,7 @@ edit_val() {
 							e_val="$hex_val"
 							data_field="2";;
 						2)
+							hex_val=$(printf "%b" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
 							e_val="$cb64_val"
 							data_field="3";;
 						3)
@@ -1211,7 +1219,7 @@ edit_val() {
 }
 
 draw_edit_text() {
-	num=0; S=2
+	num=0; S=3
 	data_field="1"
 	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
 	draw_screen_header
@@ -1244,7 +1252,25 @@ draw_edit_text() {
 		fi
 	num=$((num+1))
 	done
-	msg "\n\n"
+	msg "\033[3;15H"
+	case "$res_type" in
+		"bool")
+			msg "space:${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
+		"integer")
+			msg "return:${BLU}edit number${NC}  return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+		"data")
+			msg "tab:${YEL}cycle through types${NC}  base64 | hex | ascii   return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+		"string")
+			msg "return:edit value  return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+		*)
+			msg "^ v:select section | ->:expand | <-:collapse"
+			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
+				msg "    space:${GRN}enable${NC}/${RED}disable${NC} selection"
+			fi
+			msg "\033[K";;
+	esac
+	msg "\033[${S}H\n"
+	res_name="${res_name% ?}"
 }
 
 show_description() {
