@@ -772,7 +772,10 @@ write_new_drivers() { # write driver section changes to new plist
 }
 
 write_new_quirks() { # write quirks section changes to new plist
-	get_res "$G$S"
+	eval num="\$G${G}_START"
+	num=$((num+1))
+#	get_res "$G$S"
+	get_edit_res "$num"
 	while [ "$line" != "<key>Quirks</key>" ];
 	do
 		read -r line
@@ -781,21 +784,27 @@ write_new_quirks() { # write quirks section changes to new plist
 	done
 	while [ "$line" != "</dict>" ]
 	do
-		if [ "$line" = "<key>$res_name</key>" ];then
+		if [ "$line" = "<key>$key</key>" ];then
+#		if [ "$line" = "<key>$res_name</key>" ];then
 			read -r line
-			case "$enabled" in
+			case "$val" in
+#			case "$enabled" in
 				true|false)
-					echo "<$enabled/>" >> "$OUT";;
+					echo "<$val/>" >> "$OUT";;
+#					echo "<$enabled/>" >> "$OUT";;
 				ignored) # ignored resources
 					echo "<false/>" >> "$OUT";;
 				[0-9])
-					echo "<integer>$enabled</integer>" >> "$OUT";;
+					echo "<integer>$val</integer>" >> "$OUT";;
+#					echo "<integer>$enabled</integer>" >> "$OUT";;
 				*)
 					echo "$line" >> "$OUT";;
 			esac
 			if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks2\n"; fi
-			S=$((S+1))
-			get_res "$G$S"
+#			S=$((S+1))
+#			get_res "$G$S"
+			num=$((num+1))
+			get_edit_res "$num"
 		fi
 		read -r line
 		echo "$line" >> "$OUT"
@@ -937,7 +946,7 @@ draw_screen() {
 	msg "\033[2J\033[H"
 	draw_screen_header
 	draw_col_header
-	for G in $(seq 1 8)
+	for G in $(seq 1 4)
 	do
 		eval len="\$G${G}_NUM"
 		if [ "$G" -le "4" ];then # BOT = longest group of 1 - 4
@@ -952,6 +961,26 @@ draw_screen() {
 			set_color
 			unselect_MSG
 		done
+	done
+	KEY=0
+	for G in $(seq 5 8)
+	do
+		eval num="\$G${G}_START"
+		get_edit_res "$num"
+		a="$L1"; num=$((num+1)); S=0
+		get_edit_res "$num"
+		while [ "$a" -eq "$L1" ]
+		do
+			set_ROW_COL
+			res_name="$key"
+			enabled="$val"
+			set_color
+			unselect_MSG
+			num=$((num+1)); S=$((S+1))
+			get_edit_res "$num"
+		done
+		eval G${G}_NUM="$((S-1))"
+		if [ "$KEY" -lt "$S" ]; then KEY="$S"; fi
 	done
 	draw_key
 	draw_footer
@@ -1053,15 +1082,20 @@ draw_edit_key() {
 
 load_edit_text() {
 	num=0
-#	qn=5
 	while read -r line
 	do
-#		if [ "${line##*|}" = "Quirks" ]; then
-#			get_res "${qn}0"
-#			res_name="$num"
-#			set_res "${qn}0"
-#			qn=$((qn+1))
-#		fi
+		case "${line##*|}" in
+			"ACPI")
+				G=5;;
+			"Kernel")
+				G=6;;
+			"UEFI")
+				G=7;;
+			"Booter")
+				G=8;;
+			"Quirks")
+				eval G${G}_START="$num";;
+		esac
 		eval "res10$num=\$line"
 		num=$((num+1))
 	done < "$INPUT/edit_text.txt"
@@ -1071,13 +1105,13 @@ load_edit_text() {
 }
 
 get_edit_res() {
-	eval line="\$res10$1"
-	L0="${line%%|*}"; line="${line#*|}"
-	L1="${line%%|*}"; line="${line#*|}"
-	L2="${line%%|*}"; line="${line#*|}"
-	L3="${line%%|*}"; line="${line#*|}"
-	type="${line%%|*}"; line="${line#*|}"
-	val=${line%%|*}; key="${line#*|}"
+	eval key="\$res10$1"
+	L0="${key%%|*}"; key="${key#*|}"
+	L1="${key%%|*}"; key="${key#*|}"
+	L2="${key%%|*}"; key="${key#*|}"
+	L3="${key%%|*}"; key="${key#*|}"
+	type="${key%%|*}"; key="${key#*|}"
+	val=${key%%|*}; key="${key#*|}"
 }
 
 set_edit_res() {
@@ -1233,8 +1267,8 @@ show_description() {
 
 text_user_interface() {
 	git_url=""; srce=""; dest=""; parent=""
-	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
-	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
+#	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
+#	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
 	load_edit_text
 	BOT=0; KEY=0
 	CHAR=""; moved=""
@@ -1375,14 +1409,24 @@ text_user_interface() {
 						sp|nl) # toggle enabled
 							unselect_MSG
 							moved="changed"
-							case "$enabled" in
-								true)
-									enabled="false";;
-								false)
-									enabled="true";;
-							esac
+							if [ "$G" -lt "5" ]; then
+								case "$enabled" in
+									true)
+										enabled="false";;
+									false)
+										enabled="true";;
+								esac
+								set_res "$G$S"
+							else
+								case "$val" in
+									true)
+										val="false";;
+									false)
+										val="true";;
+								esac
+								set_edit_res "$num"
+							fi
 							CONFIG_CHANGED="-t option"
-							set_res "$G$S"
 							draw_screen_header;;
 						ht)
 							G=$((G+1))
@@ -1492,9 +1536,18 @@ text_user_interface() {
 		fi
 		if [ "$S" -lt "0" ];then S=0; fi
 		if [ -n "$moved" ]; then
-			if [ "$G" -lt "10" ]; then
+			if [ "$G" -lt "5" ]; then
 				unselect_MSG
 				get_res "$G$S"
+				set_ROW_COL
+				set_color
+				select_MSG
+			elif [ "$G" -lt "10" ]; then
+				unselect_MSG
+				eval num="\$G${G}_START"
+				num=$((num+S+1))
+				get_edit_res "$num"
+				res_name="$key"; enabled="$val"
 				set_ROW_COL
 				set_color
 				select_MSG
