@@ -15,7 +15,7 @@ or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/maste
 
 copy your `config.plist` file into the `INPUT` folder, or copy and edit one of the sample plist files.  
 
-e.g. `cp Docs/SampleFull.plist INPUT/config.plist`
+e.g. `cp Docs/Sample.plist INPUT/config.plist`
 
 ---
 
