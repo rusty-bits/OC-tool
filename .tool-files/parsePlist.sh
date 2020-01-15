@@ -65,14 +65,14 @@ msg() {
 		write_out "$C0"
 	fi
 	get_next
-	if [ "$next" != "$C1" ]; then
+	if [ "$next" != "$C1" ] && [ "$next" != "error" ]; then
 		C1="$next"; C2=""; C3=""
 		L1=$((L1+1)); L2=0; L3=0
 		write_out "$C1"
 	fi
 	if [ "$P" -lt "5" ]; then
 		get_next
-		if [ "$next" != "$C2" ]; then
+		if [ "$next" != "$C2" ] && [ "$next" != "error" ]; then
 			C2="$next"; C3=""
 			L2=$((L2+1)); L3=0
 			write_out "$C2"
@@ -80,7 +80,7 @@ msg() {
 	fi
 	if [ "$P" -lt "5" ]; then
 		get_next
-		if [ "$next" != "$C3" ]; then
+		if [ "$next" != "$C3" ] && [ "$next" != "error" ]; then
 			C3="$next"
 			L3=$((L3+1))
 			write_out "$C3"
@@ -143,12 +143,20 @@ while read -r line; do
 			key=""
 			;;
 		"</array")
+			if [ "$item" -eq "0" ]; then
+				key=""
+				val=""
+				type=""
+				msg
+			fi
 			array=""
 			item="" # reset item count
 			;;
 		"<array/")
 			array="$key"
+			key=""
 			val=""
+			type=""
 			msg
 			array=""
 			key=""

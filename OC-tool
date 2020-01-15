@@ -30,14 +30,15 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.5(120120) last checked with OpenCore version DBG-054-2020-01-11"
+VER="2.6(150120) last checked with OpenCore version DBG-054-2020-01-11"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
+IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""
 
-EDIT_LOADED=""; G10_NUM="0"
+G10_NUM="0"; edit_res_num="-1"; lone=""
 DEBUG=""
 optspec="dhinoqrstvDVX"
 
@@ -510,6 +511,12 @@ copy_resources() {
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
 			get_res "$G$S"
+			if [ "$G" -gt "0" ]; then
+				get_edit_res "$enabled"
+				enabled="false"
+				if [ "$en" = "+" ]; then enabled="true"; fi
+#				if [ "$G" -eq "3" ]; then enabled="true"; fi
+			fi
 			if [ "$enabled" = "true" ];then
 				if [ -n "$dest" ]; then
 					if [ "$srce" = "unknown" ];then # catch additions from TUI
@@ -530,8 +537,6 @@ copy_resources() {
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
-#	mkdir -p "$BASE_DIR"/Docs
-#	printf "%b" " < old Docs/Sample.plist\n > new Docs/Sample.plist\t\t$(date)\n" > "$BASE_DIR/Docs/diff_Sample.txt"
 	diff -u "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
 	cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
@@ -599,7 +604,7 @@ find_srce_url() {
 	fi
 }
 
-add_res_array() { # add a resource to the psuedo array (neede for POSIX)
+add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	find_srce_url
 	if [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
@@ -624,8 +629,10 @@ add_res_array() { # add a resource to the psuedo array (neede for POSIX)
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
-		enabled="ignored"
 		IGNORE="true"
+		IGNORE_BOOL="yes"
+		key="${key% ?} i"
+		set_edit_res "$num"
 	fi
 	set_res "$G$S"
 }
@@ -720,132 +727,66 @@ print_res_array() { # debug aid to list psuedo array
 	done
 }
 
-write_new_array() { # write array section changes to new plist
-	while [ "$line" != "</array>" ]
-	do
-		get_res "$G$S"
-		while [ "$line" != "</dict>" ]
-		do
-			read -r line
-			echo "$line" >> "$OUT"
-			if [ -n "$DEBUG" ]; then msg "db - $line ... new_arr1\n"; fi
-			if [ "$line" = "<array/>" ]; then return 0; fi
-			if [ "$line" = "<key>Enabled</key>" ];then
-				read -r line
-				if [ "$enabled" = "ignored" ]; then
-					echo "<false/>" >> "$OUT" # ignored resource
-				else
-					echo "<$enabled/>" >> "$OUT"
-				fi
-			fi
-		done
-		S=$((S+1))
-		read -r line
-		echo "$line" >> "$OUT"
-		if [ -n "$DEBUG" ]; then msg "db - $line ... new_array2\n"; fi
-	done
-}
-
-write_new_drivers() { # write driver section changes to new plist
-	while [ "$line" != "<key>Drivers</key>" ]
-	do
-		read -r line
-		echo "$line" >> "$OUT"
-		if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv1\n"; fi
-	done
-	get_res "$G$S"
-	while [ "$line" != "</array>" ]
-	do
-		read -r line
-		if [ "$line" = "<string>$res_name</string>" ];then
-			if [ "$enabled" = "true" ];then
-				echo "$line" >> "$OUT"
-				if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv2\n"; fi
-			fi
-			S=$((S+1))
-			get_res "$G$S"
-		else
-			echo "$line" >> "$OUT"
-			if [ -n "$DEBUG" ]; then msg "db - $line ... new_driv3\n"; fi
-		fi
-	done
-}
-
-write_new_quirks() { # write quirks section changes to new plist
-	eval num="\$G${G}_START"
-	num=$((num+1))
-#	get_res "$G$S"
-	get_edit_res "$num"
-	while [ "$line" != "<key>Quirks</key>" ];
-	do
-		read -r line
-		echo "$line" >> "$OUT"
-		if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks1\n"; fi
-	done
-	while [ "$line" != "</dict>" ]
-	do
-		if [ "$line" = "<key>$key</key>" ];then
-#		if [ "$line" = "<key>$res_name</key>" ];then
-			read -r line
-			case "$val" in
-#			case "$enabled" in
-				true|false)
-					echo "<$val/>" >> "$OUT";;
-#					echo "<$enabled/>" >> "$OUT";;
-				ignored) # ignored resources
-					echo "<false/>" >> "$OUT";;
-				[0-9])
-					echo "<integer>$val</integer>" >> "$OUT";;
-#					echo "<integer>$enabled</integer>" >> "$OUT";;
-				*)
-					echo "$line" >> "$OUT";;
-			esac
-			if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks2\n"; fi
-#			S=$((S+1))
-#			get_res "$G$S"
-			num=$((num+1))
-			get_edit_res "$num"
-		fi
-		read -r line
-		echo "$line" >> "$OUT"
-		if [ -n "$DEBUG" ]; then msg "db - $line ... new_quirks3\n"; fi
-	done
-}
-
 write_new_conf() { # write new config.plist based on changes in psuedo array
-	OUT=$BASE_DIR/Docs/config.plist
+	OUT="$BASE_DIR/Docs/config.plist"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
+	num=0; done=""; driver=""
+	srch="key"
+	get_edit_res "$num"
 	while read -r line
 	do
-		echo "$line" >> "$OUT"
-		if [ -n "$DEBUG" ]; then msg "\ndb - $line ... new_conf1\n"; fi
-		case "$line" in
-			"<key>ACPI</key>")
-				G=1; S=0;
-				write_new_array
-				G=5; S=0;
-				write_new_quirks;;
-			"<key>Kernel</key>")
-				G=2; S=0;
-				write_new_array
-				G=6; S=0;
-				write_new_quirks;;
-			"<key>UEFI</key>")
-				G=3; S=0;
-				write_new_drivers
-				G=7; S=0;
-				write_new_quirks;;
-			"<key>Tools</key>")
-				G=4; S=0;
-				write_new_array;;
-			"<key>Booter</key>")
-				G=8; S=0;
-				write_new_quirks;;
-			"<key>RequireVault</key>"|"<key>RequireSignature</key>")
+		if [ -n "$done" ]; then
+			echo "$line" >> "$OUT"
+		else
+			while [ "$en" = "+" ] || [ "$en" = "-" ] || [ "$en" = "i" ] # find valid G10 key
+			do
+				if [ "$type" = "string" ]; then # driver handle
+					driver="true"; break
+				else
+					num=$((num+1))
+					get_edit_res "$num"
+				fi
+			done
+
+			if [ "$key" = "$val" ]; then srch="$type"; fi # found standalone val
+
+			while [ "${line%%>*}" != "<$srch" ] # find plist line with key
+			do
+				echo "$line" >> "$OUT"
 				read -r line
-				echo "<$USE_VAULT/>" >> "$OUT";;
-		esac
+			done
+
+			if [ -z "$driver" ]; then
+				echo "<$srch>$key</$srch>" >> "$OUT"
+			elif [ "${key##* }" = "+" ]; then
+				echo "<$srch>${key% ?}</$srch>" >> "$OUT"
+			fi
+			driver=""
+
+			if [ "$srch" = "key" ]; then
+				case "$type" in
+					bool)
+						read -r line
+						echo "<$val/>" >> "$OUT";;
+					string|integer)
+						read -r line
+						echo "<${type}>$val</${type}>" >> "$OUT";;
+					data)
+						read -r line
+						while [ "${line#*</}" != "data>" ]
+						do
+							read -r line
+						done
+						echo "<${type}>$val</${type}>" >> "$OUT";;
+				esac
+			else
+				srch="key"
+			fi
+			num=$((num+1))
+			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
+			get_edit_res "$num"
+		fi
 	done < "$CONFIG_PLIST"
 	fin
 }
@@ -873,7 +814,7 @@ set_text_header() { # eval to avoid unused var in shellcheck
 }
 
 set_color() { # set TUI section color based on resource
-	case "$enabled" in
+	case "$val" in
 		true)
 			color="$GRN"; MSG="+";;
 		false)
@@ -881,9 +822,10 @@ set_color() { # set TUI section color based on resource
 		ignored)
 			color="$YEL"; MSG="-i";;
 		*)
-			color="$BLU"; MSG="$enabled";;
+			color="$BLU"; MSG="$val";;
 	esac
 	if [ "$G" = "CH" ];then color="$NC";fi
+	if [ "$G" = "3" ]; then color="$color${U}"; fi
 }
 
 select_MSG() { # draw highligted resource in TUI
@@ -895,13 +837,12 @@ select_MSG() { # draw highligted resource in TUI
 unselect_MSG() { # clear highlighted resource in TUI
 	if [ "$G" -ne "10" ]; then
 		msg "\033[${ROW};${COL}H$color $res_name $MSG "
-#		MSG=""
 	fi
 }
 
 draw_key() {
 	if [ "$R" -gt "30" ];then
-		msg "$NC\033[$((BOT+KEY+5))H\n"
+		msg "$NC\033[$((BOT+KEY+4))H\n"
 		msg "$(cat "$TOOL_FILES/key.msg")\n"
 	fi
 }
@@ -917,13 +858,7 @@ draw_screen_header() {
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC} mode=$GRN$MODE$NC ${U}d${NC}bgSyms=${inc_syms} RequireVault="
-	if [ "$USE_VAULT" = "true" ];then
-		msg "$GRN"
-	else
-		msg "$RED"
-	fi
-	msg "$INV$USE_VAULT$NC\033[K IN=${GRN}$filePath${NC}  \n"
+	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE$NC  debug=${inc_syms}  IN=${GRN}$filePath${NC}\033[K\n"
 }
 
 draw_col_header() {
@@ -933,42 +868,49 @@ draw_col_header() {
 	do
 		get_res "$G$S"
 		set_ROW_COL
-		msg "\033[${ROW};${COL}H$color $res_name $MSG "
-		#unselect_MSG
+		msg "\033[${ROW};${COL}H$color $res_name "
 	done
 	G=$OLD_G; S=$OLD_S
 }
 
 draw_screen() {
-	OLD_G=$G; OLD_S=$S
+	OLD_G=$G; OLD_S=$S; BOT=0
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
 	msg "\033[2J\033[H"
 	draw_screen_header
 	draw_col_header
+
 	for G in $(seq 1 4)
 	do
-		eval len="\$G${G}_NUM"
-		if [ "$G" -le "4" ];then # BOT = longest group of 1 - 4
-			if [ "$BOT" -lt "$len" ];then BOT="$len";fi
-		else # KEY = longest group of 5 - 7
-			if [ "$KEY" -lt "$len" ]; then KEY="$len";fi
-		fi
-		for S in $(seq 0 "$len")
+		S="0"
+		eval n="\$G${G}_NUM"
+		while [ "$S" -le "$n" ]
 		do
 			get_res "$G$S"
+			get_edit_res "$enabled"
+			if [ "$en" = "+" ]; then
+				val="true"
+			elif [ "$en" = "-" ]; then
+				val="false"
+			elif [ "$en" = "i" ]; then
+				val="ignored"
+			fi
+			res_name="${key% ?}"
 			set_ROW_COL
 			set_color
 			unselect_MSG
+			if [ "$BOT" -lt "$S" ];then BOT="$S"; fi
+			S=$((S+1))
 		done
 	done
 	KEY=0
 	for G in $(seq 5 8)
 	do
 		eval num="\$G${G}_START"
+		num=$((num+1))
 		get_edit_res "$num"
-		a="$L1"; num=$((num+1)); S=0
-		get_edit_res "$num"
+		a="$L1"; S=0
 		while [ "$a" -eq "$L1" ]
 		do
 			set_ROW_COL
@@ -978,6 +920,7 @@ draw_screen() {
 			unselect_MSG
 			num=$((num+1)); S=$((S+1))
 			get_edit_res "$num"
+			if [ -z "$L1" ]; then break; fi
 		done
 		eval G${G}_NUM="$((S-1))"
 		if [ "$KEY" -lt "$S" ]; then KEY="$S"; fi
@@ -1018,7 +961,7 @@ compute_data_vals() {
 }
 
 draw_edit_val() {
-	if [ "$key" = "$val" ]; then
+	if [ "$key" = "$val" ] && [ -z "$lone" ]; then
 		msg "\033[${S}H${e_text}$e_val${NC}\033[K"
 	else
 		if [ "$type" = "data" ]; then
@@ -1050,13 +993,13 @@ draw_edit_val() {
 draw_edit_key() {
 	S=$((S+1))
 	if [ -z "$type" ]; then
-		case "${key##* }" in
+		case "$en" in
 			+)
-				e_text="${e_text}${GRN}"
-				;;
+				e_text="${e_text}${GRN}";;
 			-)
-				e_text="${e_text}${RED}"
-				;;
+				e_text="${e_text}${RED}";;
+			i)
+				e_text="${e_text}${YEL}";;
 		esac
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
 			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
@@ -1070,11 +1013,17 @@ draw_edit_key() {
 					e_text="${e_text}${RED}"
 				fi;;
 			data)
-				e_text="${e_text}${YEL}"
-				;;
+				e_text="${e_text}${YEL}";;
 			integer)
-				e_text="${e_text}${BLU}"
-				;;
+				e_text="${e_text}${BLU}";;
+			string)
+				if [ "$en" = "+" ]; then
+					e_text="${e_text}${GRN}${U}"
+				elif [ "$en" = "-" ]; then
+					e_text="${e_text}${RED}${U}"
+				elif [ "$en" = "i" ]; then
+					e_text="${e_text}${YEL}${U}"
+				fi;;
 		esac
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; \
 			res_name="$key"; res_num="$num"; res_type="$type"; fi
@@ -1083,32 +1032,61 @@ draw_edit_key() {
 }
 
 load_edit_text() {
-	num=0
+	num=0; SEC=""; SUB=""
+	A0="0"; A1="0"; A2="0"
+	G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
 	while read -r line
 	do
-		case "${line##*|}" in
-			"ACPI")
-				G=5;;
-			"Kernel")
-				G=6;;
-			"UEFI")
-				G=7;;
-			"Booter")
-				G=8;;
-			"Quirks")
-				eval G${G}_START="$num";;
-			"Tools")
-				G4_START="$num";;
-			"Add"|"Drivers")
-				g=$((G-4))
-				eval G${g}_START="$num"e;;
-		esac
 		eval "res10$num=\$line"
+		get_edit_res "$num"
+		if [ "$key" = "RequireVault" ]; then USE_VAULT="$num"; fi
+		if [ "$key" = "RequireSignature" ]; then USE_SIG="$num"; fi
+		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
+			val="false"
+			IGNORE_BOOL=""
+			set_edit_res "$num"
+		fi
+		if [ "$A0" -ne "$L0" ]; then
+			SEC="$key"; SUB=""
+			A0="$L0"; A1="0"; A2="0"
+		elif [ "$A1" -ne "$L1" ]; then
+			SUB="$key"; A1="$L1"; A2="0"
+			eval $SEC${SUB}_START="$num"
+		elif [ "$A2" -ne "$L2" ]; then
+			A2="$L2"
+			G=0
+			case "$SEC$SUB" in
+				"ACPIAdd")
+					G=1; G1_NUM=$((G1_NUM+1)); dest="OC/ACPI";;
+				"KernelAdd")
+					G=2; G2_NUM=$((G2_NUM+1)); dest="OC/Kexts";;
+				"UEFIDrivers")
+					G=3; G3_NUM=$((G3_NUM+1)); dest="OC/Drivers";;
+				"MiscTools")
+					G=4; G4_NUM=$((G4_NUM+1)); dest="OC/Tools";;
+			esac
+			if [ "$G" -gt "0" ]; then
+				res_name="${key% ?}"
+				enabled="$num"; S="$((L2-1))"
+				add_res_array
+				if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
+					key="$key +"; val="$val +"
+					set_edit_res "$num"
+				fi
+			fi
+		fi
 		num=$((num+1))
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
+	G1_START="$ACPIAdd_START"
+	G2_START="$KernelAdd_START"
+	G3_START="$UEFIDrivers_START"
+	G4_START="$MiscTools_START"
+	G5_START="$ACPIQuirks_START"
+	G6_START="$KernelQuirks_START"
+	G7_START="$UEFIQuirks_START"
+	G8_START="$BooterQuirks_START"
 	eval "G10_NUM=$num"
-	EDIT_LOADED="true"
 }
 
 get_edit_res() {
@@ -1119,6 +1097,7 @@ get_edit_res() {
 	L3="${key%%|*}"; key="${key#*|}"
 	type="${key%%|*}"; key="${key#*|}"
 	val=${key%%|*}; key="${key#*|}"
+	en="${key##* }"
 }
 
 set_edit_res() {
@@ -1184,6 +1163,10 @@ edit_val() {
 				fi;;
 			nl)
 				if [ "$type" != "data" ]; then val="$e_val"; fi
+				if [ -n "$lone" ]; then
+					key="$val"
+					lone=""
+				fi
 				msg "$(tput civis)"
 				break;;
 			sp)
@@ -1213,7 +1196,7 @@ edit_val() {
 		esac
 		draw_edit_val
 	done
-	edit_res_num=""
+	edit_res_num="-1"
 	data_field="1"
 	e_split=""
 }
@@ -1223,7 +1206,7 @@ draw_edit_text() {
 	data_field="1"
 	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
 	draw_screen_header
-	while [ "$num" -lt "$G10_NUM" ]
+	while [ "$num" -le "$G10_NUM" ]
 	do
 		e_text=""
 		get_edit_res "$num"; e_val="$val"
@@ -1255,17 +1238,20 @@ draw_edit_text() {
 	msg "\033[3;15H"
 	case "$res_type" in
 		"bool")
-			msg "space:${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
+			msg "space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
 		"integer")
-			msg "return:${BLU}edit number${NC}  return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "return: ${BLU}edit number${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		"data")
-			msg "tab:${YEL}cycle through types${NC}  base64 | hex | ascii   return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "tab: ${YEL}cycle through types${NC}  base64 | hex | ascii   return: save changes    ${RED}esc esc${NC}: discard changes\033[K";;
 		"string")
-			msg "return:edit value  return:save changes     ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "return: edit value   return: save changes    ${RED}esc esc${NC}: discard changes\033[K";;
 		*)
-			msg "^ v:select section | ->:expand | <-:collapse"
+			msg "up dn: select section | ->: expand | <-: collapse"
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
-				msg "    space:${GRN}enable${NC}/${RED}disable${NC} selection"
+				msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
+			fi
+			if [ "${res_name##* }" = "i" ]; then
+				msg "  ${YEL}Disabled by -i option${NC}"
 			fi
 			msg "\033[K";;
 	esac
@@ -1291,11 +1277,65 @@ show_description() {
 	if [ "$CHAR" = "esc" ];then esc="true"; fi
 }
 
+toggle_enabled() {
+	if [ "$type" = "" ] || \
+	{ [ "$type" = "bool" ] && [ "$key" = "Enabled" ]; }; then
+		get_edit_res "$head_line"
+		case "$en" in
+			"-"|"+")
+				temp=${key%?}
+				case "${key##* }" in
+					"-")
+						key="$temp+";;
+					"+")
+						key="$temp-";;
+				esac
+				set_edit_res "$head_line"
+				num="$head_line"
+				while [ "$key" != "Enabled" ]
+				do
+					num=$((num+1))
+					get_edit_res "$num"
+				done
+				case "$val" in
+					true)
+						val="false";;
+					false)
+						val="true";;
+				esac
+				set_edit_res "$num"
+				CONFIG_CHANGED="-t option"
+				moved="changed"
+				;;
+		esac
+	elif [ "$type" = "bool" ]; then
+		case "$val" in
+			true)
+				val="false";;
+			false)
+				val="true";;
+		esac
+		CONFIG_CHANGED="-t option"
+		set_edit_res "$res_num"
+		moved="changed"
+	elif [ "$en" != "$key" ]; then
+		get_edit_res "$res_num"
+		if [ "$en" = "+" ]; then
+			key="${key% ?} -"
+			CONFIG_CHANGED="-t option"
+			moved="changed"
+		elif [ "$en" = "-" ]; then
+			key="${key% ?} +"
+			CONFIG_CHANGED="-t option"
+			moved="changed"
+		fi
+		val="$key"
+		set_edit_res "$res_num"
+	fi
+}
+
 text_user_interface() {
 	git_url=""; srce=""; dest=""; parent=""
-#	add_resource "5" "ACPI" "Quirks"; add_resource "6" "Kernel" "Quirks"
-#	add_resource "7" "UEFI" "Quirks"; add_resource "8" "Booter" "Quirks"
-	load_edit_text
 	BOT=0; KEY=0
 	CHAR=""; moved=""
 	set_text_header
@@ -1305,6 +1345,14 @@ text_user_interface() {
 	G=1; S=0
 	draw_screen
 	get_res "$G$S"
+	get_edit_res "$enabled"
+	if [ "$en" = "+" ]; then
+		val="true"
+	elif [ "$en" = "-" ]; then
+		val="false"
+	elif [ "$en" = "i" ]; then
+		val="ignored"
+	fi
 	set_ROW_COL; set_color
 	select_MSG
 	while [ "$CHAR" != "g" ]
@@ -1314,13 +1362,6 @@ text_user_interface() {
 			b)
 				moved="true"
 				eval S="\$G${G}_NUM";;
-			d)
-				if [ "$TYPE" = "release" ];then
-					TYPE="debug"
-				else
-					TYPE="release"
-				fi
-				draw_screen_header;;
 			e)
 				moved="redraw"
 				if [ "$TUI_MODE" != "summary" ]; then
@@ -1330,7 +1371,6 @@ text_user_interface() {
 					G=1; S=0
 				else
 					TUI_MODE=" plist "
-					if [ -z "$EDIT_LOADED" ]; then load_edit_text; fi
 					level=0; S0=1; S1=0; S2=0; S3=0
 					G="10"; S=0
 				fi;;
@@ -1351,14 +1391,6 @@ text_user_interface() {
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
 				TEXT='stop';;
-			v) # toggle USE_VAULT
-				if [ "$USE_VAULT" = "true" ];then
-					USE_VAULT="false"
-				else
-					USE_VAULT="true"
-				fi
-				CONFIG_CHANGED="-t option"
-				draw_screen_header;;
 			K) # jump to kext group
 				moved="true"
 				G=2; S=0;;
@@ -1435,23 +1467,16 @@ text_user_interface() {
 						sp|nl) # toggle enabled
 							unselect_MSG
 							moved="changed"
-							if [ "$G" -lt "5" ]; then
-								case "$enabled" in
-									true)
-										enabled="false";;
-									false)
-										enabled="true";;
-								esac
-								set_res "$G$S"
+							if [ "$G" = "3" ]; then
+								res_num="$enabled"
+#								msg "\nnum $num res $res_num en $en enab $enabled key $key val $val hl $head_line\033[K"
+#								exit 3
+							elif [ "$G" -lt "5" ]; then
+								head_line="$enabled"
 							else
-								case "$val" in
-									true)
-										val="false";;
-									false)
-										val="true";;
-								esac
-								set_edit_res "$num"
+								res_num="$num"
 							fi
+							toggle_enabled
 							CONFIG_CHANGED="-t option"
 							draw_screen_header;;
 						ht)
@@ -1505,54 +1530,21 @@ text_user_interface() {
 							esc="";;
 						sp) # only mark CONFIG_CHANGED if change was done  sp|nl
 							get_edit_res "$res_num"
-							if [ "$type" = "" ] || \
-							{ [ "$type" = "bool" ] && [ "$key" = "Enabled" ]; }; then
-								get_edit_res "$head_line"
-								case "${key##* }" in
-									"-"|"+")
-										temp=${key%?}
-										case "${key##* }" in
-											"-")
-												key="$temp+";;
-											"+")
-												key="$temp-";;
-										esac
-										set_edit_res "$head_line"
-										num="$head_line"
-										while [ "$key" != "Enabled" ]
-										do
-											num=$((num+1))
-											get_edit_res "$num"
-										done
-										case "$val" in
-											true)
-												val="false";;
-											false)
-												val="true";;
-										esac
-										set_edit_res "$num"
-										moved="changed"
-										;;
-								esac
-							elif [ "$type" = "bool" ]; then
-								case "$val" in
-									true)
-										val="false";;
-									false)
-										val="true";;
-								esac
-								set_edit_res "$res_num"
-								moved="changed"
-							fi
+							toggle_enabled
 							;; # end case sp
 						nl|ht)
 							get_edit_res "$res_num"
-							case $type in
-								"string"|"integer"|"data")
-									edit_res_num="$res_num"
-									moved="changed"
-									msg "$(tput cnorm)";;
-							esac;;
+							if [ "$en" != "$key" ]; then
+								toggle_enabled
+							else
+								case $type in
+									"string"|"integer"|"data")
+										if [ "$key" = "$val" ]; then lone="true"; fi
+										edit_res_num="$res_num"
+										moved="changed"
+										msg "$(tput cnorm)";;
+								esac
+							fi;;
 					esac
 				fi
 		esac
@@ -1565,6 +1557,14 @@ text_user_interface() {
 			if [ "$G" -lt "5" ]; then
 				unselect_MSG
 				get_res "$G$S"
+				get_edit_res "$enabled"
+				if [ "$en" = "+" ]; then
+					val="true"
+				elif [ "$en" = "-" ]; then
+					val="false"
+				elif [ "$en" = "i" ]; then
+					val="ignored"
+				fi
 				set_ROW_COL
 				set_color
 				select_MSG
@@ -1573,7 +1573,7 @@ text_user_interface() {
 				eval num="\$G${G}_START"
 				num=$((num+S+1))
 				get_edit_res "$num"
-				res_name="$key"; enabled="$val"
+				res_name="$key"
 				set_ROW_COL
 				set_color
 				select_MSG
@@ -1703,6 +1703,7 @@ cd "$INPUT"
 tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
 mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
+load_edit_text
 
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
@@ -1724,21 +1725,8 @@ if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log 
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 
 if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
-#cd "$TOOL_FILES"
-#./parse_json.sh < git_repo.json > git_repo.json.txt
 
 init_res_array
-if [ -n "$DEBUG" ]; then msg "\ndb - init_res_array ... done\n"; fi
-dest="OC/ACPI"; add_resource "1" "ACPI" "Add" "Path"
-if [ -n "$DEBUG" ]; then msg "\ndb - add ACPI ... done\n"; fi
-dest="OC/Kexts"; add_resource "2" "Kernel" "Add" "BundlePath"
-if [ -n "$DEBUG" ]; then msg "\ndb - add Kernel ... done\n"; fi
-dest="OC/Drivers"; add_resource "3" "UEFI" "Drivers"
-if [ -n "$DEBUG" ]; then msg "\ndb - add Drivers ... done\n"; fi
-dest="OC/Tools"; add_resource "4" "Misc" "Tools" "Path"
-if [ -n "$DEBUG" ]; then msg "\ndb - add Tools ... done\n"; fi
-
-USE_VAULT=$(grep "|bool|RequireVault|" "$CONFIG_TXT"|cut -f2 -d '"')
 
 if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
@@ -1752,6 +1740,15 @@ fi
 if [ "$TEXT" = "quit" ];then # quit without saving changes
 	msg "\nOC-tool quit by user.\n"
 	exit 0
+fi
+
+if [ -n "$USE_VAULT" ]; then
+	get_edit_res "$USE_VAULT"
+	USE_VAULT="$val"
+fi
+if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
+	get_edit_res "$USE_SIG"
+	USE_VAULT="$val"
 fi
 
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
