@@ -617,7 +617,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 			srce=""
 		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 			srce="$BASE_DIR/extras"
-		elif [ "$enabled" = "false" ]; then
+		elif [ "${key##* }" = "-" ]; then
 			srce="unknown"
 		else
 			res_not_found "$res_name"
@@ -627,7 +627,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 			srce="$BASE_DIR/extras"
 		elif [ -n "$git_url" ]; then # found repo
 			srce=""
-		elif [ "$enabled" = "false" ];then
+		elif [ "${key##* }" = "-" ];then
 			srce="unknown"
 		else
 			res_not_found "$res_name"
@@ -1038,6 +1038,7 @@ draw_edit_key() {
 }
 
 load_edit_text() {
+	if [ -n "$DEBUG" ]; then msg "\ndb - loading edit text\n"; fi
 	num=0; SEC=""; SUB=""
 	A0="0"; A1="0"; A2="0"
 	G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
@@ -1073,6 +1074,7 @@ load_edit_text() {
 			esac
 			if [ "$G" -gt "0" ]; then
 				res_name="${key% ?}"
+				if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
 				enabled="$num"; S="$((L2-1))"
 				add_res_array
 				if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
@@ -1082,6 +1084,7 @@ load_edit_text() {
 			fi
 		fi
 		num=$((num+1))
+		if [ -n "$DEBUG" ]; then msg "db - loaded $res_name\n"; fi
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	G1_START="$ACPIAdd_START"
@@ -1710,6 +1713,8 @@ tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
 mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
 load_edit_text
+
+if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
 
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
