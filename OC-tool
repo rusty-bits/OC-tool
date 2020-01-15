@@ -126,13 +126,19 @@ clone() { # will only clone if pkg is not local
 	fi
 }
 
+git_failed() {
+	msg "\n${RED}ERROR:${NC} failed to retrieve ${YEL}$1${NC} info from git.\n"
+	msg "\tSee tool.log for details.\n"
+	exit 1
+}
+
 check_tool_for_updates() {
 	cd "$BASE_DIR"
 	msg "\n${GRN}Checking for updates${NC} ... \n"
 	msg "OC-tool - " # check OC-tool itself first
-	git fetch --all -q
+	git fetch --all -q||git_failed "OC-tool"
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
-		git pull $VERBOSE -q
+		git pull $VERBOSE -q||git_failed "OC-tool"
 		msg "${GRN}updated${NC}\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		update_log "Updated" "OC-tool"
 		exit 2
@@ -144,7 +150,7 @@ check_lilu_for_updates() {
 	msg "\n${GRN}Checking Lilu${NC} ... "
 	if [ -d "$RES_DIR/Kext_builds/Lilu" ]; then
 		cd "$RES_DIR/Kext_builds/Lilu"
-		git fetch --all -q
+		git fetch --all -q||git_failed "Lilu.kext"
 		if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
 			new_hash=$(git rev-parse @|cut -c -7)
 			msg "\n${GRN}Lilu updated to ${NC}$new_hash\n"
@@ -169,10 +175,10 @@ check_resources_for_updates() {
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
 			cd "$git_dir"
-			git fetch --all -q
+			git fetch --all -q||git_failed "${git_dir##*/}"
 			msg "\033[2K\r${git_dir##*/} - "
 			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
-				git pull $VERBOSE -q
+				git pull $VERBOSE -q||git_failed "${git_dir##*/}"
 				new_hash=$(git rev-parse @|cut -c -7)
 				msg "${GRN}updated to ${NC}$new_hash\n"
 				echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
