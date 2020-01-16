@@ -444,7 +444,8 @@ prepare_resources() {
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
 		do
 			get_res "$G$S"
-			if [ "$enabled" != "false" ]; then
+			get_edit_res "$enabled"
+			if [ "$en" != "-" ]; then
 				if [ -z "$srce" ]; then
 					case "$MODE" in
 						"latestSource")
