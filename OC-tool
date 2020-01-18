@@ -30,7 +30,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.6(150120) last checked with OpenCore version DBG-054-2020-01-11"
+VER="2.6(180120) last checked with OpenCore version REL-055-2020-01-18"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -865,7 +865,7 @@ draw_screen_header() {
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE$NC  debug=${inc_syms}  IN=${GRN}$filePath${NC}\033[K\n"
+	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE$NC  debug=${inc_syms}  IN=${GRN}$filePath${NC}\033[K\n\033[K"
 }
 
 draw_col_header() {
@@ -939,7 +939,7 @@ draw_screen() {
 
 draw_footer() {
 	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV ignored $NC $BLU$INV numeric $NC  q - to quit   r - redraw screen"
+	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q - to quit   r - redraw screen"
 }
 
 get_CHAR() {
@@ -950,7 +950,7 @@ get_CHAR() {
 
 compute_data_vals() {
 	case $data_field in
-		1)
+		0|1)
 			val="$e_val"
 			hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
 			cb64_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
@@ -1010,7 +1010,7 @@ draw_edit_key() {
 		esac
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
 			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
-		msg "\033[${S}H${e_text}$key${NC} >  "
+		msg "\033[${S}H${e_text}$key${NC} >  \033[K"
 	else
 		case $type in
 			bool)
@@ -1119,10 +1119,24 @@ split_val() {
 	val2="${e_val#$val1}"
 }
 
+highlight_type() {
+	msg "\033[3H"
+	msg "       tab: ${YEL}cycle through types${NC}  "
+	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
+	msg "base64${NC} | "
+	if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
+	msg "hex${NC} | "
+	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
+	msg "ascii${NC}   return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
+}
+
 edit_val() {
 	old_val="$val"
 	e_split="${#e_val}"
 	cb64_touched="false"
+	if [ "$type" = "data" ]; then
+		highlight_type
+	fi
 	draw_edit_val
 	while :
 	do
@@ -1170,6 +1184,7 @@ edit_val() {
 							data_field="1";;
 					esac
 					e_split="${#e_val}"
+					highlight_type
 				fi;;
 			nl)
 				if [ "$type" != "data" ]; then val="$e_val"; fi
@@ -1178,6 +1193,8 @@ edit_val() {
 					lone=""
 				fi
 				msg "$(tput civis)"
+				CONFIG_CHANGED="-t option"
+				draw_screen_header
 				break;;
 			sp)
 				split_val
@@ -1207,14 +1224,20 @@ edit_val() {
 		draw_edit_val
 	done
 	edit_res_num="-1"
-	data_field="1"
+	data_field="0"
 	e_split=""
+}
+
+draw_plist_footer() {
+	msg "\033[$((R-3));2He - return to summary   s - save and exit   g - go build new EFI folder\n\n"
+	msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
+	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q - to quit   r - redraw screen"
 }
 
 draw_edit_text() {
 	num=0; S=3
-	data_field="1"
-	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
+	data_field="0"
+#	if [ "$moved" = "redraw" ]; then msg "\033[$((R-4))H\033[1J"; fi
 	draw_screen_header
 	while [ "$num" -le "$G10_NUM" ]
 	do
@@ -1226,37 +1249,43 @@ draw_edit_text() {
 			if [ "$level" -eq "0" ]; then LLEN=$L0; fi
 		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L1" -eq "$S1" ]; then selected="true"; fi
-			e_text="\t$e_text"; draw_edit_key
+			e_text="    $e_text"; draw_edit_key
 			if [ "$level" -eq "1" ]; then LLEN=$L1; fi
 		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
 			if [ "$L2" -eq "$S2" ]; then selected="true"; fi
-			e_text="\t\t$e_text"; draw_edit_key
+			e_text="        $e_text"; draw_edit_key
 			if [ "$level" -eq "2" ]; then LLEN=$L2; fi
 		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
 			if [ "$L3" -eq "$S3" ]; then selected="true"; fi
-			e_text="\t\t\t$e_text"; draw_edit_key
+			e_text="            $e_text"; draw_edit_key
 			if [ "$level" -eq "3" ]; then LLEN=$L3; fi
 		fi
 		if [ -n "$has_higher_level" ]; then
 			if [ "$edit_res_num" -eq "$num" ]; then
+				data_field="1"
 				edit_val
 				set_edit_res "$num"
 			fi
 		fi
 	num=$((num+1))
 	done
-	msg "\033[3;15H"
+	for n in $(seq $((S+1)) $((R-4)))
+	do
+		msg "\033[${n}H\033[K"
+	done
+	draw_plist_footer
+	msg "\033[3H"
 	case "$res_type" in
 		"bool")
-			msg "space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
+			msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
 		"integer")
-			msg "return: ${BLU}edit number${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "       return: ${BLU}edit number${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		"data")
-			msg "tab: ${YEL}cycle through types${NC}  base64 | hex | ascii   return: save changes    ${RED}esc esc${NC}: discard changes\033[K";;
+			highlight_type;;
 		"string")
-			msg "return: edit value   return: save changes    ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "       return: edit string   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		*)
-			msg "up dn: select section | ->: expand | <-: collapse"
+			msg "       up dn: select section | ->: expand | <-: collapse"
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
 			fi
