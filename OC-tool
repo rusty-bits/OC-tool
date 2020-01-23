@@ -134,7 +134,7 @@ git_failed() {
 
 check_tool_for_updates() {
 	cd "$BASE_DIR"
-	msg "\n${GRN}Checking for updates${NC} ... \n"
+	msg "\n${GRN}Checking OC-tool for updates${NC} ... \n"
 	msg "OC-tool - " # check OC-tool itself first
 	git fetch --all -q||git_failed "OC-tool"
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
@@ -359,6 +359,11 @@ build_kext() {
 		fi
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
 			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
+		fi
+		requiresRes=$(grep "/$res_name/requiresRes " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		if [ -n "$requiresRes" ]; then
+			rm -rf "$requiresRes"
+			ln -s "$RES_DIR/Kext_builds/$requiresRes" .
 		fi
 		buildScheme=$(grep "/$res_name/buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		a=1
@@ -1288,7 +1293,7 @@ draw_edit_text() {
 		"bool")
 			msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
 		"integer")
-			msg "       return: ${BLU}edit number${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
+			msg "       return: ${BLU}edit integer${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		"data")
 			highlight_type;;
 		"string")
