@@ -30,7 +30,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="2.6(210120) last checked with OpenCore version REL-055-2020-01-18"
+VER="3.0(230120) last checked with OpenCore version REL-055-2020-01-18"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -210,6 +210,25 @@ unzip_failed() {
 	msg "\t${YEL}unzip${NC} command will need to be installed to continue\n"
 	msg "\tand you may need to use the X option at first to clear out unzipped files\n"
 	exit 1
+}
+
+clone_parent() {
+	clone "$git_url"
+	srce="$RES_DIR/$pkg_name"
+}
+
+clone_child() { # need parent first, then zip source
+	path="$git_url"
+	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+
+	temp="$res_name" # hold self
+	res_name="$parent"
+
+	clone_parent # temp use parent resources
+
+	git_url="$path"
+	res_name="$temp"
+#	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
 curl_parent() {
@@ -429,20 +448,22 @@ prepare_resources() {
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
 
-	if [ "$MODE" = "latestSource" ]; then
-		msg "\n${GRN}Building new or updated resources${NC}\n"
-		clone "https://github.com/acidanthera/audk" "UDK"
-
-	else
-		HAS_SHASUM=""
-		msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
-		command -v shasum||HAS_SHASUM="false"
-		if [ -n "$HAS_SHASUM" ]; then
-			msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
-			msg "\tDownloading will continue, but there is no way to check zip file sums\n"
-			msg "\tinstall the shasum command if this is an issue\n\n"
-		fi
-	fi
+	case "$MODE" in
+		"latestSource")
+			msg "\n${GRN}Building new or updated resources${NC}\n"
+			clone "https://github.com/acidanthera/audk" "UDK";;
+		"prebuiltRelease")
+			HAS_SHASUM=""
+			msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
+			command -v shasum||HAS_SHASUM="false"
+			if [ -n "$HAS_SHASUM" ]; then
+				msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
+				msg "\tDownloading will continue, but there is no way to check zip file sums\n"
+				msg "\tinstall the shasum command if this is an issue\n\n"
+			fi;;
+		"prebuiltDaily")
+			msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
+	esac
 
 	for G in $(seq 0 4) # cycle first 5 groups
 	do
@@ -481,6 +502,15 @@ prepare_resources() {
 								else
 									curl_parent
 								fi;;
+							esac;;
+						"prebuiltDaily")
+							case ${res_name##*.} in
+								"efi"|"kext"|"aml")
+									if [ -n "$parent" ]; then
+										clone_child
+									else
+										clone_parent
+									fi;;
 							esac;;
 					esac
 					set_res "$G$S"
@@ -644,6 +674,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 		IGNORE="true"
 		IGNORE_BOOL="yes"
 		key="${key% ?} i"
+		val="$key"
 		set_edit_res "$num"
 	fi
 	set_res "$G$S"
@@ -1640,9 +1671,9 @@ while getopts "$optspec" optchar; do
 case "${optchar}" in
 		d)
 			MODE="prebuiltDaily"
-			EX_COM="${EX_COM}d"
-			msg "\n${YEL}$MODE${NC} not implemented yet.\n"
-			exit 1;;
+			EX_COM="${EX_COM}d";;
+#			msg "\n${YEL}$MODE${NC} not implemented yet.\n"
+#			exit 1;;
 		h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;
@@ -1744,6 +1775,9 @@ set_build_type "$TYPE"
 
 if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then
 	check_lilu_for_updates
+fi
+
+if [ "$MODE" != "prebuiltRelease" ] && [ -z "$UPDATE" ]; then
 	check_resources_for_updates
 fi
 
