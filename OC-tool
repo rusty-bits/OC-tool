@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-# testing shellcheck disable=SC2034
-
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -28,7 +26,7 @@ HAS_UNZIP=""
 SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
-NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
+NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
 VER="3.0(240120) last checked with OpenCore version REL-055-2020-01-24"
 
@@ -849,15 +847,15 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 }
 
 set_text_header() { # eval to avoid unused var in shellcheck
-	resCH1="ACPI > Add|"
-	resCH2="Kernel > Add|"
-	resCH3="UEFI > Drivers|"
-	resCH4="Misc > Tools|"
-	resCH5="ACPI > Quirks|"
-	resCH6="Kernel > Quirks|"
-	resCH7="UEFI > Quirks|"
-	resCH8="Booter > Quirks|"
-	GCH_NUM="8"
+	eval resCH1="ACPI > Add\|"
+	eval resCH2="Kernel > Add\|"
+	eval resCH3="UEFI > Drivers\|"
+	eval resCH4="Misc > Tools\|"
+	eval resCH5="ACPI > Quirks\|"
+	eval resCH6="Kernel > Quirks\|"
+	eval resCH7="UEFI > Quirks\|"
+	eval resCH8="Booter > Quirks\|"
+	eval GCH_NUM="8"
 }
 
 set_color() { # set TUI section color based on resource
@@ -969,7 +967,7 @@ draw_screen() {
 			get_edit_res "$num"
 			if [ -z "$L1" ]; then break; fi
 		done
-		eval G${G}_NUM="$((S-1))"
+		eval G"${G}"_NUM=\"$((S-1))\"
 		if [ "$KEY" -lt "$S" ]; then KEY="$S"; fi
 	done
 	draw_col_header
@@ -1100,7 +1098,7 @@ load_edit_text() {
 			A0="$L0"; A1="0"; A2="0"
 		elif [ "$A1" -ne "$L1" ]; then
 			SUB="$key"; A1="$L1"; A2="0"
-			eval $SEC${SUB}_START="$num"
+			eval "$SEC${SUB}"_START=\"$num\"
 		elif [ "$A2" -ne "$L2" ]; then
 			A2="$L2"
 			G=0
@@ -1129,15 +1127,15 @@ load_edit_text() {
 		if [ -n "$DEBUG" ]; then msg "db - loaded $res_name\n"; fi
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
-	G1_START="$ACPIAdd_START"
-	G2_START="$KernelAdd_START"
-	G3_START="$UEFIDrivers_START"
-	G4_START="$MiscTools_START"
-	G5_START="$ACPIQuirks_START"
-	G6_START="$KernelQuirks_START"
-	G7_START="$UEFIQuirks_START"
-	G8_START="$BooterQuirks_START"
-	eval "G10_NUM=$num"
+	eval G1_START="\$ACPIAdd_START"
+	eval G2_START="\$KernelAdd_START"
+	eval G3_START="\$UEFIDrivers_START"
+	eval G4_START="\$MiscTools_START"
+	eval G5_START="\$ACPIQuirks_START"
+	eval G6_START="\$KernelQuirks_START"
+	eval G7_START="\$UEFIQuirks_START"
+	eval G8_START="\$BooterQuirks_START"
+	eval G10_NUM="$num"
 }
 
 get_edit_res() {
@@ -1152,7 +1150,7 @@ get_edit_res() {
 }
 
 set_edit_res() {
-	eval res10$1="\$L0\|\$L1\|\$L2\|\$L3\|\$type\|\$val\|\$key"
+	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$type\|\$val\|\$key\"
 }
 
 split_val() {
@@ -1358,7 +1356,6 @@ show_description() {
 	moved="redraw"
 	select_MSG
 	get_CHAR
-	if [ "$CHAR" = "esc" ];then esc="true"; fi
 }
 
 toggle_enabled() {
@@ -1473,8 +1470,6 @@ text_user_interface() {
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
 				TEXT='stop';;
-			esc|'[')
-				esc="true";;
 			*)
 				if [ "$G" -lt 10 ]; then
 					case "$CHAR" in # key press actions for summary screen
@@ -1494,8 +1489,7 @@ text_user_interface() {
 								else
 									S=0
 								fi
-							fi
-							esc="";;
+							fi;;
 						B|j) # move down
 							moved="true"
 							S=$((S+1))
@@ -1507,20 +1501,19 @@ text_user_interface() {
 								else
 									S=$len
 								fi
-							fi
-							esc="";;
+							fi;;
 						C|l) # move right
 							moved="true"
 							G=$((G+1))
 							if [ "$G" -eq "5" ];then G=4;fi
 							if [ "$G" -eq "9" ];then G=8;fi
-							esc="";;
+							;;
 						D|h) # move left
 							moved="true"
 							G=$((G-1))
 							if [ "$G" -eq "0" ];then G=1;fi
 							if [ "$G" -eq "4" ];then G=5;fi
-							esc="";;
+							;;
 						sp|nl) # toggle enabled
 							unselect_MSG
 							moved="changed"
@@ -1556,8 +1549,7 @@ text_user_interface() {
 							else
 								moved="true"
 							fi
-							eval S$level=$SN
-							esc="";;
+							eval S$level=$SN;;
 						B|j) # move down
 							eval SN="\$S$level"
 							SN=$((SN+1))
@@ -1566,23 +1558,20 @@ text_user_interface() {
 							else
 								moved="true"
 							fi
-							eval "S$level=$SN"
-							esc="";;
+							eval "S$level=$SN";;
 						C|l) # move right
 							if [ -z "$has_higher_level" ]; then
 								level=$((level+1))
 								if [ "$level" -gt "3" ]; then level=3; fi
 								eval S$level=1
 								moved="redraw"
-							fi
-							esc="";;
+							fi;;
 						D|h) # move left
 							if [ "$level" -gt "0" ]; then
 								eval S$level=0
 								level=$((level-1))
 								moved="redraw"
-							fi
-							esc="";;
+							fi;;
 						sp) # only mark CONFIG_CHANGED if change was done  sp|nl
 							get_edit_res "$res_num"
 							toggle_enabled
@@ -1775,6 +1764,7 @@ else  #  no input found on stdin
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
+#shellcheck disable=SC2015
 command -v "plutil" && plutil "$CONFIG_PLIST" || bad_config
 
 cd "$INPUT"
