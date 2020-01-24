@@ -1,3 +1,12 @@
+## ver 3.0(241220)  
+- **enabled prebuilt daily option -d**  
+
+- **config.plist is checked for errors at run**  
+
+## ver 2.6(150120)  
+- **added config.plist editor**  
+changes will be saved to Docs/config.plist leaving the original plist unchanged  
+
 ## ver 2.4(010120)  
 - **added support for NVMeFix.kext**  
 
