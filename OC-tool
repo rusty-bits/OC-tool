@@ -30,11 +30,11 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m'; UO='\033[24m'
 INV='\033[7m'
-VER="3.0(230120) last checked with OpenCore version REL-055-2020-01-18"
+VER="3.0(240120) last checked with OpenCore version REL-055-2020-01-24"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
-EX_COM=$0' -i'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
+EX_COM=$0' -i'; EX_EDIT=$0' -it'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""
 
@@ -1666,11 +1666,26 @@ remove_resource_msg() {
 	msg " ${RED}*********************************************************************${NC}\n"
 }
 
+bad_config() {
+	if [ -z "$IGNORE" ]; then
+		msg "\n${RED}ERROR:${NC} problem found in config.plist file\n"
+		msg "\tSee $LOGFILE for details\n\n"
+		msg "\tIf you want to try fixing the error with OC-tool, you can use the -it options\n"
+		msg "\ttry using '$EX_EDIT'\n\n"
+		exit 1
+	else
+		msg "\n${YEL}WARNING:${NC} problem found in config.plist file --- ${YEL}IGNORING${NC}\n"
+		msg "\tMake sure to fix the error before using the EFI\n"
+		msg "\t${YEL}###############################################${NC}\n\n"
+	fi
+}
+
 #****** Start build ***************
 while getopts "$optspec" optchar; do
 case "${optchar}" in
 		d)
 			MODE="prebuiltDaily"
+			EX_EDIT="${EX_EDIT}d"
 			EX_COM="${EX_COM}d";;
 #			msg "\n${YEL}$MODE${NC} not implemented yet.\n"
 #			exit 1;;
@@ -1681,22 +1696,27 @@ case "${optchar}" in
 			IGNORE="true";;
 		n)
 			UPDATE="false"
+			EX_EDIT="${EX_EDIT}n"
 			EX_COM="${EX_COM}n";;
 		o)
 			FINDER="open"
+			EX_EDIT="${EX_EDIT}o"
 			EX_COM="${EX_COM}o";;
 		q)
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
 		r)
 			TYPE="release"
+			EX_EDIT="${EX_EDIT}r"
 			EX_COM="${EX_COM}r";;
 		s)
 			MODE="latestSource"
+			EX_EDIT="${EX_EDIT}s"
 			EX_COM="${EX_COM}s";;
 		v)
 			VERBOSE="-v"
-			EX_COM="${EX_COM}v";;
+			EX_COM="${EX_COM}v"
+			EX_EDIT="${EX_EDIT}v";;
 		t)
 			TEXT="true"
 			TUI_MODE="summary"
@@ -1739,6 +1759,7 @@ if [ -p /dev/stdin ]; then # data was piped
 else  #  no input found on stdin
 	if [ -e "$filePath" ]; then
 		EX_COM="${EX_COM} ${filePath}"
+		EX_EDIT="${EX_EDIT} ${filePath}"
 	else
 		if [ -n "${filePath}" ]; then
 			msg "config.plist file '${filePath}' not found\n"
@@ -1753,6 +1774,8 @@ else  #  no input found on stdin
 	cp "${filePath}" "$CONFIG_PLIST"
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
+
+command -v "plutil" && plutil "$CONFIG_PLIST" || bad_config
 
 cd "$INPUT"
 tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
