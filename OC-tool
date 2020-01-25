@@ -1272,7 +1272,7 @@ edit_val() {
 }
 
 draw_plist_footer() {
-	msg "\033[$((R-3));2He - return to summary   s - save and exit   g - go build new EFI folder\n\n"
+	msg "\033[$((R-3))H e - return to summary   s - save and exit   g - go build new EFI folder\n\n"
 	msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
 	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q - to quit   r - redraw screen"
 }
