@@ -28,7 +28,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(250120) last checked with OpenCore version REL-055-2020-01-24"
+VER="3.0(260120) last checked with OpenCore version DBG-055-2020-01-25"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -887,7 +887,7 @@ unselect_MSG() { # clear highlighted resource in TUI
 
 draw_key() {
 	if [ "$R" -gt "30" ];then
-		msg "$NC\033[$((BOT+KEY+4))H\n"
+		msg "$NC\033[$((BOT+KEY+5))H\n"
 		msg "$(cat "$TOOL_FILES/key.msg")\n"
 	fi
 }
@@ -978,7 +978,7 @@ draw_screen() {
 
 draw_footer() {
 	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q - to quit   r - redraw screen"
+	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q: quit without saving   r: redraw screen"
 }
 
 get_CHAR() {
@@ -1272,9 +1272,9 @@ edit_val() {
 }
 
 draw_plist_footer() {
-	msg "\033[$((R-3))H e - return to summary   s - save and exit   g - go build new EFI folder\n\n"
+	msg "\033[$((R-3))H i: info of highlighted item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
 	msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q - to quit   r - redraw screen"
+	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
 }
 
 draw_edit_text() {
@@ -1440,6 +1440,9 @@ text_user_interface() {
 	do
 		get_CHAR
 		case $CHAR in
+			a)
+				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> En<$Enabled> edit_num<$edit_num> edit_res_num$<$edit_res_num>"
+				;;
 			b)
 				moved="true"
 				eval S="\$G${G}_NUM";;
@@ -1578,9 +1581,10 @@ text_user_interface() {
 							;; # end case sp
 						nl|ht)
 							get_edit_res "$res_num"
-							if [ "$en" != "$key" ]; then
-								toggle_enabled
-							else
+#							if [ "$en" != "$key" ]; then
+#								toggle_enabled
+#							else
+							if [ "$en" = "$key" ]; then
 								case $type in
 									"string"|"integer"|"data")
 										if [ "$key" = "$val" ]; then lone="true"; fi
@@ -1711,7 +1715,7 @@ case "${optchar}" in
 			if [ "$C" -lt "100" ] || [ "$R" -lt "40" ]; then
 				msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
 				msg "\tThis is below the suggested miminum size of 100 x 40\n"
-				msg "\tfor the TUI mode, you can resize your terminal or use\n"
+				msg "\tfor the TUI mode.  You can resize your terminal or use\n"
 				msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
 				msg "\tbut do note that items on the screen may scroll or be\n"
 				msg "\twritten over because of the smaller size\n"
