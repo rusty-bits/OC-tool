@@ -1783,7 +1783,11 @@ fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 #shellcheck disable=SC2015
-command -v "plutil" && plutil "$CONFIG_PLIST" || bad_config
+HAS_PLUTIL=""
+command -v "plutil"||HAS_PLUTIL="false"
+if [ -z "$HAS_PLUTIL" ]; then
+	plutil "$CONFIG_PLIST" || bad_config
+fi
 
 cd "$INPUT"
 tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
