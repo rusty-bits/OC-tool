@@ -28,7 +28,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(260120) last checked with OpenCore version DBG-055-2020-01-25"
+VER="3.0(270120) last checked with OpenCore version DBG-055-2020-01-25"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -1010,29 +1010,30 @@ draw_edit_val() {
 	if [ "$key" = "$val" ] && [ -z "$lone" ]; then
 		msg "\033[${S}H${e_text}$e_val${NC}\033[K"
 	else
-		if [ "$type" = "data" ]; then
-			compute_data_vals
-			msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $asc_val\033[K"
-			if [ -n "$e_split" ]; then
-				case $data_field in
-					1)
-						msg "\033[${S}H${e_text}$key${NC} | "
-						printf "%.${e_split}s" "$val" > "$TTY_OUT";;
-					2)
-						msg "\033[${S}H${e_text}$key${NC} | $val |"
-						printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
-					3)
-						msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | "
-						printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
-				esac
-			fi
-		else
-			msg "\033[${S}H${e_text}$key${NC} | $e_val\033[K"
-			if [ -n "$e_split" ]; then
-				msg "\033[${S}H${e_text}$key${NC} | "
-				printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
-			fi
-		fi
+		case "$type" in
+			"data")
+				compute_data_vals
+				msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $asc_val\033[K"
+				if [ -n "$e_split" ]; then
+					case $data_field in
+						1)
+							msg "\033[${S}H${e_text}$key${NC} | "
+							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
+						2)
+							msg "\033[${S}H${e_text}$key${NC} | $val |"
+							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
+						3)
+							msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | "
+							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
+					esac
+				fi;;
+			*)
+				msg "\033[${S}H${e_text}$key${NC} | $e_val\033[K"
+				if [ -n "$e_split" ]; then
+					msg "\033[${S}H${e_text}$key${NC} | "
+					printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
+				fi;;
+		esac
 	fi
 }
 
@@ -1180,6 +1181,14 @@ edit_val() {
 	if [ "$type" = "data" ]; then
 		highlight_type
 	fi
+	if [ -e "$TOOL_FILES/$res_name" ]; then
+		msg "\n"
+		while read -r line
+		do
+			msg "    $line\033[K\n"
+		done < "$TOOL_FILES/$res_name"
+		msg "\033[K"
+	fi
 	draw_edit_val
 	while :
 	do
@@ -1326,7 +1335,11 @@ draw_edit_text() {
 		"data")
 			highlight_type;;
 		"string")
-			msg "       return: edit string   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
+			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
+				msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection\033[K"
+			else
+				msg "       return: edit string   return: save changes   ${RED}esc esc${NC}: discard changes\033[K"
+			fi;;
 		*)
 			msg "       up dn: select section | ->: expand | <-: collapse"
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
@@ -1441,7 +1454,8 @@ text_user_interface() {
 		get_CHAR
 		case $CHAR in
 			a)
-				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> En<$Enabled> edit_num<$edit_num> edit_res_num$<$edit_res_num>"
+				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> En<$Enabled> edit_num<$edit_num> edit_res_num$<$edit_res_num>\n"
+				msg "level<$level> res_name<$res_name> key<$key> val<$val> type<$type>"
 				;;
 			b)
 				moved="true"

@@ -1,0 +1,9 @@
+0x01 (bit 0) — Enable logging, otherwise all log is discarded
+0x02 (bit 1) — Enable basic console (onscreen) logging.
+0x04 (bit 2) — Enable logging to Data Hub.
+0x08 (bit 3) — Enable serial port logging.
+0x10 (bit 4) — Enable UEFI variable logging.
+0x20 (bit 5) — Enable non-volatile UEFI variable logging
+0x40 (bit 6) — Enable logging to file.
+
+0 failsafe
