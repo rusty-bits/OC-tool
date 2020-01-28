@@ -1030,7 +1030,8 @@ draw_edit_val() {
 			"integer")
 				case $data_field in
 					0|1)
-						val=${e_val#0.}
+						val=${e_val#0}
+						if [ -z "$val" ]; then val=0; fi
 						hex_val=$(printf '%02X' $val);;
 					2)
 						hex_val="$e_val"
