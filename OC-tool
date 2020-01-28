@@ -1027,6 +1027,31 @@ draw_edit_val() {
 							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
 					esac
 				fi;;
+			"integer")
+				case $data_field in
+					0|1)
+						val=${e_val#0.}
+						hex_val=$(printf '%02X' $val);;
+					2)
+						hex_val="$e_val"
+						if [ -z "$e_val" ]; then
+							val="0"
+						else
+							val=$(printf "%d" "0x$hex_val")
+						fi;;
+				esac
+				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val\033[K"
+				msg "\033[K"
+				if [ -n "$e_split" ]; then
+					case "$data_field" in
+						1)
+							msg "\033[${S}H${e_text}$key${NC} | "
+							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
+						2)
+							msg "\033[${S}H${e_text}$key${NC} | $val | 0x"
+							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
+					esac
+				fi;;
 			*)
 				msg "\033[${S}H${e_text}$key${NC} | $e_val\033[K"
 				if [ -n "$e_split" ]; then
@@ -1237,6 +1262,16 @@ edit_val() {
 					esac
 					e_split="${#e_val}"
 					highlight_type
+				elif [ "$type" = "integer" ]; then
+					case $data_field in
+						1)
+							e_val="$hex_val"
+							data_field="2";;
+						2)
+							e_val="$val"
+							data_field="1";;
+					esac
+					e_split="${#e_val}"
 				fi;;
 			nl)
 				if [ "$type" != "data" ]; then val="$e_val"; fi
@@ -1249,17 +1284,19 @@ edit_val() {
 				draw_screen_header
 				break;;
 			sp)
-				split_val
-				e_val="$val1 $val2"
-				if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-				e_split=$((e_split+1));;
+				if [ "$type" != "integer" ]; then
+					split_val
+					e_val="$val1 $val2"
+					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
+					e_split=$((e_split+1))
+				fi;;
 			[0-9] )
 				split_val
 				e_val="$val1$CHAR$val2"
 				if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
 				e_split=$((e_split+1));;
 			[a-fA-F] )
-				if [ "$type" != "integer" ]; then
+				if [ "$type" != "integer" ] || [ "$data_field" -eq "2" ]; then
 					split_val
 					e_val="$val1$CHAR$val2"
 					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
@@ -1454,7 +1491,7 @@ text_user_interface() {
 		get_CHAR
 		case $CHAR in
 			a)
-				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> En<$Enabled> edit_num<$edit_num> edit_res_num$<$edit_res_num>\n"
+				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> edit_res_num$<$edit_res_num>\n"
 				msg "level<$level> res_name<$res_name> key<$key> val<$val> type<$type>"
 				;;
 			b)
@@ -1600,8 +1637,12 @@ text_user_interface() {
 #							else
 							if [ "$en" = "$key" ]; then
 								case $type in
-									"string"|"integer"|"data")
+									"string")
 										if [ "$key" = "$val" ]; then lone="true"; fi
+										edit_res_num="$res_num"
+										moved="changed"
+										msg "$(tput cnorm)";;
+									"integer"|"data")
 										edit_res_num="$res_num"
 										moved="changed"
 										msg "$(tput cnorm)";;
