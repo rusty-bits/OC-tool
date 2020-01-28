@@ -1905,6 +1905,12 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
 		CONFIG_CHANGED="temp vault disable"
+		get_edit_res "$USE_VAULT"
+		val="false"
+		set_edit_res "$USE_VAULT"
+		get_edit_res "$USE_SIG"
+		val="false"
+		set_edit_res "$USE_SIG"
 		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 		msg "\tvault disabled for prebuilts not made on macOS\n"
 	fi
