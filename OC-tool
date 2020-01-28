@@ -34,7 +34,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 
 EX_COM=$0' -i'; EX_EDIT=$0' -it'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
-IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""
+IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 
 G10_NUM="0"; edit_res_num="-1"; lone=""; HEX_EDIT=""
 DEBUG=""
@@ -1112,8 +1112,8 @@ load_edit_text() {
 	do
 		eval "res10$num=\$line"
 		get_edit_res "$num"
-		if [ "$key" = "RequireVault" ]; then USE_VAULT="$num"; fi
-		if [ "$key" = "RequireSignature" ]; then USE_SIG="$num"; fi
+		if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
+		if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
 		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
 			val="false"
 			IGNORE_BOOL=""
@@ -1892,12 +1892,12 @@ if [ "$TEXT" = "quit" ];then # quit without saving changes
 	exit 0
 fi
 
-if [ -n "$USE_VAULT" ]; then
-	get_edit_res "$USE_VAULT"
+if [ -n "$USE_VAULT_NUM" ]; then
+	get_edit_res "$USE_VAULT_NUM"
 	USE_VAULT="$val"
 fi
 if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
-	get_edit_res "$USE_SIG"
+	get_edit_res "$USE_SIG_NUM"
 	USE_VAULT="$val"
 fi
 
@@ -1905,12 +1905,12 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 	if [ "$USE_VAULT" = "true" ]; then
 		USE_VAULT="false"
 		CONFIG_CHANGED="temp vault disable"
-		get_edit_res "$USE_VAULT"
+		get_edit_res "$USE_VAULT_NUM"
 		val="false"
-		set_edit_res "$USE_VAULT"
-		get_edit_res "$USE_SIG"
+		set_edit_res "$USE_VAULT_NUM"
+		get_edit_res "$USE_SIG_NUM"
 		val="false"
-		set_edit_res "$USE_SIG"
+		set_edit_res "$USE_SIG_NUM"
 		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 		msg "\tvault disabled for prebuilts not made on macOS\n"
 	fi
