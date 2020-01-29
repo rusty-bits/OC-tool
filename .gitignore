@@ -10,7 +10,6 @@ INPUT/config.plist
 INPUT/temp/*
 
 Docs/config.plist
-Docs/SampleFull.plist
 Docs/diff_Sample.txt
 
 OUTPUT/EFI/*
