@@ -36,7 +36,7 @@ EX_COM=$0' -i'; EX_EDIT=$0' -it'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 
-G10_NUM="0"; edit_res_num="-1"; lone=""; HEX_EDIT=""
+G10_NUM="0"; edit_res_num="-1"; lone=""; HEX_EDIT=""; HEX_LEN="2"
 DEBUG=""
 optspec="dhinoqrstvDTVX"
 
@@ -1013,7 +1013,7 @@ draw_edit_val() {
 		case "$type" in
 			"data")
 				compute_data_vals
-				msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $asc_val\033[K"
+				msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $asc_val |\033[K"
 				if [ -n "$e_split" ]; then
 					case $data_field in
 						1)
@@ -1030,18 +1030,20 @@ draw_edit_val() {
 			"integer")
 				case $data_field in
 					0|1)
-						val=${e_val#0}
-						if [ -z "$val" ]; then val=0; fi
-						hex_val=$(printf '%02X' $val);;
+						val="$e_val"
+						hex_val=$(echo "obase=16; $val"|bc) # avoid octal
+						if [ -z "$hex_val" ]; then hex_val=0; fi
+						hex_val=$(printf "%0${HEX_LEN}X" "0x$hex_val");;
 					2)
 						hex_val="$e_val"
 						if [ -z "$e_val" ]; then
 							val="0"
 						else
-							val=$(printf "%d" "0x$hex_val")
+							val=$(printf "%d" "0x$e_val")
+#							val=$(echo "ibase=16; $e_val"|bc)
 						fi;;
 				esac
-				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val\033[K"
+				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val |\033[K"
 				msg "\033[K"
 				if [ -n "$e_split" ]; then
 					case "$data_field" in
@@ -1054,7 +1056,7 @@ draw_edit_val() {
 					esac
 				fi;;
 			*)
-				msg "\033[${S}H${e_text}$key${NC} | $e_val\033[K"
+				msg "\033[${S}H${e_text}$key${NC} | $e_val |\033[K"
 				if [ -n "$e_split" ]; then
 					msg "\033[${S}H${e_text}$key${NC} | "
 					printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
@@ -1189,31 +1191,33 @@ highlight_type() {
 	msg "\033[3H"
 	msg "       tab: ${YEL}cycle through types${NC}  "
 	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
-	msg "base64${NC} | "
+	case "$res_type" in
+		"data")
+			msg "base64${NC} | ";;
+		"integer")
+			msg "int${NC} | ";;
+	esac
 	if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
-	if [ -z "$HEX_EDIT" ]; then
 		msg "hex${NC} | "
-	else
-		msg "int${NC} | "
-	fi
 	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
-	msg "ascii${NC}   return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
+	if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
+	msg "    return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
 }
 
 edit_val() {
 	old_val="$val"
 	e_split="${#e_val}"
 	asc_touched="false"
-	if [ "$type" = "data" ]; then
-		highlight_type
-	fi
 	if [ -e "$TOOL_FILES/$res_name" ]; then
-		msg "\n"
+		msg "\n\033[K\n"
 		while read -r line
 		do
 			msg "    $line\033[K\n"
 		done < "$TOOL_FILES/$res_name"
 		msg "\033[K"
+	fi
+	if [ "$type" = "data" ] || [ "$type" = "integer" ]; then
+		highlight_type
 	fi
 	draw_edit_val
 	while :
@@ -1273,9 +1277,10 @@ edit_val() {
 							data_field="1";;
 					esac
 					e_split="${#e_val}"
+					highlight_type
 				fi;;
 			nl)
-				if [ "$type" != "data" ]; then val="$e_val"; fi
+				if [ "$type" != "data" ] && [ "$type" != "integer" ]; then val="$e_val"; fi
 				if [ -n "$lone" ]; then
 					key="$val"
 					lone=""
@@ -1369,7 +1374,8 @@ draw_edit_text() {
 		"bool")
 			msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
 		"integer")
-			msg "       return: ${BLU}edit integer${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
+			highlight_type;;
+#			msg "       return: ${BLU}edit integer${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		"data")
 			highlight_type;;
 		"string")
@@ -1768,9 +1774,9 @@ case "${optchar}" in
 			EX_EDIT="${EX_EDIT}v";;
 		t)
 			R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
-			if [ "$C" -lt "100" ] || [ "$R" -lt "40" ]; then
+			if [ "$C" -lt "90" ] || [ "$R" -lt "40" ]; then
 				msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
-				msg "\tThis is below the suggested miminum size of 100 x 40\n"
+				msg "\tThis is below the suggested miminum size of 90 x 40\n"
 				msg "\tfor the TUI mode.  You can resize your terminal or use\n"
 				msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
 				msg "\tbut do note that items on the screen may scroll or be\n"
