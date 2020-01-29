@@ -1115,6 +1115,10 @@ load_edit_text() {
 	do
 		eval "res10$num=\$line"
 		get_edit_res "$num"
+		if [ "$type" = "integer" ]; then
+			val=$(printf "%d" "$val") # if hex, make decimal
+			set_edit_res "$num"
+		fi
 		if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
 		if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
 		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
