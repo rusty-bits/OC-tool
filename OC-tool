@@ -1219,7 +1219,7 @@ init_bit_editor() {
 }
 
 draw_bit_editor() {
-	msg "\033[$((S + BIT_NUM + 1))H\033[K"
+	msg "\033[$((S + BIT_NUM + 2))H\033[K"
 	bit="$((BIT_NUM - 2))"; bit_total="$val"
 	test_bit="31"; test_value="4294967296"
 	while [ "$bit" -ge "0" ]
@@ -1262,10 +1262,10 @@ draw_bit_editor() {
 			fi
 		fi
 		if [ "$bit" -eq "$BIT_EDIT" ]; then msg "${INV}"; fi
-		msg "\033[$((S + bit + 2))H    $message\033[K"
+		msg "\033[$((S + bit + 3))H    $message\033[K"
 		bit=$((bit - 1))
 	done
-	msg "${NC}\033[$((S + 1))H\033[K"
+	msg "${NC}\033[$((S + 1))H\033[K\n  up dn: select bit   space: ${GRN}enable${NC}/${RED}disable${NC} bit\033[K"
 }
 
 edit_val() {
@@ -1319,6 +1319,7 @@ edit_val() {
 						val="$old_val"
 						e_val="$val"
 						data_field="1"
+						BIT_NUM=""; BIT_EDIT="0"
 						draw_edit_val
 						msg "$(tput civis)"
 						break;;
