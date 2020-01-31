@@ -1,6 +1,7 @@
 #!/bin/sh -e
 
 # turn config.plist into config.plist.txt for fast grep selection and editing
+# make edit_text.txt from config.plist.txt for fast plist edit screen drawing
 
 section=""
 array=""
@@ -223,7 +224,7 @@ while read -r line; do
 			echo "PLIST|$line" >> config.plist.txt
 			;;
 	esac
-done < config.plist
+done < $1
 
 com=""
 while read -r line
@@ -238,6 +239,6 @@ do
 	if [ "$en" = "false" ]; then new="$new\ -"; fi
 	com="$com -e s/'$old '/'$new'/"
 done < edit_subs.txt
-echo $com > com1.txt
+# echo $com > com1.txt
 
 eval sed $com edit_text.tmp > edit_text.txt

@@ -19,8 +19,8 @@ OUTPUT="$BASE_DIR/OUTPUT"
 BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
 INPUT="$BASE_DIR/INPUT/temp"
-CONFIG_PLIST="$INPUT/config.plist"
-CONFIG_TXT="$INPUT/config.plist.txt"
+CONFIG_PLIST="$INPUT/config.plist" # set input plist to temp dir, no mod of original
+CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
 SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
@@ -28,7 +28,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(290120) last checked with OpenCore version DBG-055-2020-01-25"
+VER="3.0(300120) last checked with OpenCore version DBG-055-2020-01-30"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -132,16 +132,15 @@ git_failed() {
 
 check_tool_for_updates() {
 	cd "$BASE_DIR"
-	msg "\n${GRN}Checking OC-tool for updates${NC} ... \n"
-	msg "OC-tool - " # check OC-tool itself first
+	msg "\n${GRN}Checking OC-tool for updates${NC} ... "
 	git fetch --all -q||git_failed "OC-tool"
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
 		git pull $VERBOSE -q||git_failed "OC-tool"
-		msg "${GRN}updated${NC}\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
+		msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		update_log "Updated" "OC-tool"
 		exit 2
 	fi
-	msg "${GRN}OK${NC}\n"
+	fin
 }
 
 check_lilu_for_updates() {
@@ -168,7 +167,7 @@ check_lilu_for_updates() {
 check_resources_for_updates() {
 #		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	res_updated=""
-	msg "\n${GRN}Checking other existing resources${NC} ... \n"
+	msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
 	if [ -d "$RES_DIR" ]; then
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		do
@@ -1896,6 +1895,13 @@ if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
 
 RES_DIR="$BASE_DIR/resources/$MODE"
 
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
+	msg "To build from source use ${B}-s${NC} option\n"
+fi
+msg "For help use '${B}./OC-tool -h${NC}'\n"
+
+if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
+
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST"
@@ -1921,27 +1927,22 @@ else  #  no input found on stdin
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
-#shellcheck disable=SC2015
 HAS_PLUTIL=""
 command -v "plutil"||HAS_PLUTIL="false"
 if [ -z "$HAS_PLUTIL" ]; then
+	msg "\n${GRN}Checking config.plist${NC} ... "
 	plutil "$CONFIG_PLIST" || bad_config
+	fin
 fi
 
 cd "$INPUT"
 tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
 mv config.plist.tmp config.plist
-"$TOOL_FILES/parsePlist.sh" > "$CONFIG_TXT"
+"$TOOL_FILES/parsePlist.sh" "config.plist"
 load_edit_text
+msg "Using ${filePath}\n"
 
 if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
-
-if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
-	msg "To build from source use ${B}-s${NC} option\n"
-fi
-msg "For help use '${B}./OC-tool -h${NC}'\n\nUsing ${filePath}\n"
-
-if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
 
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
