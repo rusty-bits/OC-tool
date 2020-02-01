@@ -6,6 +6,8 @@
 section=""
 array=""
 item=""
+ds="" # can dict being zero at end of dict be used instead?
+line_num=0
 dict=0
 L0=0
 C0=""
@@ -89,12 +91,31 @@ msg() {
 	fi
 }
 
+found_split() {
+	echo "Line number $line_num" >> errors.txt
+	echo "Found split <$1> in $section $sub1 $sub2 $item $key" >> errors.txt
+	echo "" >> errors.txt
+}
+
+found_empty_dict() {
+	echo "Line number $line_num" >> errors.txt
+	echo "Found empty <dict/> in $section $sub1 $sub2 $item $key" >> errors.txt
+	echo "It is recommended that all sections be complete" >> errors.txt
+	echo "" >> errors.txt
+	type=""
+	val=""
+	msg
+	key=""
+}
+
 rm -rf config.plist.txt
 rm -rf edit_text.txt
 rm -rf edit_text.tmp
 rm -rf edit_subs.txt
+rm -rf errors.txt
 
 while read -r line; do
+	line_num=$((line_num+1))
 	case "${line%%>*}" in
 		"<dict")
 			if [ -z "$section" ]; then
@@ -116,29 +137,41 @@ while read -r line; do
 				esac
 				key=""
 			fi
+			ds="t" # found start of dict
 			;;
 		"</dict")
-			if [ -n "$array" ]; then
-				item=$((item+1)) # prepare for next item
-			elif [ "$dict" -gt "0" ]; then
-				case $dict in
-					"2")
-						item2=""
-						sub2=""
-						;;
-					"1")
-						item1=""
-						sub1=""
-						;;
-				esac
-				dict=$((dict-1))
-			elif [ -n "$section" ];then
-				section=""
+			if [ -z "$ds" ]; then
+				if [ -n "$array" ]; then
+					item=$((item+1)) # prepare for next item
+				elif [ "$dict" -gt "0" ]; then
+					case $dict in
+						"2")
+							item2=""
+							sub2=""
+							;;
+						"1")
+							item1=""
+							sub1=""
+							;;
+					esac
+					dict=$((dict-1))
+				elif [ -n "$section" ];then
+					section=""
+				else
+					echo "PLIST|$line" >> config.plist.txt
+				fi
 			else
-				echo "PLIST|$line" >> config.plist.txt
+				if [ "$dict" -gt "0" ]; then dict=$((dict-1)); fi
+				found_empty_dict
 			fi
 			;;
+		"<dict/")
+			found_empty_dict
+#			echo "PLIST|<key>$key</key>" >> config.plist.txt
+#			echo "PLIST|$line" >> config.plist.txt
+			;;
 		"<array")
+			ds=""
 			array=$key
 			if [ -z "$item" ]; then item="0"; fi
 			key=""
@@ -154,6 +187,7 @@ while read -r line; do
 			item="" # reset item count
 			;;
 		"<array/")
+			ds=""
 			array="$key"
 			key=""
 			val=""
@@ -163,43 +197,50 @@ while read -r line; do
 			key=""
 			;;
 		"<data")
+			ds=""
 			data="${line#<data>}"
 			while [ "${line#*</}" != "data>" ]
 			do
 				read -r line
+				line_num=$((line_num+1))
 				data=$data$line
 			done
-			data=${data%</data>}
 			type="data"
-			val="$data"
+			val="${data%</data>}"
 			msg
 			key=""
 			;;
 		"<true/")
+			ds=""
 			type="bool"
 			val="true"
 			msg
 			key="";;
 		"<false/")
+			ds=""
 			type="bool"
 			val="false"
 			msg
 			key=""
 			;;
 		"<key")
+			ds=""
 			key=${line#<key>}
 			while [ "${line#*</}" != "key>" ]
 			do
 				read -r line
+				line_num=$((line_num+1))
 				key=$key$line
 			done
 			key=${key%</key>}
 			;;
 		"<string")
+			ds=""
 			string=${line#<string>}
 			while [ "${line#*</}" != "string>" ]
 			do
 				read -r line
+				line_num=$((line_num+1))
 				key=$string$line
 			done
 			string=${string%</string>}
@@ -209,15 +250,33 @@ while read -r line; do
 			if [ -z "$key" ]; then item=$((item+1)); fi
 			key="";;
 		"<integer")
+			ds=""
 			integer=${line#<integer>}
 			while [ "${line#*</}" != "integer>" ]
 			do
 				read -r line
+				line_num=$((line_num+1))
 				integer=$integer$line
 			done
-			integer=${integer%</integer>}
+			val=${integer%</integer>}
 			type="integer"
-			val="$integer"
+			msg
+			key="";;
+		"<real")
+			ds=""
+			echo "Line number $line_num" >> errors.txt
+			echo "Found value of type <real> for $section $key" >> errors.txt
+			echo "converted it to type <integer>" >> errors.txt
+			echo "" >> errors.txt
+			integer=${line#<real>}
+			while [ "${line#*</}" != "real>" ]
+			do
+				read -r line
+				line_num=$((line_num+1))
+				integer=$integer$line
+			done
+			val=${integer%</real>}
+			type="integer"
 			msg
 			key="";;
 		*)

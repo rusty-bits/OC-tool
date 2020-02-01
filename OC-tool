@@ -813,8 +813,10 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 						read -r line
 						echo "<${type}>$val</${type}>" >> "$OUT";;
 					data)
+#					string|integer|data)
 						read -r line
-						while [ "${line#*</}" != "data>" ]
+#						while [ "${line#*</}" != "data>" ]
+						while [ "${line#*</}" != "${type}>" ]
 						do
 							read -r line
 						done
@@ -2004,7 +2006,9 @@ fi
 if [ -n "$CONFIG_CHANGED" ]; then
 	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
-	command -v "plutil"&&plutil -convert xml1 "$BASE_DIR/Docs/config.plist"
+	if [ -z "$HAS_PLUTIL" ]; then
+		plutil -convert xml1 "$BASE_DIR/Docs/config.plist"||msg "pl failed"
+	fi
 	get_res "0$G0_NUM" # update location for config.plist file
 	srce="$BASE_DIR/Docs"
 	set_res "0$G0_NUM"
@@ -2029,6 +2033,12 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
 	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
 	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n\n"
+fi
+
+if [ -e "$INPUT/errors.txt" ]; then
+	msg "${YEL}WARNING:${NC} errors were found in $filePath\n\n"
+	msg "$(cat "$INPUT/errors.txt")"
+	msg "\n\nThese errors may need to be addressed before booting\n"
 fi
 
 stop_logging
