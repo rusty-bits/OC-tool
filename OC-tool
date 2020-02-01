@@ -126,7 +126,16 @@ clone() { # will only clone if pkg is not local
 
 git_failed() {
 	msg "\n${RED}ERROR:${NC} failed to retrieve ${YEL}$1${NC} info from git.\n"
-	msg "\tSee tool.log for details.\n"
+	if [ "$1" = "OC-tool" ]; then
+		msg "\tThis can be caused by using the Download button on github.com\n"
+		msg "\tinstead of using 'git clone https://github.com/rusty-bits/OC-tool'\n"
+		msg "\tIf this is the case, try ...\n\n"
+		msg "\t'cd' ${YEL}to get to your home directory${NC}\n"
+		msg "\t'git clone https://github.com/rusty-bits/OC-tool' ${YEL}to get as a repo${NC}\n"
+		msg "\t'cd OC-tool' ${YEL}to enter the newly cloned directory${NC}\n"
+	else
+		msg "\tSee tool.log for details.\n"
+	fi
 	exit 1
 }
 
