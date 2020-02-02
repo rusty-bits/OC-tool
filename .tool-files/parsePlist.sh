@@ -95,11 +95,12 @@ found_split() {
 	echo "Line number $line_num" >> errors.txt
 	echo "Found split <$1> in $section $sub1 $sub2 $item $key" >> errors.txt
 	echo "" >> errors.txt
+	sp=""
 }
 
 found_empty_dict() {
 	echo "Line number $line_num" >> errors.txt
-	echo "Found empty <dict/> in $section $sub1 $sub2 $item $key" >> errors.txt
+	echo "Found empty <dict> in $section $sub1 $sub2 $item $key" >> errors.txt
 	echo "It is recommended that all sections be complete" >> errors.txt
 	echo "" >> errors.txt
 	type=""
@@ -225,25 +226,31 @@ while read -r line; do
 			;;
 		"<key")
 			ds=""
+			sp=""
 			key=${line#<key>}
 			while [ "${line#*</}" != "key>" ]
 			do
+				sp="y"
 				read -r line
 				line_num=$((line_num+1))
 				key=$key$line
 			done
 			key=${key%</key>}
+			if [ -n "$sp" ]; then found_split "key"; fi
 			;;
 		"<string")
 			ds=""
+			sp=""
 			string=${line#<string>}
 			while [ "${line#*</}" != "string>" ]
 			do
+				sp="y"
 				read -r line
 				line_num=$((line_num+1))
-				key=$string$line
+				string=$string$line
 			done
 			string=${string%</string>}
+			if [ -n "$sp" ]; then found_split "string"; fi
 			type="string"
 			val="$string"
 			msg
@@ -251,19 +258,23 @@ while read -r line; do
 			key="";;
 		"<integer")
 			ds=""
+			sp=""
 			integer=${line#<integer>}
 			while [ "${line#*</}" != "integer>" ]
 			do
+				sp="y"
 				read -r line
 				line_num=$((line_num+1))
 				integer=$integer$line
 			done
 			val=${integer%</integer>}
+			if [ -n "$sp" ]; then found_split "integer"; fi
 			type="integer"
 			msg
 			key="";;
 		"<real")
 			ds=""
+			sp=""
 			echo "Line number $line_num" >> errors.txt
 			echo "Found value of type <real> for $section $key" >> errors.txt
 			echo "converted it to type <integer>" >> errors.txt
@@ -271,11 +282,13 @@ while read -r line; do
 			integer=${line#<real>}
 			while [ "${line#*</}" != "real>" ]
 			do
+				sp="y"
 				read -r line
 				line_num=$((line_num+1))
 				integer=$integer$line
 			done
 			val=${integer%</real>}
+			if [ -n "$sp" ]; then found_split "real"; fi
 			type="integer"
 			msg
 			key="";;

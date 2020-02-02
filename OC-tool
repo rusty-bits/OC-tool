@@ -132,7 +132,8 @@ git_failed() {
 		msg "\tIf this is the case, try ...\n\n"
 		msg "\t'cd' ${YEL}to get to your home directory${NC}\n"
 		msg "\t'git clone https://github.com/rusty-bits/OC-tool' ${YEL}to get as a repo${NC}\n"
-		msg "\t'cd OC-tool' ${YEL}to enter the newly cloned directory${NC}\n"
+		msg "\t'cd OC-tool' ${YEL}to enter the newly cloned directory${NC}\n\n"
+		msg "\tOtherwise, see tool.log for details.\n"
 	else
 		msg "\tSee tool.log for details.\n"
 	fi
@@ -815,14 +816,18 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 
 			if [ "$srch" = "key" ]; then
 				case "$type" in
-					bool)
+					"bool")
 						read -r line
+						while [ "${line%/*}" != "<true" ] && [ "${line%/*}" != "<false" ]
+						do
+							read -r line
+						done
 						echo "<$val/>" >> "$OUT";;
-					string|integer)
-						read -r line
-						echo "<${type}>$val</${type}>" >> "$OUT";;
-					data)
-#					string|integer|data)
+#					string|integer)
+#						read -r line
+#						echo "<${type}>$val</${type}>" >> "$OUT";;
+#					data)
+					"string"|"integer"|"data")
 						read -r line
 #						while [ "${line#*</}" != "data>" ]
 						while [ "${line#*</}" != "${type}>" ]
@@ -2016,7 +2021,7 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
 	if [ -z "$HAS_PLUTIL" ]; then
-		plutil -convert xml1 "$BASE_DIR/Docs/config.plist"||msg "pl failed"
+		plutil -convert xml1 "$BASE_DIR/Docs/config.plist"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
 	fi
 	get_res "0$G0_NUM" # update location for config.plist file
 	srce="$BASE_DIR/Docs"
