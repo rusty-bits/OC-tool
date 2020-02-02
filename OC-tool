@@ -1955,6 +1955,17 @@ cd "$INPUT"
 tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
 mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" "config.plist"
+
+if [ ! -e "edit_subs.txt" ]; then
+	msg "\n${RED}ERROR:${NC} ${filePath} does not appear to be an OpenCore plist\n"
+	msg "\tIf you don't have an OpenCore plist you can start with the sample provided\n"
+	msg "\tby the acidanthera team.  You can copy the sample to your INPUT directory\n"
+	msg "\tby using this command, but be aware if a config.plist already exists in\n"
+	msg "\tthe INPUT directory it will be replaced.\n\n"
+	msg "\t${B}cp ./Docs/Sample.plist ./INPUT/config.plist${NC}\n"
+	exit 1
+fi
+
 load_edit_text
 msg "Using ${filePath}\n"
 

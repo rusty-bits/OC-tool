@@ -298,19 +298,21 @@ while read -r line; do
 	esac
 done < $1
 
-com=""
-while read -r line
-do
-	old="${line%|*}"
-	new="${line#*|}"
-	s1="${line%%_*}"; line="${line#*_}"
-	s2="${line%%_*}"; line="${line#*_}"
-	s3="${line%|*}"
-	en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
-	if [ "$en" = "true" ]; then new="$new\ +"; fi
-	if [ "$en" = "false" ]; then new="$new\ -"; fi
-	com="$com -e s/'$old '/'$new'/"
-done < edit_subs.txt
-# echo $com > com1.txt
+if [ -e "edit_subs.txt" ]; then
+	com=""
+	while read -r line
+	do
+		old="${line%|*}"
+		new="${line#*|}"
+		s1="${line%%_*}"; line="${line#*_}"
+		s2="${line%%_*}"; line="${line#*_}"
+		s3="${line%|*}"
+		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
+		if [ "$en" = "true" ]; then new="$new\ +"; fi
+		if [ "$en" = "false" ]; then new="$new\ -"; fi
+		com="$com -e s/'$old '/'$new'/"
+	done < edit_subs.txt
+	# echo $com > com1.txt
 
-eval sed $com edit_text.tmp > edit_text.txt
+	eval sed $com edit_text.tmp > edit_text.txt
+fi
