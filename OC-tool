@@ -830,6 +830,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 					"string"|"integer"|"data")
 						read -r line
 #						while [ "${line#*</}" != "data>" ]
+						if [ "${line#*</}" = "real>" ]; then line="${line%real>}integer>"; fi
 						while [ "${line#*</}" != "${type}>" ]
 						do
 							read -r line
@@ -1920,7 +1921,7 @@ if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
 
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
-	cat > "$CONFIG_PLIST"
+	cat > "$CONFIG_PLIST.tmp"
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
 	TEXT="" # no TUI use either with piped config.plist
 	filePath="stdin"
@@ -1939,7 +1940,7 @@ else  #  no input found on stdin
 		fi
 	fi
 	mkdir -p "$INPUT"
-	cp "${filePath}" "$CONFIG_PLIST"
+	cp "${filePath}" "$CONFIG_PLIST.tmp"
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
@@ -1952,8 +1953,8 @@ if [ -z "$HAS_PLUTIL" ]; then
 fi
 
 cd "$INPUT"
-tr -d '\r' < config.plist > config.plist.tmp # strip CRLF on windows
-mv config.plist.tmp config.plist
+tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
+#mv config.plist.tmp config.plist
 "$TOOL_FILES/parsePlist.sh" "config.plist"
 
 if [ ! -e "edit_subs.txt" ]; then

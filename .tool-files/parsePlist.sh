@@ -61,6 +61,12 @@ write_out() {
 
 msg() {
 	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> config.plist.txt
+	echo "<key>$key</key>" >> config.plist.test
+	if [ "$type" = "bool" ]; then
+		echo "<$val/>" >> config.plist.test
+	else
+		echo "<$type>$val</$type>" >> config.plist.test
+	fi
 	P=0
 	if [ "$C0" != "$section" ]; then # reset level
 		C0=$section; C1=""; C2=""; C3=""
@@ -110,6 +116,7 @@ found_empty_dict() {
 }
 
 rm -rf config.plist.txt
+rm -rf config.plist.test
 rm -rf edit_text.txt
 rm -rf edit_text.tmp
 rm -rf edit_subs.txt
@@ -123,8 +130,10 @@ while read -r line; do
 				if [ -n "$key" ]; then
 					section=$key
 					key=""
+					echo "$line" >> config.plist.test
 				else
 					echo "PLIST|$line" >> config.plist.txt # no key just echo the line
+					echo "$line" >> config.plist.test
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
@@ -137,6 +146,7 @@ while read -r line; do
 						;;
 				esac
 				key=""
+				echo "$line" >> config.plist.test
 			fi
 			ds="t" # found start of dict
 			;;
@@ -144,6 +154,7 @@ while read -r line; do
 			if [ -z "$ds" ]; then
 				if [ -n "$array" ]; then
 					item=$((item+1)) # prepare for next item
+					echo "$line" >> config.plist.test
 				elif [ "$dict" -gt "0" ]; then
 					case $dict in
 						"2")
@@ -156,10 +167,13 @@ while read -r line; do
 							;;
 					esac
 					dict=$((dict-1))
+					echo "$line" >> config.plist.test
 				elif [ -n "$section" ];then
 					section=""
+					echo "$line" >> config.plist.test
 				else
 					echo "PLIST|$line" >> config.plist.txt
+					echo "$line" >> config.plist.test
 				fi
 			else
 				if [ "$dict" -gt "0" ]; then dict=$((dict-1)); fi
@@ -176,6 +190,7 @@ while read -r line; do
 			array=$key
 			if [ -z "$item" ]; then item="0"; fi
 			key=""
+			echo "$line" >> config.plist.test
 			;;
 		"</array")
 			if [ "$item" -eq "0" ]; then
@@ -183,6 +198,8 @@ while read -r line; do
 				val=""
 				type=""
 				msg
+			else
+				echo "$line" >> config.plist.test
 			fi
 			array=""
 			item="" # reset item count
@@ -294,6 +311,7 @@ while read -r line; do
 			key="";;
 		*)
 			echo "PLIST|$line" >> config.plist.txt
+			echo "$line" >> config.plist.test
 			;;
 	esac
 done < $1
