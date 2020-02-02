@@ -7,9 +7,9 @@ update.log
 .tool-files/k.e
 
 INPUT/config.plist
+INPUT/modified.config.plist
 INPUT/temp/*
 
-Docs/config.plist
 Docs/diff_Sample.txt
 
 OUTPUT/EFI/*

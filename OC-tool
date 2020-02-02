@@ -28,7 +28,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(010220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.0(020220) last checked with OpenCore version REL-055-2020-02-01"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -82,7 +82,7 @@ check_config() { #config.plist must exist, even with -i option
 		msg "\n${RED}ERROR:${NC}\t$BASE_DIR/INPUT/config.plist does not exist\n"
 		msg "\tEither - copy a config.plist to the INPUT folder,\n"
 		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
-		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file' | ./OC-tool'\n"
+		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file | ./OC-tool'\n"
 		exit 1
 	fi
 }
@@ -175,7 +175,6 @@ check_lilu_for_updates() {
 }
 
 check_resources_for_updates() {
-#		find . -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev|xargs -I {} git -C {} pull $VERBOSE $QUIET
 	res_updated=""
 	msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
 	if [ -d "$RES_DIR" ]; then
@@ -227,15 +226,11 @@ clone_parent() {
 clone_child() { # need parent first, then zip source
 	path="$git_url"
 	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-
 	temp="$res_name" # hold self
 	res_name="$parent"
-
 	clone_parent # temp use parent resources
-
 	git_url="$path"
 	res_name="$temp"
-#	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
 curl_parent() {
@@ -275,12 +270,9 @@ curl_parent() {
 curl_child() { # need parent first, then zip source
 	path="$git_url"
 	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-
 	temp="$res_name" # hold self
 	res_name="$parent"
-
 	curl_parent # temp use parent resources
-
 	git_url="$path"
 	res_name="$temp"
 	if [ -n "$path" ]; then srce="$srce/$path"; fi
@@ -308,7 +300,6 @@ build_shell_tool() { #possible to automate this function?
 	clone "$git_url"
 	cd "$pkg_name"
 	srce="$(pwd)/UDK/Build/Shell/$AUDK_BUILD_DIR/X64"
-#	if [ -f "$srce/$SHELL_EFI" ]; then return 0; fi
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		[ ! -e "$srce/$SHELL_EFI" ]; then
 		rm -rf "$srce"
@@ -564,7 +555,6 @@ copy_resources() {
 				get_edit_res "$enabled"
 				enabled="false"
 				if [ "$en" = "+" ]; then enabled="true"; fi
-#				if [ "$G" -eq "3" ]; then enabled="true"; fi
 			fi
 			if [ "$enabled" = "true" ];then
 				if [ -n "$dest" ]; then
@@ -574,6 +564,7 @@ copy_resources() {
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
 						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="$SHELL_EFI" ;fi
+						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.config.plist"; fi
 						msg "Copying $dest_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
@@ -594,7 +585,6 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	msg "\t${YEL}You may want to check for any changes${NC} that could apply to\n"
 	msg "\t$filePath\n"
 }
-
 
 check_if_Sample_plist_updated() {
 	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
@@ -778,7 +768,7 @@ print_res_array() { # debug aid to list psuedo array
 }
 
 write_new_conf() { # write new config.plist based on changes in psuedo array
-	OUT="$BASE_DIR/Docs/config.plist"
+	OUT="$BASE_DIR/INPUT/modified.config.plist"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
 	num=0; done=""; driver=""
@@ -798,22 +788,18 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 					get_edit_res "$num"
 				fi
 			done
-
 			if [ "$key" = "$val" ]; then srch="$type"; fi # found standalone val
-
 			while [ "${line%%>*}" != "<$srch" ] # find plist line with key
 			do
 				echo "$line" >> "$OUT"
 				read -r line
 			done
-
 			if [ -z "$driver" ]; then
 				echo "<$srch>$key</$srch>" >> "$OUT"
 			elif [ "${key##* }" = "+" ]; then
 				echo "<$srch>${key% ?}</$srch>" >> "$OUT"
 			fi
 			driver=""
-
 			if [ "$srch" = "key" ]; then
 				case "$type" in
 					"bool")
@@ -823,13 +809,8 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 							read -r line
 						done
 						echo "<$val/>" >> "$OUT";;
-#					string|integer)
-#						read -r line
-#						echo "<${type}>$val</${type}>" >> "$OUT";;
-#					data)
 					"string"|"integer"|"data")
 						read -r line
-#						while [ "${line#*</}" != "data>" ]
 						if [ "${line#*</}" = "real>" ]; then line="${line%real>}integer>"; fi
 						while [ "${line#*</}" != "${type}>" ]
 						do
@@ -844,7 +825,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
 			get_edit_res "$num"
 		fi
-	done < "$CONFIG_PLIST"
+	done < "$CONFIG_PLIST.test"
 	fin
 }
 
@@ -941,7 +922,6 @@ draw_screen() {
 	C=$((C/4))
 	msg "\033[2J\033[H"
 	draw_screen_header
-
 	for G in $(seq 1 4)
 	do
 		S="0"
@@ -1056,12 +1036,10 @@ draw_edit_val() {
 						if [ -z "$e_val" ]; then
 							val="0"
 						else
-							val=$(printf "%d" "0x$e_val")
-#							val=$(echo "ibase=16; $e_val"|bc) # fails with lowercase hex
+							val=$(printf "%d" "0x$e_val") # cant use bc, fails with lowercase hex
 						fi;;
 				esac
 				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val |\033[K"
-#				msg "\033[K"
 				if [ -n "$e_split" ]; then
 					case "$data_field" in
 						1)
@@ -1417,7 +1395,7 @@ edit_val() {
 }
 
 draw_plist_footer() {
-	msg "\033[$((R-3))H i: info of highlighted item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
+	msg "\033[$((R-3))H i: info of ${INV}highlighted${NC} item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
 	msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
 	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
 }
@@ -1468,7 +1446,6 @@ draw_edit_text() {
 			msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
 		"integer")
 			highlight_type;;
-#			msg "       return: ${BLU}edit integer${NC}   return: save changes   ${RED}esc esc${NC}: discard changes\033[K";;
 		"data")
 			highlight_type;;
 		"string")
@@ -1732,9 +1709,6 @@ text_user_interface() {
 							;; # end case sp
 						nl|ht)
 							get_edit_res "$res_num"
-#							if [ "$en" != "$key" ]; then
-#								toggle_enabled
-#							else
 							if [ "$en" = "$key" ]; then
 								case $type in
 									"string")
@@ -1835,8 +1809,6 @@ case "${optchar}" in
 			MODE="prebuiltDaily"
 			EX_EDIT="${EX_EDIT}d"
 			EX_COM="${EX_COM}d";;
-#			msg "\n${YEL}$MODE${NC} not implemented yet.\n"
-#			exit 1;;
 		h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;
@@ -1909,16 +1881,13 @@ eval filePath="\$$OPTIND"
 
 start_logging
 if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
-
 RES_DIR="$BASE_DIR/resources/$MODE"
-
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 
 if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
-
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST.tmp"
@@ -1948,13 +1917,13 @@ HAS_PLUTIL=""
 command -v "plutil"||HAS_PLUTIL="false"
 if [ -z "$HAS_PLUTIL" ]; then
 	msg "\n${GRN}Checking config.plist${NC} ... "
-	plutil "$CONFIG_PLIST" || bad_config
+	plutil "$CONFIG_PLIST.tmp" || bad_config
 	fin
 fi
 
 cd "$INPUT"
 tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
-#mv config.plist.tmp config.plist
+rm config.plist.tmp
 "$TOOL_FILES/parsePlist.sh" "config.plist"
 
 if [ ! -e "edit_subs.txt" ]; then
@@ -1971,7 +1940,6 @@ load_edit_text
 msg "Using ${filePath}\n"
 
 if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
-
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
@@ -1979,14 +1947,11 @@ set_build_type "$TYPE"
 if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then
 	check_lilu_for_updates
 fi
-
 if [ "$MODE" != "prebuiltRelease" ] && [ -z "$UPDATE" ]; then
 	check_resources_for_updates
 fi
-
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-
 if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
 
 init_res_array
@@ -1999,12 +1964,10 @@ if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "$(tput rmcup)"
 	msg "${GRN}done in TUI${NC}\n"
 fi
-
 if [ "$TEXT" = "quit" ];then # quit without saving changes
 	msg "\nOC-tool quit by user.\n"
 	exit 0
 fi
-
 if [ -n "$USE_VAULT_NUM" ]; then
 	get_edit_res "$USE_VAULT_NUM"
 	USE_VAULT="$val"
@@ -2033,13 +1996,12 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
 	if [ -z "$HAS_PLUTIL" ]; then
-		plutil -convert xml1 "$BASE_DIR/Docs/config.plist"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
+		plutil -convert xml1 "$OUT"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
 	fi
 	get_res "0$G0_NUM" # update location for config.plist file
-	srce="$BASE_DIR/Docs"
+	srce="$BASE_DIR/INPUT"
 	set_res "0$G0_NUM"
 fi
-
 if [ "$TEXT" = "stop" ];then exit 0;fi # save and quit
 
 prepare_resources
@@ -2048,7 +2010,6 @@ set_up_dest_dir
 copy_resources
 
 if [ "$MODE" = "latestSource" ];then check_if_Sample_plist_updated; fi
-
 if [ "$USE_VAULT" = "true" ];then
 	build_vault||vault_failed
 fi
@@ -2057,16 +2018,14 @@ msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
 	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
-	msg "\tthe modified config.plist has also been placed in $BASE_DIR/Docs\n"
+	msg "\tthe modified config.plist has been placed in $BASE_DIR/INPUT\n"
 	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n\n"
 fi
-
 if [ -e "$INPUT/errors.txt" ]; then
 	msg "${YEL}WARNING:${NC} errors were found in $filePath\n\n"
 	msg "$(cat "$INPUT/errors.txt")"
 	msg "\n\nThese errors may need to be addressed before booting\n"
 fi
-
 stop_logging
 
 if [ -n "$FINDER" ] && [ "$UNAME" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click

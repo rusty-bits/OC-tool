@@ -3,6 +3,7 @@
 # turn config.plist into config.plist.txt for fast grep selection and editing
 # make edit_text.txt from config.plist.txt for fast plist edit screen drawing
 
+WROTE_KEY=""
 section=""
 array=""
 item=""
@@ -61,11 +62,16 @@ write_out() {
 
 msg() {
 	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> config.plist.txt
-	echo "<key>$key</key>" >> config.plist.test
+	if [ -z "$WROTE_KEY" ]; then
+		echo "<key>$key</key>" >> config.plist.test
+		WROTE_KEY="y"
+	fi
 	if [ "$type" = "bool" ]; then
 		echo "<$val/>" >> config.plist.test
-	else
+		WRITTEN="y"
+	elif [ -n "$type" ]; then
 		echo "<$type>$val</$type>" >> config.plist.test
+		WRITTEN="y"
 	fi
 	P=0
 	if [ "$C0" != "$section" ]; then # reset level
@@ -100,8 +106,16 @@ msg() {
 found_split() {
 	echo "Line number $line_num" >> errors.txt
 	echo "Found split <$1> in $section $sub1 $sub2 $item $key" >> errors.txt
+	echo "Combined to one line in modified.config.plist" >> errors.txt
 	echo "" >> errors.txt
 	sp=""
+}
+
+found_empty_array() {
+	echo "Line number $line_num" >> errors.minor.txt
+	echo "Found empty <array> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
+	echo "This may not be an issue for certain sections" >> errors.minor.txt
+	echo "" >> errors.minor.txt
 }
 
 found_empty_dict() {
@@ -121,8 +135,10 @@ rm -rf edit_text.txt
 rm -rf edit_text.tmp
 rm -rf edit_subs.txt
 rm -rf errors.txt
+rm -rf errors.minor.txt
 
 while read -r line; do
+	WRITTEN=""
 	line_num=$((line_num+1))
 	case "${line%%>*}" in
 		"<dict")
@@ -130,10 +146,8 @@ while read -r line; do
 				if [ -n "$key" ]; then
 					section=$key
 					key=""
-					echo "$line" >> config.plist.test
 				else
 					echo "PLIST|$line" >> config.plist.txt # no key just echo the line
-					echo "$line" >> config.plist.test
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
@@ -146,7 +160,6 @@ while read -r line; do
 						;;
 				esac
 				key=""
-				echo "$line" >> config.plist.test
 			fi
 			ds="t" # found start of dict
 			;;
@@ -154,7 +167,6 @@ while read -r line; do
 			if [ -z "$ds" ]; then
 				if [ -n "$array" ]; then
 					item=$((item+1)) # prepare for next item
-					echo "$line" >> config.plist.test
 				elif [ "$dict" -gt "0" ]; then
 					case $dict in
 						"2")
@@ -167,13 +179,10 @@ while read -r line; do
 							;;
 					esac
 					dict=$((dict-1))
-					echo "$line" >> config.plist.test
 				elif [ -n "$section" ];then
 					section=""
-					echo "$line" >> config.plist.test
 				else
 					echo "PLIST|$line" >> config.plist.txt
-					echo "$line" >> config.plist.test
 				fi
 			else
 				if [ "$dict" -gt "0" ]; then dict=$((dict-1)); fi
@@ -190,22 +199,21 @@ while read -r line; do
 			array=$key
 			if [ -z "$item" ]; then item="0"; fi
 			key=""
-			echo "$line" >> config.plist.test
 			;;
 		"</array")
 			if [ "$item" -eq "0" ]; then
+				found_empty_array
 				key=""
 				val=""
 				type=""
 				msg
-			else
-				echo "$line" >> config.plist.test
 			fi
 			array=""
 			item="" # reset item count
 			;;
 		"<array/")
 			ds=""
+			found_empty_array
 			array="$key"
 			key=""
 			val=""
@@ -244,6 +252,7 @@ while read -r line; do
 		"<key")
 			ds=""
 			sp=""
+			WROTE_KEY=""
 			key=${line#<key>}
 			while [ "${line#*</}" != "key>" ]
 			do
@@ -294,7 +303,7 @@ while read -r line; do
 			sp=""
 			echo "Line number $line_num" >> errors.txt
 			echo "Found value of type <real> for $section $key" >> errors.txt
-			echo "converted it to type <integer>" >> errors.txt
+			echo "converted to type <integer> in modified.config.plist" >> errors.txt
 			echo "" >> errors.txt
 			integer=${line#<real>}
 			while [ "${line#*</}" != "real>" ]
@@ -311,9 +320,12 @@ while read -r line; do
 			key="";;
 		*)
 			echo "PLIST|$line" >> config.plist.txt
-			echo "$line" >> config.plist.test
 			;;
 	esac
+	if [ -z "$WRITTEN" ]; then
+		echo "$line" >> config.plist.test
+		if [ -n "$key" ]; then WROTE_KEY="y"; fi
+	fi
 done < $1
 
 if [ -e "edit_subs.txt" ]; then
@@ -334,3 +346,5 @@ if [ -e "edit_subs.txt" ]; then
 
 	eval sed $com edit_text.tmp > edit_text.txt
 fi
+
+rm -rf edit_text.tmp
