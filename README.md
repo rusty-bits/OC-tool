@@ -15,7 +15,9 @@ or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/maste
 
 copy your `config.plist` file into the `INPUT` folder, or copy and edit one of the sample plist files.  
 
-e.g. `cp Docs/Sample.plist INPUT/config.plist`
+e.g. `cp Docs/Sample.plist INPUT/config.plist`  
+
+NOTE: If you use the `Clone or download` button OC-tool's files will be downloaded, but it won't be a repo and will error out when run since it can't update itself from github  
 
 ---
 
@@ -51,8 +53,10 @@ The folks at [r/hackintosh](https://www.reddit.com/r/hackintosh/) such as [draco
 
 [u/ChrisWayg](https://www.reddit.com/user/ChrisWayg) for pointing out the script for prebuilt mtoc and nasm  
 
-The folks at [acidanthera](https://github.com/acidanthera) for making OpenCore possible such as [vit9696](https://github.com/vit9696), [vandroiy2013](https://github.com/vandroiy2013), [Download-Fritz](https://github.com/Download-Fritz), [Andrey1970AppleLife](https://github.com/Andrey1970AppleLife), [PMheart](https://github.com/PMheart) and on and on, too many to list.  
+[u/nyhtml](https://www.reddit.com/user/nyhtml) for making me realize the Clone button on github will cause OC-tool to error out since it won't be cloned as a repo.   aka the _nyhtml_ bug ;)
 
-And folks like [Pavo](https://www.insanelymac.com/forum/profile/685502-pavo/) for the inspiration for this tool and [errorexists](https://www.insanelymac.com/forum/profile/2047226-errorexists/) for basically asking "Why bother making this? People can already do that in other ways" Um, because it's fun? Because I want to see if I can? So, why not?  
+The folks at [acidanthera](https://github.com/acidanthera) for making OpenCore possible such as [vit9696](https://github.com/vit9696), [vandroiy2013](https://github.com/vandroiy2013), [Download-Fritz](https://github.com/Download-Fritz), [Andrey1970AppleLife](https://github.com/Andrey1970AppleLife), [PMheart](https://github.com/PMheart) and on and on ...
+
+
 
 I probably forgot a number of people, sorry.
