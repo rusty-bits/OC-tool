@@ -5,11 +5,8 @@ cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
 
-if [ "$INI" != "$BASE_DIR" ];then # double-click from finder
-	FINDER="true"
-else
-	FINDER=""
-fi
+FINDER=""
+[ "$INI" != "$BASE_DIR" ] && FINDER="true" # double-click from finder
 
 TTY_OUT=$(tty)
 UNAME=$(uname)
@@ -238,7 +235,7 @@ curl_parent() {
 	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
-	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
+	[ ! -e "shasum256" ] && echo "new" > shasum256
 	sha=$(grep "/$res_name/$MODE/@0/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
@@ -290,7 +287,7 @@ make_base_tools() {
 build_failed() { # failed build even after backing up 5 commits
 	git checkout master
 	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n"
-	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
+	[ -z "$VERBOSE" ] && msg "\tsee $LOGFILE for details\n"
 	exit 1
 }
 
@@ -370,10 +367,8 @@ build_kext() {
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		[ ! -e "$srce/$res_name" ]; then
 		msg "Building $AUDK_CONFIG $pkg_name ... "
-		rm -rf Lilu.kext # remove Lilu pkg if it came with repo
-		if [ ! -L "Lilu.kext" ]; then #link to acidanthera/Lilu debug version
-			ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
-		fi
+		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
+		[ ! -L "Lilu.kext" ] && ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
 			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
 		fi
@@ -391,18 +386,16 @@ build_kext() {
 			else
 				xcodebuild -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
 			fi
-			if [ "$a" -eq "5" ]; then return 1; fi
+			[ "$a" -eq "5" ] && return 1
 			git_sha=$(git rev-parse @|cut -c -7)
 			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
 			git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
 			a=$((a+1))
 		done
-		if [ "$a" -ne "1" ]; then git checkout master; fi
+		[ "$a" -ne "1" ] && git checkout master
 		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-		if [ -d "build/Products" ]; then #copy Products contents back to build level
-			cp -r build/Products/* build
-		fi
+		[ -d "build/Products" ] && cp -r build/Products/* build
 		fin
 	fi
 }
@@ -611,9 +604,7 @@ build_vault() {
 		tar xvf "$ocsupportzip"
 	fi
 	cd "$BUILD_DIR"/OC
-	if ls vault* 1> /dev/null 2>&1; then
-		rm vault.*
-	fi
+	ls vault* 1> /dev/null 2>&1 && rm vault.*
 	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
 	if [ "$MODE" = "latestSource" ]; then
 		make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
@@ -631,9 +622,7 @@ find_srce_url() {
 	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$MODE" = "latestSource" ]; then
 		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		if [ -z "$git_url" ]; then
-			git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		fi
+		[ -z "$git_url" ] && git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	else
 		if [ -z "$parent" ]; then
 			git_url=$(grep "/$res_name/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
@@ -724,7 +713,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		eval "res0$S=\$line\|true"
 		if [ "$MODE" = "latestSource" ]; then
 				get_res "0$S"
-				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
+				[ "$res_name" = "base" ] && res_name="$git_url"
 				add_res_array
 				res_name="base"
 				set_res "0$S"
@@ -788,7 +777,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 					get_edit_res "$num"
 				fi
 			done
-			if [ "$key" = "$val" ]; then srch="$type"; fi # found standalone val
+			[ "$key" = "$val" ] && srch="$type" # found standalone val
 			while [ "${line%%>*}" != "<$srch" ] # find plist line with key
 			do
 				echo "$line" >> "$OUT"
@@ -811,7 +800,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 						echo "<$val/>" >> "$OUT";;
 					"string"|"integer"|"data")
 						read -r line
-						if [ "${line#*</}" = "real>" ]; then line="${line%real>}integer>"; fi
+						[ "${line#*</}" = "real>" ] && line="${line%real>}integer>"
 						while [ "${line#*</}" != "${type}>" ]
 						do
 							read -r line
@@ -822,7 +811,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 				srch="key"
 			fi
 			num=$((num+1))
-			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
+			[ "$num" -gt "$G10_NUM" ] && done="true"
 			get_edit_res "$num"
 		fi
 	done < "$CONFIG_PLIST.test"
@@ -866,20 +855,16 @@ set_color() { # set TUI section color based on resource
 		*)
 			color="$BLU"; MSG="$val";;
 	esac
-	if [ "$G" = "CH" ];then color="$NC";fi
+	if [ "$G" = "CH" ]; then color="$NC"; fi
 	if [ "$G" = "3" ]; then color="$color${U}"; fi
 }
 
 select_MSG() { # draw highligted resource in TUI
-	if [ "$G" -ne "10" ]; then
-		msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
-	fi
+	[ "$G" -ne "10" ] && msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
 }
 
 unselect_MSG() { # clear highlighted resource in TUI
-	if [ "$G" -ne "10" ]; then
-		msg "\033[${ROW};${COL}H$color $res_name $MSG "
-	fi
+	[ "$G" -ne "10" ] && msg "\033[${ROW};${COL}H$color $res_name $MSG "
 }
 
 draw_key() {
@@ -924,12 +909,15 @@ draw_screen() {
 	draw_screen_header
 	for G in $(seq 1 4)
 	do
+		[ -n "$DEBUG" ] && msg "db - screen loop G=$G\n"
 		S="0"
 		eval n="\$G${G}_NUM"
 		while [ "$S" -le "$n" ]
 		do
 			get_res "$G$S"
+			[ -n "$DEBUG" ] && msg "db - got res GS $G$S\n"
 			get_edit_res "$enabled"
+			[ -n "$DEBUG" ] && msg "db - got edit res enabled $enabled\n"
 			if [ "$en" = "+" ]; then
 				val="true"
 			elif [ "$en" = "-" ]; then
@@ -939,8 +927,11 @@ draw_screen() {
 			fi
 			res_name="${key% ?}"
 			set_ROW_COL
+			[ -n "$DEBUG" ] && msg "db - set ROW COL $ROW $COL\n"
 			set_color
+			[ -n "$DEBUG" ] && msg "db - set color\n"
 			unselect_MSG
+			[ -n "$DEBUG" ] && msg "db - unselect MSG\n"
 			if [ "$BOT" -lt "$S" ];then BOT="$S"; fi
 			S=$((S+1))
 		done
@@ -1102,7 +1093,7 @@ draw_edit_key() {
 }
 
 load_edit_text() {
-	if [ -n "$DEBUG" ]; then msg "\ndb - loading edit text\n"; fi
+	[ -n "$DEBUG" ] && msg "\ndb - loading edit text\n"
 	num=0; SEC=""; SUB=""
 	A0="0"; A1="0"; A2="0"
 	G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
@@ -1114,8 +1105,8 @@ load_edit_text() {
 			val=$(printf "%d" "$val") # if hex, make decimal
 			set_edit_res "$num"
 		fi
-		if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
-		if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
+		[ "$key" = "RequireVault" ] && USE_VAULT_NUM="$num"
+		[ "$key" = "RequireSignature" ] && USE_SIG_NUM="$num"
 		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
 			val="false"
 			IGNORE_BOOL=""
@@ -1142,7 +1133,7 @@ load_edit_text() {
 			esac
 			if [ "$G" -gt "0" ]; then
 				res_name="${key% ?}"
-				if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
+				[ -n "$DEBUG" ] && msg "db - enabled $enabled val $val key $key res_name $res_name\n"
 				enabled="$num"; S="$((L2-1))"
 				add_res_array
 				if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
@@ -1152,7 +1143,7 @@ load_edit_text() {
 			fi
 		fi
 		num=$((num+1))
-		if [ -n "$DEBUG" ]; then msg "db - loaded $res_name\n"; fi
+		[ -n "$DEBUG" ] && msg "db - loaded $res_name\n"
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	eval G1_START="\$ACPIAdd_START"
@@ -1189,17 +1180,17 @@ split_val() {
 highlight_type() {
 	msg "\033[3H"
 	msg "       tab: ${YEL}cycle through types${NC}  "
-	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
+	[ "$data_field" -eq "1" ] && msg "${INV}"
 	case "$res_type" in
 		"data")
 			msg "base64${NC} | ";;
 		"integer")
 			msg "int${NC} | ";;
 	esac
-	if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
-		msg "hex${NC} | "
-	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
-	if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
+	[ "$data_field" -eq "2" ] && msg "${INV}"
+	msg "hex${NC} | "
+	[ "$data_field" -eq "3" ] && msg "${INV}"
+	[ "$res_type" = "data" ] && msg "ascii${NC}"
 	msg "    return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
 }
 
@@ -1222,9 +1213,7 @@ draw_bit_editor() {
 		bit_value=$(printf "%d" "${message%% *}")
 		while [ "$test_value" -ne "$bit_value" ]
 		do
-			if [ "$test_value" -le "$bit_total" ]; then
-				bit_total=$((bit_total - test_value))
-			fi
+			[ "$test_value" -le "$bit_total" ] && bit_total=$((bit_total - test_value))
 			test_value=$(echo "2^$test_bit"|bc)
 			test_bit=$((test_bit-1))
 		done
@@ -1234,9 +1223,7 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${RED}"
 				e_val=$((val - bit_value))
-				if [ "$data_field" -eq "2" ]; then
-					e_val=$(echo "obase=16; $e_val"|bc)
-				fi
+				[ "$data_field" -eq "2" ] && e_val=$(echo "obase=16; $e_val"|bc)
 				e_split=${#e_val}
 			else
 				msg "${GRN}"
@@ -1247,15 +1234,13 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${GRN}"
 				e_val=$((val + bit_value))
-				if [ "$data_field" -eq "2" ]; then
-					e_val=$(echo "obase=16; $e_val"|bc)
-				fi
+				[ "$data_field" -eq "2" ] && e_val=$(echo "obase=16; $e_val"|bc)
 				e_split=${#e_val}
 			else
 				msg "${RED}"
 			fi
 		fi
-		if [ "$bit" -eq "$BIT_EDIT" ]; then msg "${INV}"; fi
+		[ "$bit" -eq "$BIT_EDIT" ] && msg "${INV}"
 		msg "\033[$((S + bit + 3))H    $message\033[K"
 		bit=$((bit - 1))
 	done
@@ -1284,8 +1269,9 @@ edit_val() {
 				split_val
 				e_val="${val1%?}$val2"
 				e_split=$((e_split-1))
-				if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-				if [ "$e_split" -lt "0" ]; then e_split="0"; fi;;
+				if [ "$data_field" -eq "3" ]; then  asc_touched=""; else asc_touched="false"; fi
+				[ "$e_split" -lt "0" ] && e_split="0"
+				;;
 			esc)
 				get_CHAR
 				case $CHAR in
@@ -1295,19 +1281,21 @@ edit_val() {
 							A)
 								if [ -n "$BIT_NUM" ]; then
 									BIT_EDIT=$((BIT_EDIT - 1))
-									if [ "$BIT_EDIT" -lt "0" ]; then BIT_EDIT="0"; fi
+									[ "$BIT_EDIT" -lt "0" ] && BIT_EDIT="0"
 								fi;;
 							B)
 								if [ -n "$BIT_NUM" ]; then
 									BIT_EDIT=$((BIT_EDIT + 1))
-									if [ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ]; then BIT_EDIT="$((BIT_NUM-2))"; fi
+									[ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ] && BIT_EDIT="$((BIT_NUM-2))"
 								fi;;
 							C)
 								e_split=$((e_split+1))
-								if [ "$e_split" -gt "${#e_val}" ]; then e_split="${#e_val}"; fi;;
+								[ "$e_split" -gt "${#e_val}" ] && e_split="${#e_val}"
+								;;
 							D)
 								e_split=$((e_split-1))
-								if [ "$e_split" -lt "0" ]; then e_split="0"; fi;;
+								[ "$e_split" -lt "0" ] && e_split="0"
+								;;
 						esac;;
 					esc)
 						val="$old_val"
@@ -1364,7 +1352,7 @@ edit_val() {
 					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
 					e_split=$((e_split+1))
 				else
-					if [ -n "$BIT_NUM" ]; then BIT_TOGGLE="$BIT_EDIT"; fi
+					[ -n "$BIT_NUM" ] && BIT_TOGGLE="$BIT_EDIT"
 				fi;;
 			[0-9] )
 				split_val
@@ -1410,21 +1398,21 @@ draw_edit_text() {
 		e_text=""
 		get_edit_res "$num"; e_val="$val"
 		if [ "$L1" -eq "0" ]; then
-			if [ "$L0" -eq "$S0" ]; then selected="true"; fi
+			[ "$L0" -eq "$S0" ] && selected="true"
 			e_text="$e_text"; draw_edit_key
-			if [ "$level" -eq "0" ]; then LLEN=$L0; fi
+			[ "$level" -eq "0" ] && LLEN=$L0
 		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
-			if [ "$L1" -eq "$S1" ]; then selected="true"; fi
+			[ "$L1" -eq "$S1" ] && selected="true"
 			e_text="    $e_text"; draw_edit_key
-			if [ "$level" -eq "1" ]; then LLEN=$L1; fi
+			[ "$level" -eq "1" ] && LLEN=$L1
 		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
-			if [ "$L2" -eq "$S2" ]; then selected="true"; fi
+			[ "$L2" -eq "$S2" ] && selected="true"
 			e_text="        $e_text"; draw_edit_key
-			if [ "$level" -eq "2" ]; then LLEN=$L2; fi
+			[ "$level" -eq "2" ] && LLEN=$L2
 		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
-			if [ "$L3" -eq "$S3" ]; then selected="true"; fi
+			[ "$L3" -eq "$S3" ] && selected="true"
 			e_text="            $e_text"; draw_edit_key
-			if [ "$level" -eq "3" ]; then LLEN=$L3; fi
+			[ "$level" -eq "3" ] && LLEN=$L3
 		fi
 		if [ -n "$has_higher_level" ]; then
 			if [ "$EDIT_RES_NUM" -eq "$num" ]; then
@@ -1478,7 +1466,7 @@ show_description() {
 			break
 		fi
 	done < "$TOOL_FILES/description.txt"
-	if [ -z "$DESC" ]; then DESC="No description found."; fi
+	[ -z "$DESC" ] && DESC="No description found."
 	msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 	moved="redraw"
 	select_MSG
@@ -1598,7 +1586,7 @@ text_user_interface() {
 				CHAR='g'
 				TEXT="quit";;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
-				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
+				[ -z "$CONFIG_CHANGED" ] && CONFIG_CHANGED="save"
 				CHAR='g'
 				TEXT='stop';;
 			*)
@@ -1636,14 +1624,14 @@ text_user_interface() {
 						C|l) # move right
 							moved="true"
 							G=$((G+1))
-							if [ "$G" -eq "5" ];then G=4;fi
-							if [ "$G" -eq "9" ];then G=8;fi
+							[ "$G" -eq "5" ] && G=4
+							[ "$G" -eq "9" ] && G=8
 							;;
 						D|h) # move left
 							moved="true"
 							G=$((G-1))
-							if [ "$G" -eq "0" ];then G=1;fi
-							if [ "$G" -eq "4" ];then G=5;fi
+							[ "$G" -eq "0" ] && G=1
+							[ "$G" -eq "4" ] && G=5
 							;;
 						sp|nl) # toggle enabled
 							unselect_MSG
@@ -1660,7 +1648,7 @@ text_user_interface() {
 							draw_screen_header;;
 						ht)
 							G=$((G+1))
-							if [ "$G" -gt "8" ]; then G=1; fi
+							[ "$G" -gt "8" ] && G=1
 							moved="true";;
 					esac
 				else
@@ -1712,7 +1700,7 @@ text_user_interface() {
 							if [ "$en" = "$key" ]; then
 								case $type in
 									"string")
-										if [ "$key" = "$val" ]; then LONE="true"; fi
+										[ "$key" = "$val" ] && LONE="true"
 										EDIT_RES_NUM="$res_num"
 										moved="changed"
 										msg "$(tput cnorm)";;
@@ -1726,10 +1714,8 @@ text_user_interface() {
 				fi
 		esac
 		eval temp="\$G${G}_NUM"
-		if [ "$S" -gt "$temp" ];then
-			S="$temp"
-		fi
-		if [ "$S" -lt "0" ];then S=0; fi
+		[ "$S" -gt "$temp" ] && S="$temp"
+		[ "$S" -lt "0" ] && S=0
 		if [ -n "$moved" ]; then
 			if [ "$G" -lt "5" ]; then
 				unselect_MSG
@@ -1773,9 +1759,7 @@ start_logging() {
 }
 
 stop_logging() {
-	if [ -z "$VERBOSE" ];then
-		exec 1>&6 6>&- 2>&1 #stop logfile
-	fi
+	if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
 }
 
 remove_resource_msg() {
@@ -1880,14 +1864,14 @@ done
 eval filePath="\$$OPTIND"
 
 start_logging
-if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
+[ -n "$DEBUG" ] && msg "\ndb - start logging\n"
 RES_DIR="$BASE_DIR/resources/$MODE"
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 
-if [ -z "$UPDATE" ]; then check_tool_for_updates; fi
+[ -z "$UPDATE" ] && check_tool_for_updates
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST.tmp"
@@ -1911,7 +1895,7 @@ else  #  no input found on stdin
 	mkdir -p "$INPUT"
 	cp "${filePath}" "$CONFIG_PLIST.tmp"
 fi
-if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
+[ -n "$DEBUG" ] && msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"
 
 HAS_PLUTIL=""
 command -v "plutil"||HAS_PLUTIL="false"
@@ -1939,20 +1923,18 @@ fi
 load_edit_text
 msg "Using ${filePath}\n"
 
-if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
-if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
+[ -n "$DEBUG" ] && msg "\ndb -loaded edit text\n"
+[ -n "$REMOVE_RES" ] && rm -rf "$RES_DIR"
 
 set_build_type "$TYPE"
 
-if [ "$MODE" = "latestSource" ] && [ -z "$UPDATE" ]; then
-	check_lilu_for_updates
+if [ -z "$UPDATE" ]; then
+	[ "$MODE" = "latestSource" ] && check_lilu_for_updates
+	[ "$MODE" != "prebuiltRelease" ] && check_resources_for_updates
 fi
-if [ "$MODE" != "prebuiltRelease" ] && [ -z "$UPDATE" ]; then
-	check_resources_for_updates
-fi
-if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
-if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
+[ -n "$REMOVE_RES" ] && remove_resource_msg #show warning in tool.log also
+[ "$MODE" = "latestSource" ] && check_requirements
+[ -n "$DEBUG" ] && msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"
 
 init_res_array
 
@@ -2002,14 +1984,14 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	srce="$BASE_DIR/INPUT"
 	set_res "0$G0_NUM"
 fi
-if [ "$TEXT" = "stop" ];then exit 0;fi # save and quit
+[ "$TEXT" = "stop" ] && exit 0 # save and quit
 
 prepare_resources
-if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
+[ -n "$DEBUG" ] && msg "\ndb - prepare_resources ... done\n"
 set_up_dest_dir
 copy_resources
 
-if [ "$MODE" = "latestSource" ];then check_if_Sample_plist_updated; fi
+[ "$MODE" = "latestSource" ] && check_if_Sample_plist_updated
 if [ "$USE_VAULT" = "true" ];then
 	build_vault||vault_failed
 fi
