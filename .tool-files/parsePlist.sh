@@ -63,14 +63,14 @@ write_out() {
 msg() {
 	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> config.plist.txt
 	if [ -z "$WROTE_KEY" ]; then
-		echo "<key>$key</key>" >> config.plist.test
+		echo "<key>$key</key>" >> config.plist.mod
 		WROTE_KEY="y"
 	fi
 	if [ "$type" = "bool" ]; then
-		echo "<$val/>" >> config.plist.test
+		echo "<$val/>" >> config.plist.mod
 		WRITTEN="y"
 	elif [ -n "$type" ]; then
-		echo "<$type>$val</$type>" >> config.plist.test
+		echo "<$type>$val</$type>" >> config.plist.mod
 		WRITTEN="y"
 	fi
 	P=0
@@ -129,13 +129,10 @@ found_empty_dict() {
 	key=""
 }
 
-rm -rf config.plist.txt
-rm -rf config.plist.test
-rm -rf edit_text.txt
-rm -rf edit_text.tmp
-rm -rf edit_subs.txt
-rm -rf errors.txt
-rm -rf errors.minor.txt
+#rm -rf config.plist.mod
+#rm -rf config.plist.txt
+#rm -rf edit*
+#rm -rf errors*
 
 while read -r line; do
 	WRITTEN=""
@@ -323,7 +320,7 @@ while read -r line; do
 			;;
 	esac
 	if [ -z "$WRITTEN" ]; then
-		echo "$line" >> config.plist.test
+		echo "$line" >> config.plist.mod
 		if [ -n "$key" ]; then WROTE_KEY="y"; fi
 	fi
 done < $1

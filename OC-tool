@@ -814,7 +814,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 			[ "$num" -gt "$G10_NUM" ] && done="true"
 			get_edit_res "$num"
 		fi
-	done < "$CONFIG_PLIST.test"
+	done < "$CONFIG_PLIST.mod"
 	fin
 }
 
@@ -880,7 +880,7 @@ draw_screen_header() {
 	syms="REL"
 	[ "$TYPE" = "debug" ] && syms="DBG"
 	e_msg="to edit"
-	[ "$G" -eq "10" ] && e_msg="ret to summary"
+	[ "$G" -eq "10" ] && e_msg="ret to summary\n\033[K"
 	if [ -n "$CONFIG_CHANGED" ]; then
 		CC="${RED}${INV}X${NC}${INV}"
 	else
@@ -1547,6 +1547,7 @@ text_user_interface() {
 	msg "$(tput civis)"
 	stty -echo
 	G=1; S=0
+	level=0; S0=1; S1=0; S2=0; S3=0
 	draw_screen
 	get_res "$G$S"
 	get_edit_res "$enabled"
@@ -1564,8 +1565,15 @@ text_user_interface() {
 		get_CHAR
 		case $CHAR in
 			a)
-				msg "\nres_num<$res_num>  G<$G> S<$S> en<$enabled> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
-				msg "level<$level> res_name<$res_name> key<$key> val<$val> type<$type>"
+				msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
+				msg "level<$level> S0 $S0 S1 $S1 S2 $S2 S3 $S3 L0 $L0 L1 $L1 L2 $L2 L3 $L3\n"
+				msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
+				if [ "$G" -eq "10" ]; then
+					get_edit_res "$res_num"
+					msg "\nlevel<$level> S0 $S0 S1 $S1 S2 $S2 S3 $S3 L0 $L0 L1 $L1 L2 $L2 L3 $L3\n"
+					msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
+					msg "\ntype<$type> val<$val> key<$key> en<$en>"
+				fi
 				;;
 			b)
 				moved="true"
@@ -1575,13 +1583,16 @@ text_user_interface() {
 				if [ "$TUI_MODE" != "summary" ]; then
 					#write_text_config
 					TUI_MODE="summary"
+					G="$SUMMARY_G"; S="$SUMMARY_S"
 					draw_screen
-					G=1; S=0
+#					G=1; S=0
 				else
 					TUI_MODE=" plist "
 					msg "\033[2H\033[2K"
-					level=0; S0=1; S1=0; S2=0; S3=0
-					G="10"; S=0
+#					level=0; S0=1; S1=0; S2=0; S3=0
+					SUMMARY_G="$G"; SUMMARY_S="$S"
+					G="10"
+#					S=0
 				fi;;
 			p) # debug dump array
 				stty echo
@@ -1880,6 +1891,7 @@ fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 
 [ -z "$UPDATE" ] && check_tool_for_updates
+rm -rf "$INPUT"
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST.tmp"
@@ -1906,7 +1918,7 @@ fi
 [ -n "$DEBUG" ] && msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"
 
 HAS_PLUTIL=""
-command -v "plutil"||HAS_PLUTIL="false"
+command -v "plutil" || HAS_PLUTIL="false"
 if [ -z "$HAS_PLUTIL" ]; then
 	msg "\n${GRN}Checking config.plist${NC} ... "
 	plutil "$CONFIG_PLIST.tmp" || bad_config
