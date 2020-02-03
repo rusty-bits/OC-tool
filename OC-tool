@@ -25,7 +25,7 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(020220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.0(030220) last checked with OpenCore version REL-055-2020-02-01"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -833,6 +833,7 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 }
 
 set_text_header() { # eval to avoid unused var in shellcheck
+	[ -n "$DEBUG" ] && msg "db - in set_text_header\n"
 	resCH1="ACPI > Add|"
 	resCH2="Kernel > Add|"
 	resCH3="UEFI > Drivers|"
@@ -860,11 +861,11 @@ set_color() { # set TUI section color based on resource
 }
 
 select_MSG() { # draw highligted resource in TUI
-	[ "$G" -ne "10" ] && msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"
+	if [ "$G" -ne "10" ]; then  msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"; fi
 }
 
 unselect_MSG() { # clear highlighted resource in TUI
-	[ "$G" -ne "10" ] && msg "\033[${ROW};${COL}H$color $res_name $MSG "
+	if [ "$G" -ne "10" ]; then  msg "\033[${ROW};${COL}H$color $res_name $MSG "; fi
 }
 
 draw_key() {
@@ -875,20 +876,21 @@ draw_key() {
 }
 
 draw_screen_header() {
-	if [ "$TYPE" = "debug" ]; then
-		inc_syms="${GRN}yes${NC}"
-	else
-		inc_syms="${RED}no${NC}"
-	fi
+	[ -n "$DEBUG" ] && msg "db - in draw_screen_header\n"
+	syms="REL"
+	[ "$TYPE" = "debug" ] && syms="DBG"
+	e_msg="to edit"
+	[ "$G" -eq "10" ] && e_msg="ret to summary"
 	if [ -n "$CONFIG_CHANGED" ]; then
 		CC="${RED}${INV}X${NC}${INV}"
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE$NC  debug=${inc_syms}  IN=${GRN}$filePath${NC}\033[K"
+	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  IN=${GRN}$filePath${NC} ${U}e${NC} $e_msg\033[K"
 }
 
 draw_col_header() {
+	[ -n "$DEBUG" ] && msg "db - in draw_col_header\n"
 	G='CH'; color=${NC}
 	for S in $(seq 1 4)
 	do
@@ -902,6 +904,7 @@ draw_col_header() {
 }
 
 draw_screen() {
+	[ -n "$DEBUG" ] && msg "db - in draw_screen\n"
 	OLD_G=$G; OLD_S=$S; BOT=0
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
@@ -1052,6 +1055,7 @@ draw_edit_val() {
 }
 
 draw_edit_key() {
+	[ -n "$DEBUG" ] && msg "db - in draw_edit_key\n"
 	S=$((S+1))
 	if [ -z "$type" ]; then
 		case "$en" in
@@ -1389,6 +1393,7 @@ draw_plist_footer() {
 }
 
 draw_edit_text() {
+	[ -n "$DEBUG" ] && msg "db - in draw_edit_text\n"
 	num=0; S=3
 	data_field="0"
 #	if [ "$moved" = "redraw" ]; then msg "\033[$((R-4))H\033[1J"; fi
@@ -1457,6 +1462,7 @@ draw_edit_text() {
 }
 
 show_description() {
+	[ -n "$DEBUG" ] && msg "db - in show_description\n"
 	DESC=""
 	while read -r line
 	do
@@ -1469,7 +1475,9 @@ show_description() {
 	[ -z "$DESC" ] && DESC="No description found."
 	msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 	moved="redraw"
+	[ -n "$DEBUG" ] && msg "db - going to select_MSG\n"
 	select_MSG
+	[ -n "$DEBUG" ] && msg "db - going to get_CHAR\n"
 	get_CHAR
 }
 
