@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.0(030220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.1(040220) last checked with OpenCore version REL-055-2020-02-01"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1803,6 +1803,15 @@ bad_config() {
 }
 
 #****** Start build ***************
+if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
+	QUIET="-q" # currently stdin is not a terminal, no output to tty
+	TEXT="" # no TUI use either with piped config.plist
+	filePath="stdin"
+else  #  no input found on stdin
+	TTY_OUT=$(tty)
+fi
+start_logging
+if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
 
 while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
@@ -1839,24 +1848,32 @@ case "${optchar}" in
 			EX_COM="${EX_COM}v"
 			EX_EDIT="${EX_EDIT}v";;
 		t)
-			R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
-			if [ "$C" -lt "90" ] || [ "$R" -lt "40" ]; then
-				msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
-				msg "\tThis is below the suggested miminum size of 90 x 40\n"
-				msg "\tfor the TUI mode.  You can resize your terminal or use\n"
-				msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
-				msg "\tbut do note that items on the screen may scroll or be\n"
-				msg "\twritten over because of the smaller size\n"
-				exit 0
+			if [ "$filePath" = "stdin" ]; then
+				msg "TUI mode unavailable when plist is piped to stdin\n"
+			else
+				R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+				if [ "$C" -lt "90" ] || [ "$R" -lt "40" ]; then
+					msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
+					msg "\tThis is below the suggested miminum size of 90 x 40\n"
+					msg "\tfor the TUI mode.  You can resize your terminal or use\n"
+					msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
+					msg "\tbut do note that items on the screen may scroll or be\n"
+					msg "\twritten over because of the smaller size\n"
+					exit 0
+				fi
+				TEXT="true"
+				TUI_MODE="summary"
 			fi
-			TEXT="true"
-			TUI_MODE="summary"
 			EX_COM="${EX_COM}t";;
 		D) # for when I break stuff
 			DEBUG="true";;
 		T)
-			TEXT="true"
-			TUI_MODE="summary"
+			if [ "$filePath" = "stdin" ]; then
+				msg "TUI override is not available when plist is piped to stdin\n"
+			else
+				TEXT="true"
+				TUI_MODE="summary"
+			fi
 			EX_COM="${EX_COM}T";;
 		V)
 			msg "OC-tool version $VER\n"
@@ -1878,19 +1895,7 @@ case "${optchar}" in
 			exit 1;;
 	esac
 done
-if [ -p /dev/stdin ]; then # data was piped
-	mkdir -p "$INPUT"
-	cat > "$CONFIG_PLIST.tmp"
-	QUIET="-q" # currently stdin is not a terminal, no output to tty
-	TEXT="" # no TUI use either with piped config.plist
-	filePath="stdin"
-else  #  no input found on stdin
-	eval filePath="\$$OPTIND"
-	TTY_OUT=$(tty)
-fi
 
-start_logging
-if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
 RES_DIR="$BASE_DIR/resources/$MODE"
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
@@ -1898,8 +1903,12 @@ fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 
 if [ -z "$UPDATE" ]; then check_tool_for_updates;fi
-if [ "$filePath" != "stdin" ]; then
-	rm -rf "$INPUT"
+rm -rf "$INPUT"
+if [ "$filePath" = "stdin" ]; then # get filepath or piped data now that options are processed
+	mkdir -p "$INPUT"
+	cat > "$CONFIG_PLIST.tmp"
+else
+	eval filePath="\$$OPTIND"
 	if [ -e "$filePath" ]; then
 		EX_COM="${EX_COM} ${filePath}"
 		EX_EDIT="${EX_EDIT} ${filePath}"
