@@ -1200,13 +1200,13 @@ init_bit_editor() {
 	do
 		BIT_NUM=$((BIT_NUM + 1))
 		eval BIT${BIT_NUM}=\"\$line\"
-	done < "$TOOL_FILES/$res_name"
+	done < "$TOOL_FILES/bit_maps/$res_name"
 }
 
 draw_bit_editor() {
 	msg "\033[$((S + BIT_NUM + 2))H\033[K"
 	bit="$((BIT_NUM - 2))"; bit_total="$val"
-	test_bit="31"; test_value="4294967296"
+	test_bit="31"; test_value="4294967296" # use bit length of 32 when parsing
 	while [ "$bit" -ge "0" ]
 	do
 		eval message=\"\$BIT${bit}\"
@@ -1218,7 +1218,6 @@ draw_bit_editor() {
 			test_value=$(echo "2^$test_bit"|bc)
 			test_bit=$((test_bit-1))
 		done
-#		test_value=$(echo "2^$test_bit"|bc)
 		if [ "$bit_value" -le "$bit_total" ]; then
 			if [ "$bit" -eq "$BIT_TOGGLE" ]; then
 				BIT_TOGGLE="-1"
@@ -1252,8 +1251,8 @@ edit_val() {
 	old_val="$val"
 	e_split="${#e_val}"
 	asc_touched="false"
-	if [ -e "$TOOL_FILES/$res_name" ]; then
-		read -r line < "$TOOL_FILES/$res_name"
+	if [ -e "$TOOL_FILES/bit_maps/$res_name" ]; then
+		read -r line < "$TOOL_FILES/bit_maps/$res_name"
 		HEX_LEN=${line%% *}; HEX_LEN=${#HEX_LEN}; HEX_LEN=$((HEX_LEN - 2))
 		init_bit_editor
 		draw_bit_editor
