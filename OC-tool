@@ -1,14 +1,15 @@
 #!/bin/sh -e
 
+VER="3.0(030220) last checked with OpenCore version REL-055-2020-02-01"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
 BASE_DIR=$(pwd)
 
 FINDER=""
-[ "$INI" != "$BASE_DIR" ] && FINDER="true" # double-click from finder
+if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-TTY_OUT=$(tty)
+OPTSPEC="dhinoqrstvDTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -25,7 +26,6 @@ SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
-VER="3.0(030220) last checked with OpenCore version REL-055-2020-02-01"
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
@@ -35,7 +35,6 @@ IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 DEBUG=""
-OPTSPEC="dhinoqrstvDTVX"
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -235,7 +234,7 @@ curl_parent() {
 	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
-	[ ! -e "shasum256" ] && echo "new" > shasum256
+	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
 	sha=$(grep "/$res_name/$MODE/@0/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
@@ -287,7 +286,7 @@ make_base_tools() {
 build_failed() { # failed build even after backing up 5 commits
 	git checkout master
 	msg "\n${RED}ERROR:${NC} build failed for $pkg_name\n"
-	[ -z "$VERBOSE" ] && msg "\tsee $LOGFILE for details\n"
+	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
 	exit 1
 }
 
@@ -368,7 +367,7 @@ build_kext() {
 		[ ! -e "$srce/$res_name" ]; then
 		msg "Building $AUDK_CONFIG $pkg_name ... "
 		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
-		[ ! -L "Lilu.kext" ] && ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .
+		if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
 			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
 		fi
@@ -386,16 +385,16 @@ build_kext() {
 			else
 				xcodebuild -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
 			fi
-			[ "$a" -eq "5" ] && return 1
+			if [ "$a" -eq "5" ]; then return 1; fi
 			git_sha=$(git rev-parse @|cut -c -7)
 			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
 			git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
 			msg "Building $pkg_name ... "
 			a=$((a+1))
 		done
-		[ "$a" -ne "1" ] && git checkout master
+		if [ "$a" -ne "1" ]; then git checkout master; fi
 		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-		[ -d "build/Products" ] && cp -r build/Products/* build
+		if [ -d "build/Products" ]; then cp -r build/Products/* build; fi
 		fin
 	fi
 }
@@ -812,7 +811,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 				srch="key"
 			fi
 			num=$((num+1))
-			[ "$num" -gt "$G10_NUM" ] && done="true"
+			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
 			get_edit_res "$num"
 		fi
 	done < "$CONFIG_PLIST.mod"
@@ -834,16 +833,14 @@ set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
 }
 
 set_text_header() { # eval to avoid unused var in shellcheck
-	[ -n "$DEBUG" ] && msg "db - in set_text_header\n"
-	resCH1="ACPI > Add|"
-	resCH2="Kernel > Add|"
-	resCH3="UEFI > Drivers|"
-	resCH4="Misc > Tools|"
-	resCH5="ACPI > Quirks|"
-	resCH6="Kernel > Quirks|"
-	resCH7="UEFI > Quirks|"
-	resCH8="Booter > Quirks|"
-	GCH_NUM="8"
+	if [ -n "$DEBUG" ]; then msg "db - in set_text_header\n"; fi
+	n=0
+	while read -r line
+	do
+		n=$((n+1))
+		eval resCH$n="\$line"
+	done < "$TOOL_FILES/text_header.txt"
+	eval GCH_NUM="8"
 }
 
 set_color() { # set TUI section color based on resource
@@ -877,11 +874,11 @@ draw_key() {
 }
 
 draw_screen_header() {
-	[ -n "$DEBUG" ] && msg "db - in draw_screen_header\n"
+	if [ -n "$DEBUG" ]; then msg "db - in draw_screen_header\n"; fi
 	syms="REL"
 	[ "$TYPE" = "debug" ] && syms="DBG"
 	e_msg="to edit"
-	[ "$G" -eq "10" ] && e_msg="ret to summary\n\033[K"
+	if [ "$G" -eq "10" ]; then e_msg="ret to summary\n\033[K"; fi
 	if [ -n "$CONFIG_CHANGED" ]; then
 		CC="${RED}${INV}X${NC}${INV}"
 	else
@@ -891,7 +888,7 @@ draw_screen_header() {
 }
 
 draw_col_header() {
-	[ -n "$DEBUG" ] && msg "db - in draw_col_header\n"
+	if [ -n "$DEBUG" ]; then msg "db - in draw_col_header\n"; fi
 	G='CH'; color=${NC}
 	for S in $(seq 1 4)
 	do
@@ -905,7 +902,7 @@ draw_col_header() {
 }
 
 draw_screen() {
-	[ -n "$DEBUG" ] && msg "db - in draw_screen\n"
+	if [ -n "$DEBUG" ]; then msg "db - in draw_screen\n"; fi
 	OLD_G=$G; OLD_S=$S; BOT=0
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
@@ -913,15 +910,13 @@ draw_screen() {
 	draw_screen_header
 	for G in $(seq 1 4)
 	do
-		[ -n "$DEBUG" ] && msg "db - screen loop G=$G\n"
+		if [ -n "$DEBUG" ]; then msg "db - screen loop G=$G\n"; fi
 		S="0"
 		eval n="\$G${G}_NUM"
 		while [ "$S" -le "$n" ]
 		do
 			get_res "$G$S"
-			[ -n "$DEBUG" ] && msg "db - got res GS $G$S\n"
 			get_edit_res "$enabled"
-			[ -n "$DEBUG" ] && msg "db - got edit res enabled $enabled\n"
 			if [ "$en" = "+" ]; then
 				val="true"
 			elif [ "$en" = "-" ]; then
@@ -931,11 +926,8 @@ draw_screen() {
 			fi
 			res_name="${key% ?}"
 			set_ROW_COL
-			[ -n "$DEBUG" ] && msg "db - set ROW COL $ROW $COL\n"
 			set_color
-			[ -n "$DEBUG" ] && msg "db - set color\n"
 			unselect_MSG
-			[ -n "$DEBUG" ] && msg "db - unselect MSG\n"
 			if [ "$BOT" -lt "$S" ];then BOT="$S"; fi
 			S=$((S+1))
 		done
@@ -1056,7 +1048,7 @@ draw_edit_val() {
 }
 
 draw_edit_key() {
-	[ -n "$DEBUG" ] && msg "db - in draw_edit_key\n"
+	if [ -n "$DEBUG" ]; then msg "db - in draw_edit_key\n"; fi
 	S=$((S+1))
 	if [ -z "$type" ]; then
 		case "$en" in
@@ -1188,17 +1180,17 @@ split_val() {
 highlight_type() {
 	msg "\033[3H"
 	msg "       tab: ${YEL}cycle through types${NC}  "
-	[ "$data_field" -eq "1" ] && msg "${INV}"
+	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
 	case "$res_type" in
 		"data")
 			msg "base64${NC} | ";;
 		"integer")
 			msg "int${NC} | ";;
 	esac
-	[ "$data_field" -eq "2" ] && msg "${INV}"
+	if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
 	msg "hex${NC} | "
-	[ "$data_field" -eq "3" ] && msg "${INV}"
-	[ "$res_type" = "data" ] && msg "ascii${NC}"
+	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
+	if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
 	msg "    return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
 }
 
@@ -1218,10 +1210,11 @@ draw_bit_editor() {
 	while [ "$bit" -ge "0" ]
 	do
 		eval message=\"\$BIT${bit}\"
+# shellcheck disable=SC2154
 		bit_value=$(printf "%d" "${message%% *}")
 		while [ "$test_value" -ne "$bit_value" ]
 		do
-			[ "$test_value" -le "$bit_total" ] && bit_total=$((bit_total - test_value))
+			if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
 			test_value=$(echo "2^$test_bit"|bc)
 			test_bit=$((test_bit-1))
 		done
@@ -1231,7 +1224,7 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${RED}"
 				e_val=$((val - bit_value))
-				[ "$data_field" -eq "2" ] && e_val=$(echo "obase=16; $e_val"|bc)
+				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
 				e_split=${#e_val}
 			else
 				msg "${GRN}"
@@ -1242,13 +1235,13 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${GRN}"
 				e_val=$((val + bit_value))
-				[ "$data_field" -eq "2" ] && e_val=$(echo "obase=16; $e_val"|bc)
+				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
 				e_split=${#e_val}
 			else
 				msg "${RED}"
 			fi
 		fi
-		[ "$bit" -eq "$BIT_EDIT" ] && msg "${INV}"
+		if [ "$bit" -eq "$BIT_EDIT" ]; then msg "${INV}"; fi
 		msg "\033[$((S + bit + 3))H    $message\033[K"
 		bit=$((bit - 1))
 	done
@@ -1278,7 +1271,7 @@ edit_val() {
 				e_val="${val1%?}$val2"
 				e_split=$((e_split-1))
 				if [ "$data_field" -eq "3" ]; then  asc_touched=""; else asc_touched="false"; fi
-				[ "$e_split" -lt "0" ] && e_split="0"
+				if [ "$e_split" -lt "0" ]; then e_split="0"; fi
 				;;
 			esc)
 				get_CHAR
@@ -1289,20 +1282,20 @@ edit_val() {
 							A)
 								if [ -n "$BIT_NUM" ]; then
 									BIT_EDIT=$((BIT_EDIT - 1))
-									[ "$BIT_EDIT" -lt "0" ] && BIT_EDIT="0"
+									if [ "$BIT_EDIT" -lt "0" ]; then BIT_EDIT="0"; fi
 								fi;;
 							B)
 								if [ -n "$BIT_NUM" ]; then
 									BIT_EDIT=$((BIT_EDIT + 1))
-									[ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ] && BIT_EDIT="$((BIT_NUM-2))"
+									if [ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ]; then BIT_EDIT="$((BIT_NUM-2))"; fi
 								fi;;
 							C)
 								e_split=$((e_split+1))
-								[ "$e_split" -gt "${#e_val}" ] && e_split="${#e_val}"
+								if [ "$e_split" -gt "${#e_val}" ]; then e_split="${#e_val}"; fi
 								;;
 							D)
 								e_split=$((e_split-1))
-								[ "$e_split" -lt "0" ] && e_split="0"
+								if [ "$e_split" -lt "0" ]; then e_split="0"; fi
 								;;
 						esac;;
 					esc)
@@ -1466,7 +1459,7 @@ draw_edit_text() {
 }
 
 show_description() {
-	[ -n "$DEBUG" ] && msg "db - in show_description\n"
+	if [ -n "$DEBUG" ]; then msg "db - in show_description\n"; fi
 	DESC=""
 	while read -r line
 	do
@@ -1476,12 +1469,12 @@ show_description() {
 			break
 		fi
 	done < "$TOOL_FILES/description.txt"
-	[ -z "$DESC" ] && DESC="No description found."
+	if [ -z "$DESC" ]; then DESC="No description found."; fi
 	msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
 	moved="redraw"
-	[ -n "$DEBUG" ] && msg "db - going to select_MSG\n"
+	if [ -n "$DEBUG" ]; then msg "db - going to select_MSG\n"; fi
 	select_MSG
-	[ -n "$DEBUG" ] && msg "db - going to get_CHAR\n"
+	if [ -n "$DEBUG" ]; then msg "db - going to get_CHAR\n"; fi
 	get_CHAR
 }
 
@@ -1609,7 +1602,7 @@ text_user_interface() {
 				CHAR='g'
 				TEXT="quit";;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
-				[ -z "$CONFIG_CHANGED" ] && CONFIG_CHANGED="save"
+				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
 				TEXT='stop';;
 			*)
@@ -1647,14 +1640,14 @@ text_user_interface() {
 						C|l) # move right
 							moved="true"
 							G=$((G+1))
-							[ "$G" -eq "5" ] && G=4
-							[ "$G" -eq "9" ] && G=8
+							if [ "$G" -eq "5" ]; then G=4; fi
+							if [ "$G" -eq "9" ]; then G=8; fi
 							;;
 						D|h) # move left
 							moved="true"
 							G=$((G-1))
-							[ "$G" -eq "0" ] && G=1
-							[ "$G" -eq "4" ] && G=5
+							if [ "$G" -eq "0" ]; then G=1; fi
+							if [ "$G" -eq "4" ]; then G=5; fi
 							;;
 						sp|nl) # toggle enabled
 							unselect_MSG
@@ -1671,7 +1664,7 @@ text_user_interface() {
 							draw_screen_header;;
 						ht)
 							G=$((G+1))
-							[ "$G" -gt "8" ] && G=1
+							if [ "$G" -gt "8" ]; then G=1; fi
 							moved="true";;
 					esac
 				else
@@ -1737,8 +1730,8 @@ text_user_interface() {
 				fi
 		esac
 		eval temp="\$G${G}_NUM"
-		[ "$S" -gt "$temp" ] && S="$temp"
-		[ "$S" -lt "0" ] && S=0
+		if [ "$S" -gt "$temp" ]; then S="$temp"; fi
+		if [ "$S" -lt "0" ]; then S=0; fi
 		if [ -n "$moved" ]; then
 			if [ "$G" -lt "5" ]; then
 				unselect_MSG
@@ -1810,6 +1803,7 @@ bad_config() {
 }
 
 #****** Start build ***************
+
 while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
 		d)
@@ -1884,18 +1878,6 @@ case "${optchar}" in
 			exit 1;;
 	esac
 done
-eval filePath="\$$OPTIND"
-
-start_logging
-[ -n "$DEBUG" ] && msg "\ndb - start logging\n"
-RES_DIR="$BASE_DIR/resources/$MODE"
-if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
-	msg "To build from source use ${B}-s${NC} option\n"
-fi
-msg "For help use '${B}./OC-tool -h${NC}'\n"
-
-[ -z "$UPDATE" ] && check_tool_for_updates
-rm -rf "$INPUT"
 if [ -p /dev/stdin ]; then # data was piped
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST.tmp"
@@ -1903,6 +1885,21 @@ if [ -p /dev/stdin ]; then # data was piped
 	TEXT="" # no TUI use either with piped config.plist
 	filePath="stdin"
 else  #  no input found on stdin
+	eval filePath="\$$OPTIND"
+	TTY_OUT=$(tty)
+fi
+
+start_logging
+if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
+RES_DIR="$BASE_DIR/resources/$MODE"
+if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
+	msg "To build from source use ${B}-s${NC} option\n"
+fi
+msg "For help use '${B}./OC-tool -h${NC}'\n"
+
+if [ -z "$UPDATE" ]; then check_tool_for_updates;fi
+if [ "$filePath" != "stdin" ]; then
+	rm -rf "$INPUT"
 	if [ -e "$filePath" ]; then
 		EX_COM="${EX_COM} ${filePath}"
 		EX_EDIT="${EX_EDIT} ${filePath}"
@@ -1919,7 +1916,7 @@ else  #  no input found on stdin
 	mkdir -p "$INPUT"
 	cp "${filePath}" "$CONFIG_PLIST.tmp"
 fi
-[ -n "$DEBUG" ] && msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"
+if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
 HAS_PLUTIL=""
 command -v "plutil" || HAS_PLUTIL="false"
@@ -1947,18 +1944,18 @@ fi
 load_edit_text
 msg "Using ${filePath}\n"
 
-[ -n "$DEBUG" ] && msg "\ndb -loaded edit text\n"
-[ -n "$REMOVE_RES" ] && rm -rf "$RES_DIR"
+if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
+if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
 
 if [ -z "$UPDATE" ]; then
-	[ "$MODE" = "latestSource" ] && check_lilu_for_updates
-	[ "$MODE" != "prebuiltRelease" ] && check_resources_for_updates
+	if [ "$MODE" = "latestSource" ]; then check_lilu_for_updates; fi
+	if [ "$MODE" != "prebuiltRelease" ]; then check_resources_for_updates; fi
 fi
-[ -n "$REMOVE_RES" ] && remove_resource_msg #show warning in tool.log also
-[ "$MODE" = "latestSource" ] && check_requirements
-[ -n "$DEBUG" ] && msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"
+if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
+if [ "$MODE" = "latestSource" ]; then check_requirements; fi
+if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
 
 init_res_array
 
@@ -2011,11 +2008,11 @@ fi
 [ "$TEXT" = "stop" ] && exit 0 # save and quit
 
 prepare_resources
-[ -n "$DEBUG" ] && msg "\ndb - prepare_resources ... done\n"
+if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
 set_up_dest_dir
 copy_resources
 
-[ "$MODE" = "latestSource" ] && check_if_Sample_plist_updated
+if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
 if [ "$USE_VAULT" = "true" ];then
 	build_vault||vault_failed
 fi

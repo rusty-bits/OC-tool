@@ -1,0 +1,8 @@
+ACPI > Add|
+Kernel > Add|
+UEFI > Drivers|
+Misc > Tools|
+ACPI > Quirks|
+Kernel > Quirks|
+UEFI > Quirks|
+Booter > Quirks|
