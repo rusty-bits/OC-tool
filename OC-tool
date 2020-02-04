@@ -622,7 +622,7 @@ find_srce_url() {
 	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$MODE" = "latestSource" ]; then
 		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		[ -z "$git_url" ] && git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		if [ -z "$git_url" ]; then git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"'); fi
 	else
 		if [ -z "$parent" ]; then
 			git_url=$(grep "/$res_name/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
@@ -634,6 +634,7 @@ find_srce_url() {
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	find_srce_url
+	if [ -n "$DEBUG" ]; then msg "db - found srce $enabled val $val key $key res_name $res_name\n"; fi
 	if [ "$dest" != "OC/ACPI" ];then
 		if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 			srce=""
@@ -713,7 +714,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		eval "res0$S=\$line\|true"
 		if [ "$MODE" = "latestSource" ]; then
 				get_res "0$S"
-				[ "$res_name" = "base" ] && res_name="$git_url"
+				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
 				add_res_array
 				res_name="base"
 				set_res "0$S"
@@ -1105,12 +1106,13 @@ load_edit_text() {
 	do
 		eval "res10$num=\$line"
 		get_edit_res "$num"
+		if [ -n "$DEBUG" ]; then msg "db - loading $type $key\n"; fi
 		if [ "$type" = "integer" ]; then
 			val=$(printf "%d" "$val") # if hex, make decimal
 			set_edit_res "$num"
 		fi
-		[ "$key" = "RequireVault" ] && USE_VAULT_NUM="$num"
-		[ "$key" = "RequireSignature" ] && USE_SIG_NUM="$num"
+		if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
+		if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
 		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
 			val="false"
 			IGNORE_BOOL=""
@@ -1137,17 +1139,19 @@ load_edit_text() {
 			esac
 			if [ "$G" -gt "0" ]; then
 				res_name="${key% ?}"
-				[ -n "$DEBUG" ] && msg "db - enabled $enabled val $val key $key res_name $res_name\n"
 				enabled="$num"; S="$((L2-1))"
+				if [ -n "$DEBUG" ]; then msg "db - prep $enabled val $val key $key res_name $res_name\n"; fi
 				add_res_array
+				if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
 				if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
 					key="$key +"; val="$val +"
 					set_edit_res "$num"
 				fi
+				if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
 			fi
 		fi
 		num=$((num+1))
-		[ -n "$DEBUG" ] && msg "db - loaded $res_name\n"
+		if [ -n "$DEBUG" ]; then msg "db - loaded $type $key\n"; fi
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	eval G1_START="\$ACPIAdd_START"
