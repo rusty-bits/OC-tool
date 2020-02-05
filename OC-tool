@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.1(040220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.1(050220) last checked with OpenCore version REL-055-2020-02-01"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -29,7 +29,7 @@ INV='\033[7m'
 
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
-EX_COM=$0' -i'; EX_EDIT=$0' -it'; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
+INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 
@@ -521,7 +521,7 @@ res_not_found() {
 		msg "\t$1 file not found in extras directory\n"
 		msg "\tEither place $1 in extras directory to build EFI with $1\n"
 		msg "\tor run with -i option to build EFI without $1\n"
-		msg "\tfor example, try '$EX_COM'\n"
+		msg "\tfor example, try '$INIT_COM -i$EX_COM'\n"
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON or extras directory - ${YEL}IGNORING${NC}\n"
@@ -777,7 +777,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 					get_edit_res "$num"
 				fi
 			done
-			[ "$key" = "$val" ] && srch="$type" # found standalone val
+			if [ "$key" = "$val" ]; then srch="$type"; fi # found standalone val
 			while [ "${line%%>*}" != "<$srch" ] # find plist line with key
 			do
 				echo "$line" >> "$OUT"
@@ -800,7 +800,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 						echo "<$val/>" >> "$OUT";;
 					"string"|"integer"|"data")
 						read -r line
-						[ "${line#*</}" = "real>" ] && line="${line%real>}integer>"
+						if [ "${line#*</}" = "real>" ]; then line="${line%real>}integer>"; fi
 						while [ "${line#*</}" != "${type}>" ]
 						do
 							read -r line
@@ -1166,6 +1166,18 @@ get_edit_res() {
 	type="${key%%|*}"; key="${key#*|}"
 	val=${key%%|*}; key="${key#*|}"
 	en="${key##* }"
+}
+
+get_config_txt_res() {
+	val="$1"
+	section="${val%%|*}"; val="${val#*|}"
+	sub1="${val%%|*}"; val="${val#*|}"
+	sub2="${val%%|*}"; val="${val#*|}"
+	array="${val%%|*}"; val="${val#*|}"
+	item="${val%%|*}"; val="${val#*|}"
+	type=${val%%|*}; val="${val#*|}"
+	key="${val%%|*}"; val="${val#*\"}"
+	val="${val%\"*}"
 }
 
 set_edit_res() {
@@ -1786,19 +1798,96 @@ remove_resource_msg() {
 	msg " ${RED}*** ${NC}compile time, in many cases requiring all tools to be rebuilt.\n"
 	msg " ${RED}*********************************************************************${NC}\n"
 }
+set_up_vault() {
+	if [ -n "$USE_VAULT_NUM" ]; then
+		get_edit_res "$USE_VAULT_NUM"
+		USE_VAULT="$val"
+	fi
+	if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
+		get_edit_res "$USE_SIG_NUM"
+		USE_VAULT="$val"
+	fi
+
+	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
+		if [ "$USE_VAULT" = "true" ]; then
+			USE_VAULT="false"
+			CONFIG_CHANGED="temp vault disable"
+			get_edit_res "$USE_VAULT_NUM"
+			val="false"
+			set_edit_res "$USE_VAULT_NUM"
+			get_edit_res "$USE_SIG_NUM"
+			val="false"
+			set_edit_res "$USE_SIG_NUM"
+			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
+			msg "\tvault disabled for prebuilts not made on macOS\n"
+		fi
+	fi
+}
 
 bad_config() {
 	if [ -z "$IGNORE" ]; then
 		msg "\n${RED}ERROR:${NC} problem found in config.plist file\n"
 		msg "\tSee $LOGFILE for details\n\n"
 		msg "\tIf you want to try fixing the error with OC-tool, you can use the -it options\n"
-		msg "\ttry using '$EX_EDIT'\n\n"
+		msg "\ttry using '$INIT_COM -it$EX_COM'\n\n"
 		exit 1
 	else
 		msg "\n${YEL}WARNING:${NC} problem found in config.plist file --- ${YEL}IGNORING${NC}\n"
 		msg "\tMake sure to fix the error before using the EFI\n"
 		msg "\t${YEL}###############################################${NC}\n\n"
 	fi
+}
+
+process_plist() {
+	HAS_PLUTIL=""
+	command -v "plutil" || HAS_PLUTIL="false"
+	if [ -z "$HAS_PLUTIL" ]; then
+		msg "\n${GRN}Checking config.plist${NC} ... "
+		plutil "$CONFIG_PLIST.tmp" || bad_config
+		fin
+	fi
+
+	cd "$INPUT"
+	cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+	tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
+	tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
+	rm config.plist.tmp
+	rm sample.plist.tmp
+	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
+	"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
+
+	grep "Quirks" sample.plist.txt > sampleQuirks
+	while read -r line
+	do
+		grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
+	done < sampleQuirks
+
+	if [ -e "missing" ]; then
+		msg "\n${YEL}NOTE:${NC}\tfound quirks missing from config.plist\n\n"
+		if [ -z "$TEXT" ]; then
+			while read -r line
+			do
+				Q="$line"
+				get_config_txt_res "$Q"
+				msg "\t$section > $sub1 > $key\n"
+			done < missing
+			msg "\n\tUse the -t option to select and add them.\n"
+			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		fi
+	fi
+
+	"$TOOL_FILES/parsePlistEdit.sh"
+
+	if [ ! -e "edit_subs.txt" ]; then
+		msg "\n${RED}ERROR:${NC} ${filePath} does not appear to be an OpenCore plist\n"
+		msg "\tIf you don't have an OpenCore plist you can start with the sample provided\n"
+		msg "\tby the acidanthera team.  You can copy the sample to your INPUT directory\n"
+		msg "\tby using this command, but be aware if a config.plist already exists in\n"
+		msg "\tthe INPUT directory it will be replaced.\n\n"
+		msg "\t${B}cp ./Docs/Sample.plist ./INPUT/config.plist${NC}\n"
+		exit 1
+	fi
+	if [ -e "errors.txt" ]; then CONFIG_CHANGED="input scan"; fi
 }
 
 #****** Start build ***************
@@ -1816,7 +1905,6 @@ while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
 		d)
 			MODE="prebuiltDaily"
-			EX_EDIT="${EX_EDIT}d"
 			EX_COM="${EX_COM}d";;
 		h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
@@ -1825,27 +1913,22 @@ case "${optchar}" in
 			IGNORE="true";;
 		n)
 			UPDATE="false"
-			EX_EDIT="${EX_EDIT}n"
 			EX_COM="${EX_COM}n";;
 		o)
 			FINDER="open"
-			EX_EDIT="${EX_EDIT}o"
 			EX_COM="${EX_COM}o";;
 		q)
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
 		r)
 			TYPE="release"
-			EX_EDIT="${EX_EDIT}r"
 			EX_COM="${EX_COM}r";;
 		s)
 			MODE="latestSource"
-			EX_EDIT="${EX_EDIT}s"
 			EX_COM="${EX_COM}s";;
 		v)
 			VERBOSE="-v"
-			EX_COM="${EX_COM}v"
-			EX_EDIT="${EX_EDIT}v";;
+			EX_COM="${EX_COM}v";;
 		t)
 			if [ "$filePath" = "stdin" ]; then
 				msg "TUI mode unavailable when plist is piped to stdin\n"
@@ -1910,7 +1993,6 @@ else
 	eval filePath="\$$OPTIND"
 	if [ -e "$filePath" ]; then
 		EX_COM="${EX_COM} ${filePath}"
-		EX_EDIT="${EX_EDIT} ${filePath}"
 	else
 		if [ -n "${filePath}" ]; then
 			msg "config.plist file '${filePath}' not found\n"
@@ -1926,29 +2008,7 @@ else
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 
-HAS_PLUTIL=""
-command -v "plutil" || HAS_PLUTIL="false"
-if [ -z "$HAS_PLUTIL" ]; then
-	msg "\n${GRN}Checking config.plist${NC} ... "
-	plutil "$CONFIG_PLIST.tmp" || bad_config
-	fin
-fi
-
-cd "$INPUT"
-tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
-rm config.plist.tmp
-"$TOOL_FILES/parsePlist.sh" "config.plist"
-
-if [ ! -e "edit_subs.txt" ]; then
-	msg "\n${RED}ERROR:${NC} ${filePath} does not appear to be an OpenCore plist\n"
-	msg "\tIf you don't have an OpenCore plist you can start with the sample provided\n"
-	msg "\tby the acidanthera team.  You can copy the sample to your INPUT directory\n"
-	msg "\tby using this command, but be aware if a config.plist already exists in\n"
-	msg "\tthe INPUT directory it will be replaced.\n\n"
-	msg "\t${B}cp ./Docs/Sample.plist ./INPUT/config.plist${NC}\n"
-	exit 1
-fi
-
+process_plist
 load_edit_text
 msg "Using ${filePath}\n"
 
@@ -1979,29 +2039,8 @@ if [ "$TEXT" = "quit" ];then # quit without saving changes
 	msg "\nOC-tool quit by user.\n"
 	exit 0
 fi
-if [ -n "$USE_VAULT_NUM" ]; then
-	get_edit_res "$USE_VAULT_NUM"
-	USE_VAULT="$val"
-fi
-if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
-	get_edit_res "$USE_SIG_NUM"
-	USE_VAULT="$val"
-fi
 
-if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
-	if [ "$USE_VAULT" = "true" ]; then
-		USE_VAULT="false"
-		CONFIG_CHANGED="temp vault disable"
-		get_edit_res "$USE_VAULT_NUM"
-		val="false"
-		set_edit_res "$USE_VAULT_NUM"
-		get_edit_res "$USE_SIG_NUM"
-		val="false"
-		set_edit_res "$USE_SIG_NUM"
-		msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
-		msg "\tvault disabled for prebuilts not made on macOS\n"
-	fi
-fi
+set_up_vault
 
 if [ -n "$CONFIG_CHANGED" ]; then
 	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
@@ -2013,7 +2052,7 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	srce="$BASE_DIR/INPUT"
 	set_res "0$G0_NUM"
 fi
-[ "$TEXT" = "stop" ] && exit 0 # save and quit
+if [ "$TEXT" = "stop" ]; then  exit 0; fi # save and quit
 
 prepare_resources
 if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
@@ -2029,13 +2068,14 @@ msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
 	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
-	msg "\tthe modified config.plist has been placed in $BASE_DIR/INPUT\n"
+	msg "\tthe modified config.plist has also been saved in $BASE_DIR/INPUT\n"
 	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n\n"
 fi
 if [ -e "$INPUT/errors.txt" ]; then
-	msg "${YEL}WARNING:${NC} errors were found in $filePath\n\n"
+	msg "${YEL}NOTICE:${NC} errors were found in $filePath\n"
+	msg "\tSome may have been repaired by the input scan.\n\n"
 	msg "$(cat "$INPUT/errors.txt")"
-	msg "\n\nThese errors may need to be addressed before booting\n"
+	msg "\n\nAny error that could not be repaied may need to be addressed before booting\n"
 fi
 stop_logging
 
