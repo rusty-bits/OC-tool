@@ -3,13 +3,10 @@
 # turn config.plist into config.plist.txt for fast grep selection and editing
 # make edit_text.txt from config.plist.txt for fast plist edit screen drawing
 
-WROTE_KEY=""
 section=""
 array=""
 item=""
-ds="" # can dict being zero at end of dict be used instead?
 line_num=0
-dict=0
 L0=0
 C0=""
 P=0
@@ -52,11 +49,12 @@ get_next() {
 }
 
 write_out() {
+	if [ -n "$array" ]; then ar="A"; else ar="X"; fi
 	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
 	if [ "$P" -lt "5" ]; then
-		echo "$L0|$L1|$L2|$L3|||$1 " >> edit_text.tmp
+		echo "$L0|$L1|$L2|$L3|$ar|||$1 " >> edit_text.tmp
 	else
-		echo "$L0|$L1|$L2|$L3|$type|$val|$1" >> edit_text.tmp
+		echo "$L0|$L1|$L2|$L3|$ar|$type|$val|$1" >> edit_text.tmp
 	fi
 }
 
@@ -108,9 +106,12 @@ get_res() {
 
 while read -r line; do
 	get_res
-	WRITTEN=""
 	line_num=$((line_num+1))
-	if [ "$section" != "PLIST" ]; then msg; fi
+	if [ "$section" = "PLIST" ]; then
+		echo "0|0|0|0|X|||$sub1" >> edit_text.tmp
+	else
+		msg
+	fi
 done < config.plist.txt
 
 if [ -e "edit_subs.txt" ]; then

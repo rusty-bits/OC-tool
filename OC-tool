@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.1(050220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.1(060220) last checked with OpenCore version REL-055-2020-02-01"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -756,6 +756,70 @@ print_res_array() { # debug aid to list psuedo array
 	done
 }
 
+test_write_new_conf2() {
+	OUT="$BASE_DIR/INPUT/modified.config.plist"
+	msg "\033[J\nWriting new config.plist to $OUT ... "
+	rm -rf "$OUT"
+	num="0"; S0="0"; S1="0"; S2="0"; S3="0" # type val key
+	A3=""; D3=""
+	while [ "$num" -le "$G10_NUM" ]
+	do
+		get_edit_res "$num"
+		if [ "$L0" -eq "0" ]; then
+			echo "$key" >> "$OUT"
+		elif [ -z "$skip" ]; then
+			if [ "$S0" -ne "$L0" ]; then # new section, always a dict
+				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
+				if [ "$S1" -ne "0" ]; then
+					if [ -n "$A3" ]; then
+						echo "</array>" >> "$OUT"; A3=""
+					else
+						echo "</dict>" >> "$OUT"
+					fi
+				fi
+				if [ "$S0" -ne "0" ]; then echo "</dict>" >> "$OUT"; fi
+				echo "<key>$key</key>\n<dict>" >> "$OUT"
+				S0="$L0"; S1="0"; S2="0"; S3="0"
+			fi
+			if [ "$S1" -ne "$L1" ]; then # new item in L0
+				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
+				if [ "$S1" -ne "0" ]; then
+					if [ -n "$A3" ]; then
+						echo "</array>" >> "$OUT"; A3=""
+					else
+						echo "</dict>" >> "$OUT"
+					fi
+				fi
+				echo "<key>$key</key>" >> "$OUT"
+				if [ "$AR" = "A" ]; then
+					echo "<array>" >> "$OUT"
+					A3="y"
+				else
+					echo "<dict>" >> "$OUT"
+				fi
+				S1="$L1"; S2="0"; S3="0"
+			fi
+			if [ "$S2" -ne "$L2" ]; then
+				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
+				if [ -z "$type" ]; then
+					if [ -z "$AR" ]; then echo "<key>$key</key>" >> "$OUT"; fi
+					echo "<dict>" >> "$OUT"; D3="y"
+				fi
+				S2="$L2"
+			fi
+			if [ -n "$type" ]; then
+				if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi
+				if [ "$type" = "bool" ]; then
+					echo "<$val/>" >> "$OUT"
+				else
+					echo "<$type>$val</$type>" >> "$OUT"
+				fi
+			fi
+		fi
+		num=$((num+1))
+	done
+}
+
 write_new_conf() { # write new config.plist based on changes in psuedo array
 	OUT="$BASE_DIR/INPUT/modified.config.plist"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
@@ -765,6 +829,12 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 	get_edit_res "$num"
 	while read -r line
 	do
+		while [ "$L0" = "0" ]
+		do
+			num=$((num+1))
+			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
+			get_edit_res "$num"
+		done
 		if [ -n "$done" ]; then
 			echo "$line" >> "$OUT"
 		else
@@ -772,7 +842,7 @@ write_new_conf() { # write new config.plist based on changes in psuedo array
 			do
 				if [ "$type" = "string" ]; then # driver handle
 					driver="true"; break
-				else
+				else # skip, it's only a handle for the plist display
 					num=$((num+1))
 					get_edit_res "$num"
 				fi
@@ -1098,52 +1168,54 @@ load_edit_text() {
 	do
 		eval "res10$num=\$line"
 		get_edit_res "$num"
-		if [ -n "$DEBUG" ]; then msg "db - loading $type $key\n"; fi
-		if [ "$type" = "integer" ]; then
-			val=$(printf "%d" "$val") # if hex, make decimal
-			set_edit_res "$num"
-		fi
-		if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
-		if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
-		if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
-			val="false"
-			IGNORE_BOOL=""
-			set_edit_res "$num"
-		fi
-		if [ "$A0" -ne "$L0" ]; then
-			SEC="$key"; SUB=""
-			A0="$L0"; A1="0"; A2="0"
-		elif [ "$A1" -ne "$L1" ]; then
-			SUB="$key"; A1="$L1"; A2="0"
-			eval "$SEC${SUB}"_START=\"$num\"
-		elif [ "$A2" -ne "$L2" ]; then
-			A2="$L2"
-			G=0
-			case "$SEC$SUB" in
-				"ACPIAdd")
-					G=1; G1_NUM=$((G1_NUM+1)); dest="OC/ACPI";;
-				"KernelAdd")
-					G=2; G2_NUM=$((G2_NUM+1)); dest="OC/Kexts";;
-				"UEFIDrivers")
-					G=3; G3_NUM=$((G3_NUM+1)); dest="OC/Drivers";;
-				"MiscTools")
-					G=4; G4_NUM=$((G4_NUM+1)); dest="OC/Tools";;
-			esac
-			if [ "$G" -gt "0" ]; then
-				res_name="${key% ?}"
-				enabled="$num"; S="$((L2-1))"
-				if [ -n "$DEBUG" ]; then msg "db - prep $enabled val $val key $key res_name $res_name\n"; fi
-				add_res_array
-				if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
-				if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
-					key="$key +"; val="$val +"
-					set_edit_res "$num"
-				fi
-				if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
+		if [ "$L0" != "PLIST" ]; then
+			if [ -n "$DEBUG" ]; then msg "db - loading $type $key\n"; fi
+			if [ "$type" = "integer" ]; then
+				val=$(printf "%d" "$val") # if hex, make decimal
+				set_edit_res "$num"
 			fi
+			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
+			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
+			if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
+				val="false"
+				IGNORE_BOOL=""
+				set_edit_res "$num"
+			fi
+			if [ "$A0" -ne "$L0" ]; then
+				SEC="$key"; SUB=""
+				A0="$L0"; A1="0"; A2="0"
+			elif [ "$A1" -ne "$L1" ]; then
+				SUB="$key"; A1="$L1"; A2="0"
+				eval "$SEC${SUB}"_START=\"$num\"
+			elif [ "$A2" -ne "$L2" ]; then
+				A2="$L2"
+				G=0
+				case "$SEC$SUB" in
+					"ACPIAdd")
+						G=1; G1_NUM=$((G1_NUM+1)); dest="OC/ACPI";;
+					"KernelAdd")
+						G=2; G2_NUM=$((G2_NUM+1)); dest="OC/Kexts";;
+					"UEFIDrivers")
+						G=3; G3_NUM=$((G3_NUM+1)); dest="OC/Drivers";;
+					"MiscTools")
+						G=4; G4_NUM=$((G4_NUM+1)); dest="OC/Tools";;
+				esac
+				if [ "$G" -gt "0" ]; then
+					res_name="${key% ?}"
+					enabled="$num"; S="$((L2-1))"
+					if [ -n "$DEBUG" ]; then msg "db - prep $enabled val $val key $key res_name $res_name\n"; fi
+					add_res_array
+					if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
+					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
+						key="$key +"; val="$val +"
+						set_edit_res "$num"
+					fi
+					if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
+				fi
+			fi
+			num=$((num+1))
+			if [ -n "$DEBUG" ]; then msg "db - loaded $type $key\n"; fi
 		fi
-		num=$((num+1))
-		if [ -n "$DEBUG" ]; then msg "db - loaded $type $key\n"; fi
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	eval G1_START="\$ACPIAdd_START"
@@ -1158,30 +1230,33 @@ load_edit_text() {
 }
 
 get_edit_res() {
+	skip=""
 	eval key="\$res10$1"
 	L0="${key%%|*}"; key="${key#*|}"
 	L1="${key%%|*}"; key="${key#*|}"
 	L2="${key%%|*}"; key="${key#*|}"
 	L3="${key%%|*}"; key="${key#*|}"
+	AR="${key%%|*}"; key="${key#*|}"
 	type="${key%%|*}"; key="${key#*|}"
 	val=${key%%|*}; key="${key#*|}"
 	en="${key##* }"
+	if [ "$en" != "$key" ] && [ -z "$val" ]; then skip="y"; fi
 }
 
 get_config_txt_res() {
-	val="$1"
-	section="${val%%|*}"; val="${val#*|}"
-	sub1="${val%%|*}"; val="${val#*|}"
-	sub2="${val%%|*}"; val="${val#*|}"
-	array="${val%%|*}"; val="${val#*|}"
-	item="${val%%|*}"; val="${val#*|}"
-	type=${val%%|*}; val="${val#*|}"
-	key="${val%%|*}"; val="${val#*\"}"
-	val="${val%\"*}"
+	t_val="$1"
+	t_section="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_array="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_item="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_type="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
+	t_val="${t_val%\"*}"
 }
 
 set_edit_res() {
-	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$type\|\$val\|\$key\"
+	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$AR\|\$type\|\$val\|\$key\"
 }
 
 split_val() {
@@ -1410,31 +1485,33 @@ draw_edit_text() {
 	do
 		e_text=""
 		get_edit_res "$num"; e_val="$val"
-		if [ "$L1" -eq "0" ]; then
-			[ "$L0" -eq "$S0" ] && selected="true"
-			e_text="$e_text"; draw_edit_key
-			[ "$level" -eq "0" ] && LLEN=$L0
-		elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
-			[ "$L1" -eq "$S1" ] && selected="true"
-			e_text="    $e_text"; draw_edit_key
-			[ "$level" -eq "1" ] && LLEN=$L1
-		elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
-			[ "$L2" -eq "$S2" ] && selected="true"
-			e_text="        $e_text"; draw_edit_key
-			[ "$level" -eq "2" ] && LLEN=$L2
-		elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
-			[ "$L3" -eq "$S3" ] && selected="true"
-			e_text="            $e_text"; draw_edit_key
-			[ "$level" -eq "3" ] && LLEN=$L3
-		fi
-		if [ -n "$has_higher_level" ]; then
-			if [ "$EDIT_RES_NUM" -eq "$num" ]; then
-				data_field="1"
-				edit_val
-				set_edit_res "$num"
+		if [ "$L0" -ne "0" ]; then
+			if [ "$L1" -eq "0" ]; then
+				[ "$L0" -eq "$S0" ] && selected="true"
+				e_text="$e_text"; draw_edit_key
+				[ "$level" -eq "0" ] && LLEN=$L0
+			elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
+				[ "$L1" -eq "$S1" ] && selected="true"
+				e_text="    $e_text"; draw_edit_key
+				[ "$level" -eq "1" ] && LLEN=$L1
+			elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
+				[ "$L2" -eq "$S2" ] && selected="true"
+				e_text="        $e_text"; draw_edit_key
+				[ "$level" -eq "2" ] && LLEN=$L2
+			elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
+				[ "$L3" -eq "$S3" ] && selected="true"
+				e_text="            $e_text"; draw_edit_key
+				[ "$level" -eq "3" ] && LLEN=$L3
+			fi
+			if [ -n "$has_higher_level" ]; then
+				if [ "$EDIT_RES_NUM" -eq "$num" ]; then
+					data_field="1"
+					edit_val
+					set_edit_res "$num"
+				fi
 			fi
 		fi
-	num=$((num+1))
+		num=$((num+1))
 	done
 	for n in $(seq $((S+1)) $((R-4)))
 	do
@@ -1855,7 +1932,6 @@ process_plist() {
 	rm sample.plist.tmp
 	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
 	"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
-
 	grep "Quirks" sample.plist.txt > sampleQuirks
 	while read -r line
 	do
@@ -1869,10 +1945,12 @@ process_plist() {
 			do
 				Q="$line"
 				get_config_txt_res "$Q"
-				msg "\t$section > $sub1 > $key\n"
+				msg "\t$t_section > $t_sub1 > $t_key\n"
 			done < missing
-			msg "\n\tUse the -t option to select and add them.\n"
-			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
+			msg "\tif you wish to add missing quirks.\n\n"
+#			msg "\n\tUse the -t option to select and add them.\n"
+#			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
 		fi
 	fi
 
@@ -2007,7 +2085,6 @@ else
 	cp "${filePath}" "$CONFIG_PLIST.tmp"
 fi
 if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
-
 process_plist
 load_edit_text
 msg "Using ${filePath}\n"
@@ -2045,6 +2122,7 @@ set_up_vault
 if [ -n "$CONFIG_CHANGED" ]; then
 	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
+
 	if [ -z "$HAS_PLUTIL" ]; then
 		plutil -convert xml1 "$OUT"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
 	fi
