@@ -1,0 +1,8 @@
+|Quirks|
+UEFI|Output|
+PlatformInfo
+Protocols
+Misc|Boot|
+Misc|Debug|
+Misc|Security|
+NVRAM|

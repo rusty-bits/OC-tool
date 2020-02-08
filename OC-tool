@@ -1704,20 +1704,25 @@ text_user_interface() {
 	msg "$(tput smcup)"
 	msg "$(tput civis)"
 	stty -echo
-	G=1; S=0
+	S=0
 	level=0; S0=1; S1=0; S2=0; S3=0
-	draw_screen
-	get_res "$G$S"
-	get_edit_res "$enabled"
-	if [ "$en" = "+" ]; then
-		val="true"
-	elif [ "$en" = "-" ]; then
-		val="false"
-	elif [ "$en" = "i" ]; then
-		val="ignored"
+	if [ "$TUI_MODE" = "pre"  ]; then
+		G="10"
+	else
+		G=1
+		draw_screen
+		get_res "$G$S"
+		get_edit_res "$enabled"
+		if [ "$en" = "+" ]; then
+			val="true"
+		elif [ "$en" = "-" ]; then
+			val="false"
+		elif [ "$en" = "i" ]; then
+			val="ignored"
+		fi
+		set_ROW_COL; set_color
+		select_MSG
 	fi
-	set_ROW_COL; set_color
-	select_MSG
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
@@ -1761,11 +1766,13 @@ text_user_interface() {
 			q)
 				stty echo
 				CHAR='g'
-				TEXT="quit";;
+#				TEXT="quit";;
+				TUI_MODE='quit';;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
-				TEXT='stop';;
+#				TEXT='stop';;
+				TUI_MODE='stop';;
 			*)
 				if [ "$G" -lt 10 ]; then
 					case "$CHAR" in # key press actions for summary screen
@@ -2019,57 +2026,90 @@ process_plist() {
 	fin
 
 	msg "Checking for missing fields ... "
-	grep "Quirks" sample.plist.txt > sampleQuirks
-	grep "PlatformInfo" sample.plist.txt >> sampleQuirks
-	grep "Protocols" sample.plist.txt >> sampleQuirks
+	while read -r line
+	do
+		grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
+	done < "$TOOL_FILES/miss_extra"
 	while read -r line
 	do
 		grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
 	done < sampleQuirks
 
+	num=0
 	if [ -e "missing" ]; then
+		res100="1|0|0|0||||MISSING: ${GRN}green+${NC} will be added, ${RED}red-${NC} will be left alone"
 		msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
 		while read -r line
 		do
-			Q="$line"
-			get_config_txt_res "$Q"
-			msg "\t$t_section > $t_sub1 > $t_key\n"
+			num=$((num+1))
+			get_config_txt_res "$line"
+			field="$t_section > $t_sub1 > $t_key"
+			msg "\t$field\n"
+			eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
 		done < missing
-		if [ -z "$TEXT" ]; then
+		if [ -n "TUI_MODE" ]; then
 			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
 			msg "\tif you wish to add missing fields.\n\n"
 #			msg "\n\tUse the -t option to select and add them.\n"
 #			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		else
+			fin
 		fi
-	else
-		fin
 	fi
 
 	msg "Checking for extra fields ... "
-	grep "Quirks" config.plist.txt > configQuirks
-	grep "PlatformInfo" config.plist.txt >> configQuirks
-	grep "Protocols" config.plist.txt >> configQuirks
+	while read -r line
+	do
+		grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
+	done < "$TOOL_FILES/miss_extra"
 	while read -r line
 	do
 		grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
 	done < configQuirks
 
+	num=$((num+1))
+
 	if [ -e "extra" ]; then
+		ex_num="0"
+		field="EXTRA - ${RED}red-${NC} will be removed, ${GRN}green+${NC} will be left alone"
+		eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
 		msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
 		while read -r line
 		do
-			Q="$line"
-			get_config_txt_res "$Q"
-			msg "\t$t_section > $t_sub1 > $t_key\n"
+			num=$((num+1))
+			ex_num=$((ex_num+1))
+			get_config_txt_res "$line"
+			field="$t_section > $t_sub1 > $t_key"
+			msg "\t$field\n"
+			eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
 		done < extra
-		if [ -z "$TEXT" ]; then
+		if [ -n "TUI_MODE" ]; then
 			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
 			msg "\tif you wish to remove extra fields.\n\n"
 #			msg "\n\tUse the -t option to select and add them.\n"
 #			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		else
+			fin
 		fi
-	else
-		fin
+	fi
+
+#	if [ -n "$TUI_MODE" ]; then
+	if [ -n "" ]; then
+		if [ -e "missing" ] || [ -e "extra" ]; then
+			msg "Entering TUI to select missing/extra fields ... "
+			TUI_MODE="pre"
+			G10_NUM="$num"
+			text_user_interface
+			msg "\033[J\n" # cleanup for TERM types that don't buffer
+			msg "$(tput cnorm)"
+			msg "$(tput rmcup)"
+			msg "${GRN}done${NC}\n"
+			if [ "$TUI_MODE" = "quit" ]; then
+				msg "\nQuit by user.\n"
+				exit 0
+			fi
+			TUI_MODE="summary"
+		fi
 	fi
 
 	"$TOOL_FILES/parsePlistEdit.sh"
@@ -2089,7 +2129,8 @@ process_plist() {
 #****** Start build ***************
 if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
-	TEXT="" # no TUI use either with piped config.plist
+#	TEXT="" # no TUI use either with piped config.plist
+	TUI_MODE=""
 	filePath="stdin"
 else  #  no input found on stdin
 	TTY_OUT=$(tty)
@@ -2139,7 +2180,7 @@ case "${optchar}" in
 					msg "\twritten over because of the smaller size\n"
 					exit 0
 				fi
-				TEXT="true"
+#				TEXT="true"
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}t";;
@@ -2149,7 +2190,7 @@ case "${optchar}" in
 			if [ "$filePath" = "stdin" ]; then
 				msg "TUI override is not available when plist is piped to stdin\n"
 			else
-				TEXT="true"
+#				TEXT="true"
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}T";;
@@ -2222,7 +2263,7 @@ if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
 
 init_res_array
 
-if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
+if [ -n "$TUI_MODE" ] && [ -z "$QUIET" ]; then
 	msg "\nSwitching to TUI ... "
 	text_user_interface
 	msg "\033[J\n" # cleanup for TERM types that don't buffer
@@ -2230,7 +2271,7 @@ if [ -n "$TEXT" ] && [ -z "$QUIET" ]; then
 	msg "$(tput rmcup)"
 	msg "${GRN}done in TUI${NC}\n"
 fi
-if [ "$TEXT" = "quit" ];then # quit without saving changes
+if [ "$TUI_MODE" = "quit" ];then # quit without saving changes
 	msg "\nOC-tool quit by user.\n"
 	exit 0
 fi
@@ -2248,7 +2289,7 @@ if [ -n "$CONFIG_CHANGED" ]; then
 	srce="$BASE_DIR/INPUT"
 	set_res "0$G0_NUM"
 fi
-if [ "$TEXT" = "stop" ]; then  exit 0; fi # save and quit
+if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 
 prepare_resources
 if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
