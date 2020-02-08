@@ -3,7 +3,7 @@
 # turn config.plist into config.plist.txt for fast grep selection and editing
 # make edit_text.txt from config.plist.txt for fast plist edit screen drawing
 IN=$1
-WROTE_KEY=""
+#WROTE_KEY=""
 section=""
 array=""
 item=""
@@ -15,17 +15,17 @@ NC='\033[0m'
 
 msg() {
 	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> "$IN.txt"
-	if [ -z "$WROTE_KEY" ]; then
-		echo "<key>$key</key>" >> "$IN.mod"
-		WROTE_KEY="y"
-	fi
-	if [ "$type" = "bool" ]; then
-		echo "<$val/>" >> "$IN.mod"
-		WRITTEN="y"
-	elif [ -n "$type" ]; then
-		echo "<$type>$val</$type>" >> "$IN.mod"
-		WRITTEN="y"
-	fi
+#	if [ -z "$WROTE_KEY" ]; then
+#		echo "<key>$key</key>" >> "$IN.mod"
+#		WROTE_KEY="y"
+#	fi
+#	if [ "$type" = "bool" ]; then
+#		echo "<$val/>" >> "$IN.mod"
+#		WRITTEN="y"
+#	elif [ -n "$type" ]; then
+#		echo "<$type>$val</$type>" >> "$IN.mod"
+#		WRITTEN="y"
+#	fi
 }
 
 found_split() {
@@ -242,8 +242,8 @@ while read -r line; do
 			echo "PLIST|$line" >> "$IN.txt"
 			;;
 	esac
-	if [ -z "$WRITTEN" ]; then
-		echo "$line" >> "$IN.mod"
-		if [ -n "$key" ]; then WROTE_KEY="y"; fi
-	fi
+#	if [ -z "$WRITTEN" ]; then
+#		echo "$line" >> "$IN.mod"
+#		if [ -n "$key" ]; then WROTE_KEY="y"; fi
+#	fi
 done < "$IN"

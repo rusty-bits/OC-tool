@@ -17,16 +17,28 @@ get_next() {
 	do
 		case $P in
 			0)
-				if [ -n "$sub1" ]; then next=$sub1; fi
+				if [ -n "$sub1" ]; then
+					ar="D"
+					next=$sub1
+				fi
 				P=1;;
 			1)
-				if [ -n "$sub2" ]; then next="$sub2"; fi
+				if [ -n "$sub2" ]; then
+					ar="D"
+					next="$sub2"
+				fi
 				P=2;;
 			2)
-				if [ -n "$array" ]; then next="$array"; fi
+				if [ -n "$array" ]; then
+					ar="A"
+					next="$array"
+				fi
 				P=3;;
 			3)
-				if [ -n "$item" ]; then next="${C0}_${C1}_$item"; fi
+				if [ -n "$item" ]; then
+					ar="A"
+					next="${C0}_${C1}_$item"
+				fi
 				if [ -z "$key" ]; then next="$val"; fi
 				P=4;;
 			4)
@@ -49,7 +61,6 @@ get_next() {
 }
 
 write_out() {
-	if [ -n "$array" ]; then ar="A"; else ar="X"; fi
 	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
 	if [ "$P" -lt "5" ]; then
 		echo "$L0|$L1|$L2|$L3|$ar|||$1 " >> edit_text.tmp
@@ -106,9 +117,10 @@ get_res() {
 
 while read -r line; do
 	get_res
+	ar=""
 	line_num=$((line_num+1))
 	if [ "$section" = "PLIST" ]; then
-		echo "0|0|0|0|X|||$sub1" >> edit_text.tmp
+		echo "0|0|0|0||||$sub1" >> edit_text.tmp
 	else
 		msg
 	fi

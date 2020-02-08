@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.1(060220) last checked with OpenCore version REL-055-2020-02-01"
+VER="3.2(080220) last checked with OpenCore version REL-055-2020-02-07"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -35,6 +35,8 @@ IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 DEBUG=""
+
+ad2stk=""
 
 msg() { #write $1 to screen if not quiet
 	if [ -z "$QUIET" ]; then
@@ -756,71 +758,168 @@ print_res_array() { # debug aid to list psuedo array
 	done
 }
 
-test_write_new_conf2() {
+get_edit_res() {
+	eval key="\$res10$1"
+	L0="${key%%|*}"; key="${key#*|}"
+	L1="${key%%|*}"; key="${key#*|}"
+	L2="${key%%|*}"; key="${key#*|}"
+	L3="${key%%|*}"; key="${key#*|}"
+	AD="${key%%|*}"; key="${key#*|}"
+	type="${key%%|*}"; key="${key#*|}"
+	val=${key%%|*}; key="${key#*|}"
+	en="${key##* }"
+}
+
+pushAD() {
+	ad2stk=$1$ad2stk
+}
+
+popAD() {
+	ad2=${ad2stk#?}
+	ad2=${ad2stk%$ad2}
+	ad2stk=${ad2stk#?}
+}
+
+clearAD2() {
+	while [ -n "$ad2stk" ]
+	do
+		popAD
+		case "$ad2" in
+			"A")
+				echo "</array>" >> "$OUT";;
+			"D")
+				echo "</dict>" >> "$OUT";;
+		esac
+	done
+}
+
+output_element() {
+	if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi # key + value
+	if [ "$type" = "bool" ]; then
+		echo "<$val/>" >> "$OUT"
+	elif [ -n "$type" ]; then
+		if [ "$en" = "$key" ]; then # no + or -
+			echo "<$type>$val</$type>" >> "$OUT"
+		else
+			if [ "$en" = "+" ]; then
+				echo "<$type>${val% ?}</$type>" >> "$OUT"
+			fi
+		fi
+	fi
+}
+
+write_new_conf() {
 	OUT="$BASE_DIR/INPUT/modified.config.plist"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
-	num="0"; S0="0"; S1="0"; S2="0"; S3="0" # type val key
-	A3=""; D3=""
+	num="0"; S0="0"; ad1=""; ad2=""
 	while [ "$num" -le "$G10_NUM" ]
 	do
 		get_edit_res "$num"
 		if [ "$L0" -eq "0" ]; then
+			if [ "$key" = "</plist>" ]; then
+					echo "</dict>" >> "$OUT" # fix later
+				echo "</dict>" >> "$OUT"
+			fi
 			echo "$key" >> "$OUT"
-		elif [ -z "$skip" ]; then
-			if [ "$S0" -ne "$L0" ]; then # new section, always a dict
-				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
-				if [ "$S1" -ne "0" ]; then
-					if [ -n "$A3" ]; then
-						echo "</array>" >> "$OUT"; A3=""
-					else
-						echo "</dict>" >> "$OUT"
-					fi
-				fi
-				if [ "$S0" -ne "0" ]; then echo "</dict>" >> "$OUT"; fi
-				echo "<key>$key</key>\n<dict>" >> "$OUT"
-				S0="$L0"; S1="0"; S2="0"; S3="0"
-			fi
-			if [ "$S1" -ne "$L1" ]; then # new item in L0
-				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
-				if [ "$S1" -ne "0" ]; then
-					if [ -n "$A3" ]; then
-						echo "</array>" >> "$OUT"; A3=""
-					else
-						echo "</dict>" >> "$OUT"
-					fi
-				fi
+		else
+			if [ "$L1" -eq "0" ]; then # new L0
+				clearAD2
+				case "$ad1" in
+					"A")
+						echo "</array>" >> "$OUT";;
+					"D")
+						echo "</dict>" >> "$OUT";;
+				esac
+				ad1=""
+				if [ "$L0" -ne "1" ]; then echo "</dict>" >> "$OUT"; fi
 				echo "<key>$key</key>" >> "$OUT"
-				if [ "$AR" = "A" ]; then
-					echo "<array>" >> "$OUT"
-					A3="y"
-				else
-					echo "<dict>" >> "$OUT"
+				echo "<dict>" >> "$OUT"
+			elif [ "$L2" -eq "0" ]; then # new something at L1
+				clearAD2
+				if [ -z "$type" ]; then # new L1 subsection
+					case "$ad1" in
+						"A")
+							echo "</array>" >> "$OUT";;
+						"D")
+							echo "</dict>" >> "$OUT";;
+					esac
+					ad1=""
+					echo "<key>$key</key>" >> "$OUT"
+					case "$AD" in
+						"A")
+							echo "<array>" >> "$OUT";;
+						"D")
+							echo "<dict>" >> "$OUT";;
+					esac
+					ad1="$AD"
+				else # item not in dict/array
+					case "$ad1" in
+						"A")
+							echo "</array>" >> "$OUT";;
+						"D")
+							echo "</dict>" >> "$OUT";;
+					esac
+					ad1=""
+					output_element
 				fi
-				S1="$L1"; S2="0"; S3="0"
-			fi
-			if [ "$S2" -ne "$L2" ]; then
-				if [ -n "$D3" ]; then echo "</dict>" >> "$OUT"; D3=""; fi
+			elif [ "$L3" -eq "0" ]; then
 				if [ -z "$type" ]; then
-					if [ -z "$AR" ]; then echo "<key>$key</key>" >> "$OUT"; fi
-					echo "<dict>" >> "$OUT"; D3="y"
-				fi
-				S2="$L2"
-			fi
-			if [ -n "$type" ]; then
-				if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi
-				if [ "$type" = "bool" ]; then
-					echo "<$val/>" >> "$OUT"
+					popAD
+					case "$ad2" in
+						"A")
+							echo "</array>" >> "$OUT";;
+						"D")
+							echo "</dict>" >> "$OUT";;
+					esac
+					if [ "$en" != "$key" ]; then
+						echo "<dict>" >> "$OUT"
+						pushAD "D"
+					else
+						echo "<key>$key</key>" >> "$OUT"
+						case "$AD" in
+							"A")
+								echo "<array>" >> "$OUT";;
+							"D")
+								echo "<dict>" >> "$OUT";;
+						esac
+						pushAD "$AD"
+					fi
 				else
-					echo "<$type>$val</$type>" >> "$OUT"
+					while [ -n "$ad2stk" ]
+					do
+						popAD
+						case "$ad2" in
+							"A")
+								echo "</array>" >> "$OUT";;
+							"D")
+								echo "</dict>" >> "$OUT";;
+						esac
+					done
+					output_element
 				fi
+			else
+				if [ -z "$AD" ]; then
+					while [ -n "$ad2stk" ]
+					do
+						popAD
+						case "$ad2" in
+							"A")
+								echo "</array>" >> "$OUT";;
+							"D")
+								echo "</dict>" >> "$OUT";;
+						esac
+					done
+				fi
+				output_element
 			fi
 		fi
 		num=$((num+1))
 	done
+	fin
 }
 
-write_new_conf() { # write new config.plist based on changes in psuedo array
+write_new_conf_OLD() { # write new config.plist based on changes in psuedo array
 	OUT="$BASE_DIR/INPUT/modified.config.plist"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
@@ -1168,7 +1267,7 @@ load_edit_text() {
 	do
 		eval "res10$num=\$line"
 		get_edit_res "$num"
-		if [ "$L0" != "PLIST" ]; then
+		if [ "$L0" -ne "0" ]; then
 			if [ -n "$DEBUG" ]; then msg "db - loading $type $key\n"; fi
 			if [ "$type" = "integer" ]; then
 				val=$(printf "%d" "$val") # if hex, make decimal
@@ -1213,9 +1312,9 @@ load_edit_text() {
 					if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
 				fi
 			fi
-			num=$((num+1))
 			if [ -n "$DEBUG" ]; then msg "db - loaded $type $key\n"; fi
 		fi
+		num=$((num+1))
 	done < "$INPUT/edit_text.txt"
 	num=$((num-1))
 	eval G1_START="\$ACPIAdd_START"
@@ -1229,34 +1328,8 @@ load_edit_text() {
 	eval G10_NUM="$num"
 }
 
-get_edit_res() {
-	skip=""
-	eval key="\$res10$1"
-	L0="${key%%|*}"; key="${key#*|}"
-	L1="${key%%|*}"; key="${key#*|}"
-	L2="${key%%|*}"; key="${key#*|}"
-	L3="${key%%|*}"; key="${key#*|}"
-	AR="${key%%|*}"; key="${key#*|}"
-	type="${key%%|*}"; key="${key#*|}"
-	val=${key%%|*}; key="${key#*|}"
-	en="${key##* }"
-	if [ "$en" != "$key" ] && [ -z "$val" ]; then skip="y"; fi
-}
-
-get_config_txt_res() {
-	t_val="$1"
-	t_section="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_array="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_item="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_type="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
-	t_val="${t_val%\"*}"
-}
-
 set_edit_res() {
-	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$AR\|\$type\|\$val\|\$key\"
+	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$AD\|\$type\|\$val\|\$key\"
 }
 
 split_val() {
@@ -1915,13 +1988,24 @@ bad_config() {
 	fi
 }
 
+get_config_txt_res() {
+	t_val="$1"
+	t_section="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_array="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_item="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_type="${t_val%%|*}"; t_val="${t_val#*|}"
+	t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
+	t_val="${t_val%\"*}"
+}
+
 process_plist() {
 	HAS_PLUTIL=""
+	msg "\n${GRN}Processing config.plist${NC} ... "
 	command -v "plutil" || HAS_PLUTIL="false"
 	if [ -z "$HAS_PLUTIL" ]; then
-		msg "\n${GRN}Checking config.plist${NC} ... "
 		plutil "$CONFIG_PLIST.tmp" || bad_config
-		fin
 	fi
 
 	cd "$INPUT"
@@ -1932,26 +2016,60 @@ process_plist() {
 	rm sample.plist.tmp
 	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
 	"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
+	fin
+
+	msg "Checking for missing fields ... "
 	grep "Quirks" sample.plist.txt > sampleQuirks
+	grep "PlatformInfo" sample.plist.txt >> sampleQuirks
+	grep "Protocols" sample.plist.txt >> sampleQuirks
 	while read -r line
 	do
 		grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
 	done < sampleQuirks
 
 	if [ -e "missing" ]; then
-		msg "\n${YEL}NOTE:${NC}\tfound quirks missing from config.plist\n\n"
+		msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
+		while read -r line
+		do
+			Q="$line"
+			get_config_txt_res "$Q"
+			msg "\t$t_section > $t_sub1 > $t_key\n"
+		done < missing
 		if [ -z "$TEXT" ]; then
-			while read -r line
-			do
-				Q="$line"
-				get_config_txt_res "$Q"
-				msg "\t$t_section > $t_sub1 > $t_key\n"
-			done < missing
 			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
-			msg "\tif you wish to add missing quirks.\n\n"
+			msg "\tif you wish to add missing fields.\n\n"
 #			msg "\n\tUse the -t option to select and add them.\n"
 #			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
 		fi
+	else
+		fin
+	fi
+
+	msg "Checking for extra fields ... "
+	grep "Quirks" config.plist.txt > configQuirks
+	grep "PlatformInfo" config.plist.txt >> configQuirks
+	grep "Protocols" config.plist.txt >> configQuirks
+	while read -r line
+	do
+		grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
+	done < configQuirks
+
+	if [ -e "extra" ]; then
+		msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
+		while read -r line
+		do
+			Q="$line"
+			get_config_txt_res "$Q"
+			msg "\t$t_section > $t_sub1 > $t_key\n"
+		done < extra
+		if [ -z "$TEXT" ]; then
+			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
+			msg "\tif you wish to remove extra fields.\n\n"
+#			msg "\n\tUse the -t option to select and add them.\n"
+#			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		fi
+	else
+		fin
 	fi
 
 	"$TOOL_FILES/parsePlistEdit.sh"
