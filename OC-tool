@@ -1053,7 +1053,8 @@ draw_screen_header() {
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  IN=${GRN}$filePath${NC} ${U}e${NC} $e_msg\033[K"
+	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  INPUT=${GRN}$filePath${NC}\033[K"
+	if [ "$TUI_MODE" != "pre" ]; then msg " ${U}e${NC} $e_msg\033[K"; fi
 }
 
 draw_col_header() {
@@ -1588,7 +1589,13 @@ edit_val() {
 
 draw_plist_footer() {
 	if [ "$TUI_MODE" = "pre" ]; then
-		msg "\033[$((R-3))H g: go to TUI screen with changes   i: info for ${I}highlighted${NC} item\n\033[2K\n"
+		msg "\033[$((R-11))H Items under the MISSING tag were found in the Sample.plist, but they\n"
+		msg "do not exist in the INPUT plist.  Use the arrow keys to navigate, then space\n"
+		msg "to select/unselect items.  ${GRN}Green+${NC} will be added to loaded plist,\n"
+		msg "${RED}red-${NC} will be left out.\n\n"
+		msg "Items under the EXTRAS tag were found in the INPUT plist, but do not exist in the\n"
+		msg "Sample.plist. ${RED}Red-${NC} will be removed from loaded plist, ${GRN}green+${NC} left alone."
+		msg "\033[$((R-3))H g: go to TUI screen with changes   i: info for ${INV}highlighted${NC} item\n\033[2K\n"
 		msg " $GRN$INV added if missing / not removed if exists $NC\n"
 		msg " $RED$INV ignore if missing / remove if exists $NC "
 		msg "q: quit without saving\033[K"
@@ -1653,11 +1660,12 @@ draw_edit_text() {
 		"string")
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				if [ "$TUI_MODE" = "pre" ]; then
+					msg "    space: select/unselect  - "
 					case "$S0" in
 						"1")
-							msg "    space: select - ${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
+							msg "${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
 						"2")
-							msg "    space: select - ${RED} red- ${NC} will be removed, ${GRN} green+ ${NC} will be left alone";;
+							msg "${RED} red- ${NC} will be removed, ${GRN} green+ ${NC} will be left alone";;
 					esac
 				else
 					msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection\033[K"
@@ -2171,7 +2179,7 @@ process_plist() {
 
 	num=0
 	if [ -e "missing" ]; then
-		res100="1|0|0|0||||MISSING"
+		res100="1|0|0|0||||MISSING from user plist"
 		msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
 		while read -r line
 		do
@@ -2205,7 +2213,7 @@ process_plist() {
 
 	if [ -e "extra" ]; then
 		ex_num="0"
-		field="EXTRA"
+		field="EXTRAS: found in user plist, not in Sample.plist"
 		eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
 		msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
 		while read -r line
