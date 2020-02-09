@@ -2131,9 +2131,9 @@ process_plist() {
 			msg "\n\tYou can edit your config.plist manually, or\n"
 			msg "\tuse the -t option to select fields to add\n"
 			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-		else
-			fin
 		fi
+	else
+		fin
 	fi
 
 	msg "Checking for extra fields ... "
@@ -2167,9 +2167,9 @@ process_plist() {
 			msg "\n\tYou can edit your config.plist manually, or\n"
 			msg "\tuse the -t option to select fields to remove\n"
 			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-		else
-			fin
 		fi
+	else
+		fin
 	fi
 
 	if [ -n "$TUI_MODE" ]; then
