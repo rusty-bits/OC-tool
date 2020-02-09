@@ -1273,8 +1273,9 @@ load_edit_text() {
 				val=$(printf "%d" "$val") # if hex, make decimal
 				set_edit_res "$num"
 			fi
-			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi
-			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi
+			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi # deprecated
+			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi # deprecated
+			if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
 			if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
 				val="false"
 				IGNORE_BOOL=""
@@ -1543,9 +1544,16 @@ edit_val() {
 }
 
 draw_plist_footer() {
-	msg "\033[$((R-3))H i: info of ${INV}highlighted${NC} item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
-	msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
+	if [ "$TUI_MODE" = "pre" ]; then
+		msg "\033[$((R-3))H g: go to TUI screen with changes\n\033[2K\n"
+		msg " $GRN$INV added if missing / not removed if exists $NC\n"
+		msg " $RED$INV ignore if missing / remove if exists $NC "
+		msg "q: quit without saving\033[K"
+	else
+		msg "\033[$((R-3))H i: info of ${INV}highlighted${NC} item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
+		msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
+		msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
+	fi
 }
 
 draw_edit_text() {
@@ -1708,6 +1716,7 @@ text_user_interface() {
 	level=0; S0=1; S1=0; S2=0; S3=0
 	if [ "$TUI_MODE" = "pre"  ]; then
 		G="10"
+		draw_edit_text
 	else
 		G=1
 		draw_screen
@@ -1964,9 +1973,13 @@ set_up_vault() {
 		get_edit_res "$USE_SIG_NUM"
 		USE_VAULT="$val"
 	fi
+	if [ -n "$USE_VAULT_STR" ]; then
+		get_edit_res "$USE_VAULT_STR"
+		USE_VAULT="$val"
+	fi
 
 	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
-		if [ "$USE_VAULT" = "true" ]; then
+		if [ "$USE_VAULT" = "true" ] || [ "$USE_VAULT" = "Secure" ]; then
 			USE_VAULT="false"
 			CONFIG_CHANGED="temp vault disable"
 			get_edit_res "$USE_VAULT_NUM"
@@ -2007,6 +2020,72 @@ get_config_txt_res() {
 	t_val="${t_val%\"*}"
 }
 
+remove_res_plist_txt() {
+	mv config.plist.txt config.plist.tmp
+	while read -r line
+	do
+		if [ "${line%| *}" != "$1" ]; then
+			echo "$line" >> config.plist.txt
+		fi
+	done < config.plist.tmp
+	rm config.plist.tmp
+}
+
+add_res_plist_txt() {
+	mv config.plist.txt config.plist.tmp
+	written=""; found_sec=""
+	while read -r line
+	do
+		if [ -z "$written" ]; then
+			srch="${resme%|?*|?*|?*|?*}"
+			lines="${line%|?*|?*|?*|?*}"
+			if [ "$srch" = "$lines" ]; then
+				echo "$resme" >> config.plist.txt
+				written="y"
+			else
+				srch="${srch%%|*}"
+				lines="${lines%%|*}"
+				if [ "$srch" = "$lines" ]; then found_sec="y"; fi
+			fi
+			if [ -n "$found_sec" ] && [ -z "$written" ]; then
+				if [ "$srch" != "$lines" ]; then # end of section place here
+					echo "$resme" >> config.plist.txt
+					written="y"
+				fi
+			fi
+		fi
+		echo "$line" >> config.plist.txt
+	done < config.plist.tmp
+	rm config.plist.tmp
+}
+
+process_plist_txt() {
+	ex_num="0"
+	msg "Adding selected fields to modified.config.plist ... "
+	for num in $(seq 0 $G10_NUM)
+	do
+		get_edit_res "$num"
+		case "$L0" in
+			"1")
+				if [ "$en" = "+" ]; then
+					eval resme=\$miss$num
+					add_res_plist_txt
+				fi;;
+			"2")
+				if [ "$ex_num" -eq "0" ]; then
+					fin
+					msg "Removing selected fields from modified.config.plist ... "
+				fi
+				if [ "$en" = "-" ]; then
+					eval resme=\$extra$ex_num
+					remove_res_plist_txt "${resme%| *}"
+				fi
+				ex_num=$((ex_num+1));;
+		esac
+	done
+	fin
+}
+
 process_plist() {
 	HAS_PLUTIL=""
 	msg "\n${GRN}Processing config.plist${NC} ... "
@@ -2037,7 +2116,7 @@ process_plist() {
 
 	num=0
 	if [ -e "missing" ]; then
-		res100="1|0|0|0||||MISSING: ${GRN}green+${NC} will be added, ${RED}red-${NC} will be left alone"
+		res100="1|0|0|0||||MISSING > ${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored"
 		msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
 		while read -r line
 		do
@@ -2046,12 +2125,12 @@ process_plist() {
 			field="$t_section > $t_sub1 > $t_key"
 			msg "\t$field\n"
 			eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
+			eval miss$num="\$line"
 		done < missing
-		if [ -n "TUI_MODE" ]; then
-			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
-			msg "\tif you wish to add missing fields.\n\n"
-#			msg "\n\tUse the -t option to select and add them.\n"
-#			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		if [ -z "$TUI_MODE" ]; then
+			msg "\n\tYou can edit your config.plist manually, or\n"
+			msg "\tuse the -t option to select fields to add\n"
+			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
 		else
 			fin
 		fi
@@ -2071,7 +2150,7 @@ process_plist() {
 
 	if [ -e "extra" ]; then
 		ex_num="0"
-		field="EXTRA - ${RED}red-${NC} will be removed, ${GRN}green+${NC} will be left alone"
+		field="EXTRA > ${RED} red- ${NC} will be removed, ${GRN} green+ ${NC} will be left alone"
 		eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
 		msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
 		while read -r line
@@ -2082,19 +2161,18 @@ process_plist() {
 			field="$t_section > $t_sub1 > $t_key"
 			msg "\t$field\n"
 			eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
+			eval extra$ex_num="\$line"
 		done < extra
-		if [ -n "TUI_MODE" ]; then
-			msg "\n\tFor the moment, you will need to edit your config.plist manually\n"
-			msg "\tif you wish to remove extra fields.\n\n"
-#			msg "\n\tUse the -t option to select and add them.\n"
-#			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+		if [ -z "$TUI_MODE" ]; then
+			msg "\n\tYou can edit your config.plist manually, or\n"
+			msg "\tuse the -t option to select fields to remove\n"
+			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
 		else
 			fin
 		fi
 	fi
 
-#	if [ -n "$TUI_MODE" ]; then
-	if [ -n "" ]; then
+	if [ -n "$TUI_MODE" ]; then
 		if [ -e "missing" ] || [ -e "extra" ]; then
 			msg "Entering TUI to select missing/extra fields ... "
 			TUI_MODE="pre"
@@ -2108,6 +2186,8 @@ process_plist() {
 				msg "\nQuit by user.\n"
 				exit 0
 			fi
+			process_plist_txt
+			CONFIG_CHANGED="auto add/remove"
 			TUI_MODE="summary"
 		fi
 	fi
@@ -2297,7 +2377,7 @@ set_up_dest_dir
 copy_resources
 
 if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
-if [ "$USE_VAULT" = "true" ];then
+if [ "$USE_VAULT" = "true" ] || [ "$USE_VAULT" = "Secure" ];then
 	build_vault||vault_failed
 fi
 

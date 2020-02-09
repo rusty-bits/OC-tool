@@ -254,6 +254,8 @@
 			<false/>
 			<key>ProtectCsmRegion</key>
 			<false/>
+			<key>ProtectSecureBoot</key>
+			<false/>
 			<key>ProvideCustomSlide</key>
 			<true/>
 			<key>SetupVirtualMap</key>
@@ -634,10 +636,8 @@
 			<integer>6</integer>
 			<key>HaltLevel</key>
 			<integer>2147483648</integer>
-			<key>RequireSignature</key>
-			<true/>
-			<key>RequireVault</key>
-			<true/>
+			<key>Vault</key>
+			<string>Secure</string>
 			<key>ScanPolicy</key>
 			<integer>983299</integer>
 		</dict>
