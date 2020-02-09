@@ -1158,6 +1158,48 @@ compute_data_vals() {
 		esac
 }
 
+sample_text(){
+	lb="${hex_val#?}"
+	case "$lb" in
+		0)
+			fg=30;;
+		1)
+			fg=34;;
+		2)
+			fg=32;;
+		3)
+			fg=36;;
+		4)
+			fg=31;;
+		5)
+			fg=35;;
+		6)
+			fg=33;;
+		7)
+			fg=37;;
+	esac
+	lb="${hex_val%?}"
+	case "$lb" in
+		0)
+			bg=40;;
+		1)
+			bg=44;;
+		2)
+			bg=42;;
+		3)
+			bg=46;;
+		4)
+			bg=41;;
+		5)
+			bg=45;;
+		6)
+			bg=43;;
+		7)
+			bg=47;;
+	esac
+	msg "    \033[${bg};${fg}m  Hello, world!  ${NC}"
+}
+
 draw_edit_val() {
 	if [ "$key" = "$val" ] && [ -z "$LONE" ]; then
 		msg "\033[${S}H${e_text}$e_val${NC}\033[K"
@@ -1196,6 +1238,7 @@ draw_edit_val() {
 						fi;;
 				esac
 				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val |\033[K"
+				if [ -n "$BIT_NUM" ] && [ "$res_name" = "PickerAttributes" ]; then sample_text; fi
 				if [ -n "$e_split" ]; then
 					case "$data_field" in
 						1)
@@ -1513,7 +1556,7 @@ edit_val() {
 					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
 					e_split=$((e_split+1))
 				else
-					[ -n "$BIT_NUM" ] && BIT_TOGGLE="$BIT_EDIT"
+					if [ -n "$BIT_NUM" ]; then BIT_TOGGLE="$BIT_EDIT"; fi
 				fi;;
 			[0-9] )
 				split_val
