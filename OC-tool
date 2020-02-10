@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(090220) last checked with OpenCore version REL-055-2020-02-08"
+VER="3.2(100220) last checked with OpenCore version REL-056-2020-02-08"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -9,7 +9,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dhinoqrstvDTVX"
+OPTSPEC="dhinoqrstvDIFTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -32,7 +32,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
-
+USE_FULL=""; IGNORE_SAMPLE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 DEBUG=""
 
@@ -576,6 +576,7 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
 	msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
 	msg "\tyou can see the differences with 'cat ./Docs/diff_Sample.txt'\n"
+	msg "\tor run the tool again with the -t option.\n"
 	msg "\t${YEL}You may want to check for any changes${NC} that could apply to\n"
 	msg "\t$filePath\n"
 }
@@ -585,8 +586,11 @@ check_if_Sample_plist_updated() {
 	if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
 		cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
 	else
-		cp "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist
+		cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	fi
+	cp "$DOC_DIR/SampleFull.plist" "$BASE_DIR/Docs/."
+	cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
+	cp "$DOC_DIR/Differences/Differences.pdf" "$BASE_DIR/Docs/."
 }
 
 vault_failed() {
@@ -1612,6 +1616,7 @@ draw_edit_text() {
 	data_field="0"
 #	if [ "$moved" = "redraw" ]; then msg "\033[$((R-4))H\033[1J"; fi
 	draw_screen_header
+	draw_plist_footer
 	while [ "$num" -le "$G10_NUM" ]
 	do
 		e_text=""
@@ -1644,11 +1649,12 @@ draw_edit_text() {
 		fi
 		num=$((num+1))
 	done
-	for n in $(seq $((S+1)) $((R-4)))
-	do
-		msg "\033[${n}H\033[K"
-	done
-	draw_plist_footer
+	if [ "$((R-12))" -gt "$(($S+1))" ]; then
+		for n in $(seq $((S+1)) $((R-12)))
+		do
+			msg "\033[${n}H\033[K"
+		done
+	fi
 	msg "\033[3H"
 	case "$res_type" in
 		"bool")
@@ -2158,100 +2164,108 @@ process_plist() {
 	fi
 
 	cd "$INPUT"
-	cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+	if [ -z "$IGNORE_SAMPLE" ]; then
+		if [ -z "$USE_FULL" ]; then
+			cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+		else
+			cp "$BASE_DIR/Docs/SampleFull.plist" sample.plist.tmp
+		fi
+		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
+		rm sample.plist.tmp
+		"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
+	fi
 	tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
-	tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
 	rm config.plist.tmp
-	rm sample.plist.tmp
 	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
-	"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
 	fin
 
-	msg "Checking for missing fields ... "
-	while read -r line
-	do
-		grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
-	done < "$TOOL_FILES/miss_extra"
-	while read -r line
-	do
-		grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
-	done < sampleQuirks
-
-	num=0
-	if [ -e "missing" ]; then
-		res100="1|0|0|0||||MISSING from user plist"
-		msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
+	if [ -z "$IGNORE_SAMPLE" ]; then
+		msg "Checking for missing fields ... "
 		while read -r line
 		do
-			num=$((num+1))
-			get_config_txt_res "$line"
-			field="$t_section > $t_sub1 > $t_key"
-			msg "\t$field\n"
-			eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
-			eval miss$num="\$line"
-		done < missing
-		if [ -z "$TUI_MODE" ]; then
-			msg "\n\tYou can edit your config.plist manually, or\n"
-			msg "\tuse the -t option to select fields to add\n"
-			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-		fi
-	else
-		fin
-	fi
-
-	msg "Checking for extra fields ... "
-	while read -r line
-	do
-		grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
-	done < "$TOOL_FILES/miss_extra"
-	while read -r line
-	do
-		grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
-	done < configQuirks
-
-	num=$((num+1))
-
-	if [ -e "extra" ]; then
-		ex_num="0"
-		field="EXTRAS: found in user plist, not in Sample.plist"
-		eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
-		msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
+			grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
+		done < "$TOOL_FILES/miss_extra"
 		while read -r line
 		do
-			num=$((num+1))
-			ex_num=$((ex_num+1))
-			get_config_txt_res "$line"
-			field="$t_section > $t_sub1 > $t_key"
-			msg "\t$field\n"
-			eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
-			eval extra$ex_num="\$line"
-		done < extra
-		if [ -z "$TUI_MODE" ]; then
-			msg "\n\tYou can edit your config.plist manually, or\n"
-			msg "\tuse the -t option to select fields to remove\n"
-			msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-		fi
-	else
-		fin
-	fi
+			grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
+		done < sampleQuirks
 
-	if [ -n "$TUI_MODE" ]; then
-		if [ -e "missing" ] || [ -e "extra" ]; then
-			msg "Entering TUI to select missing/extra fields ... "
-			TUI_MODE="pre"
-			G10_NUM="$num"
-			text_user_interface
-			msg "\033[J\n" # cleanup for TERM types that don't buffer
-			msg "$(tput cnorm)"
-			msg "$(tput rmcup)"
-			msg "${GRN}done${NC}\n"
-			if [ "$TUI_MODE" = "quit" ]; then
-				msg "\nQuit by user.\n"
-				exit 0
+		num=0
+		if [ -e "missing" ]; then
+			res100="1|0|0|0||||MISSING from user plist"
+			msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
+			while read -r line
+			do
+				num=$((num+1))
+				get_config_txt_res "$line"
+				field="$t_section > $t_sub1 > $t_key"
+				msg "\t$field\n"
+				eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
+				eval miss$num="\$line"
+			done < missing
+			if [ -z "$TUI_MODE" ]; then
+				msg "\n\tYou can edit your config.plist manually, or\n"
+				msg "\tuse the -t option to select fields to add\n"
+				msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
 			fi
-			process_plist_txt
-			CONFIG_CHANGED="auto add/remove"
-			TUI_MODE="summary"
+		else
+			fin
+		fi
+
+		msg "Checking for extra fields ... "
+		while read -r line
+		do
+			grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
+		done < "$TOOL_FILES/miss_extra"
+		while read -r line
+		do
+			grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
+		done < configQuirks
+
+		num=$((num+1))
+
+		if [ -e "extra" ]; then
+			ex_num="0"
+			field="EXTRAS: found in user plist, not in Sample.plist"
+			eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
+			msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
+			while read -r line
+			do
+				num=$((num+1))
+				ex_num=$((ex_num+1))
+				get_config_txt_res "$line"
+				field="$t_section > $t_sub1 > $t_key"
+				msg "\t$field\n"
+				eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
+				eval extra$ex_num="\$line"
+			done < extra
+			if [ -z "$TUI_MODE" ]; then
+				msg "\n\tYou can edit your config.plist manually, or\n"
+				msg "\tuse the -t option to select fields to remove\n"
+				msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+			fi
+		else
+			fin
+		fi
+
+		if [ -n "$TUI_MODE" ]; then
+			if [ -e "missing" ] || [ -e "extra" ]; then
+				msg "Entering TUI to select missing/extra fields ... "
+				TUI_MODE="pre"
+				G10_NUM="$num"
+				text_user_interface
+				msg "\033[J\n" # cleanup for TERM types that don't buffer
+				msg "$(tput cnorm)"
+				msg "$(tput rmcup)"
+				msg "${GRN}done${NC}\n"
+				if [ "$TUI_MODE" = "quit" ]; then
+					msg "\nQuit by user.\n"
+					exit 0
+				fi
+				process_plist_txt
+				CONFIG_CHANGED="auto add/remove"
+				TUI_MODE="summary"
+			fi
 		fi
 	fi
 
@@ -2292,8 +2306,7 @@ case "${optchar}" in
 		i)
 			IGNORE="true";;
 		n)
-			UPDATE="false"
-			EX_COM="${EX_COM}n";;
+			IGNORE_SAMPLE="true";;
 		o)
 			FINDER="open"
 			EX_COM="${EX_COM}o";;
@@ -2329,6 +2342,11 @@ case "${optchar}" in
 			EX_COM="${EX_COM}t";;
 		D) # for when I break stuff
 			DEBUG="true";;
+		F)
+			USE_FULL="true";;
+		N)
+			UPDATE="false"
+			EX_COM="${EX_COM}n";;
 		T)
 			if [ "$filePath" = "stdin" ]; then
 				msg "TUI override is not available when plist is piped to stdin\n"
