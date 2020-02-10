@@ -1678,7 +1678,7 @@ draw_edit_text() {
 		"string")
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				if [ "$TUI_MODE" = "pre" ]; then
-					msg "    space: select/unselect  - "
+					msg " ${INV}using 0.5.5 plist${NC}  space: select/unselect  - "
 					case "$S0" in
 						"1")
 							msg "${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
@@ -2178,9 +2178,17 @@ process_plist() {
 	cd "$INPUT"
 	if [ -z "$IGNORE_SAMPLE" ]; then
 		if [ -z "$USE_FULL" ]; then
-			cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+			if [ "$MODE" = "prebuiltRelease" ]; then
+				cp "$BASE_DIR/Docs/Sample055.plist" sample.plist.tmp
+			else
+				cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+			fi
 		else
-			cp "$BASE_DIR/Docs/SampleFull.plist" sample.plist.tmp
+			if [ "$MODE" = "prebuiltRelease" ]; then
+				cp "$BASE_DIR/Docs/SampleFull055.plist" sample.plist.tmp
+			else
+				cp "$BASE_DIR/Docs/Sample055.plist" sample.plist.tmp
+			fi
 		fi
 		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
 		rm sample.plist.tmp
