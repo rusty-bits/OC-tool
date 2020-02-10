@@ -1273,7 +1273,6 @@ draw_edit_val() {
 }
 
 draw_edit_key() {
-	if [ -n "$DEBUG" ]; then msg "db - in draw_edit_key\n"; fi
 	S=$((S+1))
 	if [ -z "$type" ]; then
 		case "$en" in
@@ -1284,9 +1283,12 @@ draw_edit_key() {
 			i)
 				e_text="${e_text}${YEL}";;
 		esac
+		opn=">"
+		if [ -n "$selected" ] && [ "$level" -gt "$selected" ]; then opn="---"; fi
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
 			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
-		msg "\033[${S}H${e_text}$key${NC} >  \033[K"
+		msg "\033[${S}H${e_text}$key${NC} $opn  \033[K"
+		opn=""
 	else
 		case $type in
 			bool)
@@ -1633,21 +1635,21 @@ draw_edit_text() {
 		get_edit_res "$num"; e_val="$val"
 		if [ "$L0" -ne "0" ]; then
 			if [ "$L1" -eq "0" ]; then
-				[ "$L0" -eq "$S0" ] && selected="true"
+				if [ "$L0" -eq "$S0" ]; then selected="0"; fi
 				e_text="$e_text"; draw_edit_key
-				[ "$level" -eq "0" ] && LLEN=$L0
+				if [ "$level" -eq "0" ]; then LLEN=$L0; fi
 			elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
-				[ "$L1" -eq "$S1" ] && selected="true"
+				if [ "$L1" -eq "$S1" ]; then selected="1"; fi
 				e_text="    $e_text"; draw_edit_key
-				[ "$level" -eq "1" ] && LLEN=$L1
+				if [ "$level" -eq "1" ]; then LLEN=$L1; fi
 			elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
-				[ "$L2" -eq "$S2" ] && selected="true"
+				if [ "$L2" -eq "$S2" ]; then selected="2"; fi
 				e_text="        $e_text"; draw_edit_key
-				[ "$level" -eq "2" ] && LLEN=$L2
+				if [ "$level" -eq "2" ]; then LLEN=$L2; fi
 			elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
-				[ "$L3" -eq "$S3" ] && selected="true"
+				if [ "$L3" -eq "$S3" ]; then selected="3"; fi
 				e_text="            $e_text"; draw_edit_key
-				[ "$level" -eq "3" ] && LLEN=$L3
+				if [ "$level" -eq "3" ]; then LLEN=$L3; fi
 			fi
 			if [ -n "$has_higher_level" ]; then
 				if [ "$EDIT_RES_NUM" -eq "$num" ]; then
