@@ -9,7 +9,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dhinoqrstvDIFTVX"
+OPTSPEC="dhinoqrstvDIFNTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -440,22 +440,24 @@ prepare_resources() {
 	mkdir -p "$RES_DIR"
 	cd "$RES_DIR"
 
-	case "$MODE" in
-		"latestSource")
-			msg "\n${GRN}Building new or updated resources${NC}\n"
-			clone "https://github.com/acidanthera/audk" "UDK";;
-		"prebuiltRelease")
-			HAS_SHASUM=""
-			msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
-			command -v shasum||HAS_SHASUM="false"
-			if [ -n "$HAS_SHASUM" ]; then
-				msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
-				msg "\tDownloading will continue, but there is no way to check zip file sums\n"
-				msg "\tinstall the shasum command if this is an issue\n\n"
-			fi;;
-		"prebuiltDaily")
-			msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
-	esac
+	if [ -z "$UPDATE" ]; then
+		case "$MODE" in
+			"latestSource")
+				msg "\n${GRN}Building new or updated resources${NC}\n"
+				clone "https://github.com/acidanthera/audk" "UDK";;
+			"prebuiltRelease")
+				HAS_SHASUM=""
+				msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
+				command -v shasum||HAS_SHASUM="false"
+				if [ -n "$HAS_SHASUM" ]; then
+					msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
+					msg "\tDownloading will continue, but there is no way to check zip file sums\n"
+					msg "\tinstall the shasum command if this is an issue\n\n"
+				fi;;
+			"prebuiltDaily")
+				msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
+		esac
+	fi
 
 	for G in $(seq 0 4) # cycle first 5 groups
 	do
@@ -540,6 +542,7 @@ copy_failed() {
 copy_resources() {
 	msg "\n${GRN}Moving ${YEL}$MODE${GRN} resources into place${NC}\n"
 	IGNORE="" # no more ignoring for you
+	num="0"
 	for G in $(seq 0 4)
 	do
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
@@ -562,12 +565,17 @@ copy_resources() {
 						msg "Copying $dest_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
+						if [ -z "$QUIET" ]; then
+							echo "copied $dest_name to $dest"
+						fi
+						num=$((num+1))
 						fin
 					fi
 				fi
 			fi
 		done
 	done
+	msg "Copied $num resources to $BUILD_DIR\n"
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
@@ -2348,7 +2356,7 @@ case "${optchar}" in
 			USE_FULL="true";;
 		N)
 			UPDATE="false"
-			EX_COM="${EX_COM}n";;
+			EX_COM="${EX_COM}N";;
 		T)
 			if [ "$filePath" = "stdin" ]; then
 				msg "TUI override is not available when plist is piped to stdin\n"
