@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(100220) last checked with OpenCore version REL-056-2020-02-08"
+VER="3.2(110220) last checked with OpenCore version REL-056-2020-02-08"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -830,10 +830,21 @@ write_new_conf() {
 		get_edit_res "$num"
 		if [ "$L0" -eq "0" ]; then
 			if [ "$key" = "</plist>" ]; then
-					echo "</dict>" >> "$OUT" # fix later
+				clearAD2
+				case "$ad1" in
+					"A")
+						echo "</array>" >> "$OUT";;
+					"D")
+						echo "</dict>" >> "$OUT";;
+				esac
 				echo "</dict>" >> "$OUT"
+				echo "</plist>" >> "$OUT"
+			elif [ -z "$type" ]; then
+				echo "$key" >> "$OUT"
+			else
+				echo "<key>$key</key>" >> "$OUT"
+				echo "<$type>$val</$type>" >> "$OUT"
 			fi
-			echo "$key" >> "$OUT"
 		else
 			if [ "$L1" -eq "0" ]; then # new L0
 				clearAD2
@@ -928,74 +939,6 @@ write_new_conf() {
 		fi
 		num=$((num+1))
 	done
-	fin
-}
-
-write_new_conf_OLD() { # write new config.plist based on changes in psuedo array
-	OUT="$BASE_DIR/INPUT/modified.config.plist"
-	msg "\033[J\nWriting new config.plist to $OUT ... "
-	rm -rf "$OUT"
-	num=0; done=""; driver=""
-	srch="key"
-	get_edit_res "$num"
-	while read -r line
-	do
-		while [ "$L0" = "0" ]
-		do
-			num=$((num+1))
-			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
-			get_edit_res "$num"
-		done
-		if [ -n "$done" ]; then
-			echo "$line" >> "$OUT"
-		else
-			while [ "$en" = "+" ] || [ "$en" = "-" ] || [ "$en" = "i" ] # find valid G10 key
-			do
-				if [ "$type" = "string" ]; then # driver handle
-					driver="true"; break
-				else # skip, it's only a handle for the plist display
-					num=$((num+1))
-					get_edit_res "$num"
-				fi
-			done
-			if [ "$key" = "$val" ]; then srch="$type"; fi # found standalone val
-			while [ "${line%%>*}" != "<$srch" ] # find plist line with key
-			do
-				echo "$line" >> "$OUT"
-				read -r line
-			done
-			if [ -z "$driver" ]; then
-				echo "<$srch>$key</$srch>" >> "$OUT"
-			elif [ "${key##* }" = "+" ]; then
-				echo "<$srch>${key% ?}</$srch>" >> "$OUT"
-			fi
-			driver=""
-			if [ "$srch" = "key" ]; then
-				case "$type" in
-					"bool")
-						read -r line
-						while [ "${line%/*}" != "<true" ] && [ "${line%/*}" != "<false" ]
-						do
-							read -r line
-						done
-						echo "<$val/>" >> "$OUT";;
-					"string"|"integer"|"data")
-						read -r line
-						if [ "${line#*</}" = "real>" ]; then line="${line%real>}integer>"; fi
-						while [ "${line#*</}" != "${type}>" ]
-						do
-							read -r line
-						done
-						echo "<${type}>$val</${type}>" >> "$OUT";;
-				esac
-			else
-				srch="key"
-			fi
-			num=$((num+1))
-			if [ "$num" -gt "$G10_NUM" ]; then done="true"; fi
-			get_edit_res "$num"
-		fi
-	done < "$CONFIG_PLIST.mod"
 	fin
 }
 
@@ -1816,6 +1759,14 @@ text_user_interface() {
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
+		if [ "$TUI_MODE" = "pre" ]; then
+			case $CHAR in
+				sp|g|h|j|k|l|i|p|r|q|A|B|C|D)
+					CHAR="$CHAR";;
+				*)
+					CHAR="";;
+			esac
+		fi
 		case $CHAR in
 			a)
 				msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
@@ -1834,18 +1785,14 @@ text_user_interface() {
 			e)
 				moved="redraw"
 				if [ "$TUI_MODE" != "summary" ]; then
-					#write_text_config
 					TUI_MODE="summary"
 					G="$SUMMARY_G"; S="$SUMMARY_S"
 					draw_screen
-#					G=1; S=0
 				else
 					TUI_MODE=" plist "
 					msg "\033[2H\033[2K"
-#					level=0; S0=1; S1=0; S2=0; S3=0
 					SUMMARY_G="$G"; SUMMARY_S="$S"
 					G="10"
-#					S=0
 				fi;;
 			p) # debug dump array
 				stty echo
@@ -1856,12 +1803,10 @@ text_user_interface() {
 			q)
 				stty echo
 				CHAR='g'
-#				TEXT="quit";;
 				TUI_MODE='quit';;
 			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
 				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
 				CHAR='g'
-#				TEXT='stop';;
 				TUI_MODE='stop';;
 			*)
 				if [ "$G" -lt 10 ]; then
@@ -2494,7 +2439,7 @@ if [ -e "$INPUT/errors.txt" ]; then
 	msg "${YEL}NOTICE:${NC} errors were found in $filePath\n"
 	msg "\tSome may have been repaired by the input scan.\n\n"
 	msg "$(cat "$INPUT/errors.txt")"
-	msg "\n\nAny error that could not be repaied may need to be addressed before booting\n"
+	msg "\n\nAny error that could not be repaired may need to be addressed before booting\n"
 fi
 stop_logging
 
