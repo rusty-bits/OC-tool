@@ -138,11 +138,10 @@ if [ -e "edit_subs.txt" ]; then
 		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
 		if [ "$en" = "true" ]; then new="$new\ +"; fi
 		if [ "$en" = "false" ]; then new="$new\ -"; fi
-		com="$com -e s/'$old '/'$new'/"
+		com="$com -e \"s#'$old '#'$new'#\""
 	done < edit_subs.txt
 	# echo $com > com1.txt
-
-	eval sed $com edit_text.tmp > edit_text.txt
+	eval sed "$com" edit_text.tmp > edit_text.txt
 fi
 
 # rm -rf edit_text.tmp
