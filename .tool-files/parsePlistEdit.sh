@@ -104,6 +104,8 @@ msg() {
 #rm -rf config.plist.txt
 #rm -rf edit*
 #rm -rf errors*
+rm -rf comm.txt
+
 get_res() {
 	section="${line%%|*}"; val="${line#*|}"
 	sub1="${val%%|*}"; val="${val#*|}"
@@ -136,13 +138,18 @@ if [ -e "edit_subs.txt" ]; then
 		s2="${line%%_*}"; line="${line#*_}"
 		s3="${line%|*}"
 		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
-		if [ "$en" = "true" ]; then new="$new\ +"; fi
-		if [ "$en" = "false" ]; then new="$new\ -"; fi
-		com="$com -e s/'$old '/'$new'/"
+#		if [ "$en" = "true" ]; then new="$new\ +"; fi
+		if [ "$en" = "true" ]; then new="$new +"; fi
+#		if [ "$en" = "false" ]; then new="$new\ -"; fi
+		if [ "$en" = "false" ]; then new="$new -"; fi
+		echo "s|$old |$new|" >> comm.txt
+#		com="$com -e s\|'$old '\|'$new'\|"
+#		com="$com -e \"s/'$old '/'$new'/\""
 	done < edit_subs.txt
 	# echo $com > com1.txt
 
-	eval sed $com edit_text.tmp > edit_text.txt
+	sed -f comm.txt  edit_text.tmp > edit_text.txt
+#	eval sed "$com" edit_text.tmp > edit_text.txt
 fi
 
 # rm -rf edit_text.tmp

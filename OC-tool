@@ -1621,7 +1621,10 @@ draw_edit_text() {
 		"string")
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				if [ "$TUI_MODE" = "pre" ]; then
-					msg " ${INV}using 0.5.5 plist${NC}  space: select/unselect  - "
+					if [ "$MODE" = "prebuiltRelease" ]; then
+						msg " ${INV}using 0.5.5 plist${NC}"
+					fi
+					msg "  space: select/unselect  - "
 					case "$S0" in
 						"1")
 							msg "${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
