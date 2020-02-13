@@ -36,6 +36,12 @@ Now, if you want the latest build made yourself from source you will need additi
   
 - Also, if you want the tool to compile .dsl files into .aml on the fly, `iasl` needs to be installed, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
 
+- Lastly, if you use OpenCore vault signing, you will need the `libcrypto.1.0.0.dylib` library in `/usr/local/opt/openssl/lib`.  This library is part of OpenSSL v1.0.  If you have a newer version of OpenSSL then the vault build may fail.  You can use `brew switch openssl 1.0.2t` if you have OpenSSL installed via [homebrew](https://brew.sh/)  
+If you don't have OpenSSL and have LibreSSL, which comes as part of Catalina, or you want to stay on version 1.1 or later of OpenSSL, you can copy the included `libcrypto.1.0.0.dylib` into `/usr/local/opt/openssl/lib`  
+
+  `mkdir -p /usr/local/opt/openssl/lib` to make the directory if it doesn't exist  
+  `cp ./extras/libcrypto.1.0.0.dylib /usr/local/opt/openssl/lib/.` copy from the extras folder  
+
 ---
 
 **Credits**
