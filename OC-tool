@@ -602,7 +602,9 @@ check_if_Sample_plist_updated() {
 }
 
 vault_failed() {
-	msg "${RED}ERROR:${NC} vault build failed, see $LOGFILE for details\n"
+	msg "\n\n${RED}ERROR:${NC}\tvault build failed, see $LOGFILE for details\n"
+	msg "\tIf the log has a message about missing ${YEL}libcrypto.1.0.0.dylib${NC}\n"
+	msg "\tplease see the README.md Requirements section for possible solutions.\n"
 	exit 1
 }
 
