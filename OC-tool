@@ -602,7 +602,9 @@ check_if_Sample_plist_updated() {
 }
 
 vault_failed() {
-	msg "${RED}ERROR:${NC} vault build failed, see $LOGFILE for details\n"
+	msg "\n\n${RED}ERROR:${NC}\tvault build failed, see $LOGFILE for details\n"
+	msg "\tIf the log has a message about missing ${YEL}libcrypto.1.0.0.dylib${NC}\n"
+	msg "\tplease see the README.md Requirements section for possible solutions.\n"
 	exit 1
 }
 
@@ -1215,6 +1217,27 @@ draw_edit_val() {
 	fi
 }
 
+draw_pre_status() {
+	case "$S0" in
+		1)
+			if [ "$en" = "+" ]; then
+				msg " ${GRN}${INV} Add ${NC}"
+			elif [ "$en" = "-" ]; then
+				msg " ${RED}${INV} Ignore ${NC}"
+			elif [ "$en" = "i" ]; then
+				msg "${YEL}${U}This is yellow${NC}"
+			fi;;
+		2)
+			if [ "$en" = "+" ]; then
+				msg " ${GRN}${INV} Leave alone ${NC}"
+			elif [ "$en" = "-" ]; then
+				msg " ${RED}${INV} Remove ${NC}"
+			elif [ "$en" = "i" ]; then
+				msg "${YEL}${U} yellow ${NC}"
+			fi;;
+	esac
+}
+
 draw_edit_key() {
 	S=$((S+1))
 	if [ -z "$type" ]; then
@@ -1256,6 +1279,7 @@ draw_edit_key() {
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; \
 			res_name="$key"; res_num="$num"; res_type="$type"; fi
 		draw_edit_val
+		if [ "$TUI_MODE" = "pre" ]; then draw_pre_status; fi
 	fi
 }
 
@@ -1762,7 +1786,7 @@ text_user_interface() {
 	while [ "$CHAR" != "g" ]
 	do
 		get_CHAR
-		if [ "$TUI_MODE" = "pre" ]; then
+		if [ "$TUI_MODE" = "pre" ]; then # restrict options in pre MODE
 			case $CHAR in
 				sp|g|h|j|k|l|i|p|r|q|A|B|C|D)
 					CHAR="$CHAR";;
