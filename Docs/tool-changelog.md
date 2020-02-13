@@ -1,3 +1,10 @@
+## VER 3.2(090220)  
+- **added missing/extra picker**
+When run, if OC-tool finds fields missing from config.plist it will display a picker window to select and add them automatically.  
+
+## VER 3.1(050220)  
+- **scan config.plist for missing or extra quirks at startup**  
+
 ## ver 3.0(241220)  
 - **enabled prebuilt daily option -d**  
 
