@@ -1,0 +1,3 @@
+Builtin -- boot management is handled by OpenCore, a simple text only user interface is used.
+External -- an external boot management protocol is used if available. Otherwise Builtin mode is used.
+Apple -- Apple boot management is used if available. Otherwise Builtin mode is used.

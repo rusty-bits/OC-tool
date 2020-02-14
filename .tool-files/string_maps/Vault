@@ -1,0 +1,3 @@
+Optional -- require nothing, no vault is enforced, insecure.
+Basic -- require vault.plist file present in OC directory.
+Secure -- require vault.sig signature file for vault.plist in OC directory.

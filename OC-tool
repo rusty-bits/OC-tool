@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(130220) last checked with OpenCore version REL-056-2020-02-10"
+VER="3.2(140220) last checked with OpenCore version REL-056-2020-02-10"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -621,15 +621,17 @@ build_vault() {
 	cd "$BUILD_DIR"/OC
 	ls vault* 1> /dev/null 2>&1 && rm vault.*
 	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
-	if [ "$MODE" = "latestSource" ]; then
-		make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+	if [ "$USE_VAULT" != "Basic" ]; then
+		if [ "$MODE" = "latestSource" ]; then
+			make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+		fi
+		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
+		off=$((str+16))
+		len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
+		dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count="$len" conv=notrunc
+		rm vault.pub
 	fi
-	"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-	str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
-	off=$((str+16))
-	len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
-	dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count="$len" conv=notrunc
-	rm vault.pub
 	fin
 }
 
@@ -1443,6 +1445,14 @@ edit_val() {
 		init_bit_editor
 		draw_bit_editor
 	fi
+	if [ -e "$TOOL_FILES/string_maps/$res_name" ]; then
+		msg "\n\033[2K\n"
+		while read -r line
+		do
+			msg "  $line\033[K\n"
+		done < "$TOOL_FILES/string_maps/$res_name"
+		msg "\033[2K"
+	fi
 	if [ "$type" = "data" ] || [ "$type" = "integer" ]; then
 		highlight_type
 	fi
@@ -2031,16 +2041,26 @@ set_up_vault() {
 		USE_VAULT="$val"
 	fi
 
+	if [ "$USE_VAULT" = "false" ] || [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
+
 	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
-		if [ "$USE_VAULT" = "true" ] || [ "$USE_VAULT" = "Secure" ]; then
-			USE_VAULT="false"
+		if [ -n "$USE_VAULT" ] && [ "$USE_VAULT" != "Optional" ]; then
 			CONFIG_CHANGED="temp vault disable"
-			get_edit_res "$USE_VAULT_NUM"
-			val="false"
-			set_edit_res "$USE_VAULT_NUM"
-			get_edit_res "$USE_SIG_NUM"
-			val="false"
-			set_edit_res "$USE_SIG_NUM"
+			if [ -n "$USE_VAULT_NUM" ]; then
+				get_edit_res "$USE_VAULT_NUM"
+				val="false"
+				set_edit_res "$USE_VAULT_NUM"
+			fi
+			if [ -n "$USE_SIG_NUM" ]; then
+				get_edit_res "$USE_SIG_NUM"
+				val="false"
+				set_edit_res "$USE_SIG_NUM"
+			fi
+			if [ -n "$USE_VAULT_STR" ]; then
+				get_edit_res "$USE_VAULT_STR"
+				val="Optional"
+				set_edit_res "$USE_VAULT_STR"
+			fi
 			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 			msg "\tvault disabled for prebuilts not made on macOS\n"
 		fi
@@ -2451,7 +2471,7 @@ set_up_dest_dir
 copy_resources
 
 if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
-if [ "$USE_VAULT" = "true" ] || [ "$USE_VAULT" = "Secure" ];then
+if [ -n "$USE_VAULT" ]; then
 	build_vault||vault_failed
 fi
 

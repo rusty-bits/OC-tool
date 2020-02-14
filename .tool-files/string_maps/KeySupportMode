@@ -1,0 +1,4 @@
+Auto -- Performs automatic choice as available with the following preference: AMI, V2, V1.
+V1 -- Uses UEFI standard legacy input protocol EFI_SIMPLE_TEXT_INPUT_PROTOCOL.
+V2 -- Uses UEFI standard modern input protocol EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL.
+AMI -- Uses APTIO input protocol AMI_EFIKEYCODE_PROTOCOL.

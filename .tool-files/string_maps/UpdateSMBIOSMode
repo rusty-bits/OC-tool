@@ -1,0 +1,4 @@
+TryOverwrite -- Overwrite if new size is <= than the page-aligned original
+Create -- Replace the tables with newly allocated EfiReservedMemoryType at AllocateMaxAddress
+Overwrite -- Overwrite existing gEfiSmbiosTableGuid and gEfiSmbiosTable3Guid data
+Custom -- Write first SMBIOS table (gEfiSmbiosTableGuid) to gOcCustomSmbiosTableGuid

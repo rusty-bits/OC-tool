@@ -1,0 +1,4 @@
+None -- Avoid hibernation for your own good.
+Auto -- Use RTC and NVRAM detection.
+RTC -- Use RTC detection.
+NVRAM -- Use NVRAM detection.

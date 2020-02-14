@@ -1,0 +1,4 @@
+BuiltinGraphics -- Switch to Graphics mode and use Builtin renderer with custom ConsoleControl. 
+SystemGraphics -- Switch to Graphics mode and use System renderer with custom ConsoleControl. 
+SystemText -- Switch to Text mode and use System renderer with custom ConsoleControl. 
+SystemGeneric -- Use System renderer with system ConsoleControl assuming it behaves correctly
