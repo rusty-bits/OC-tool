@@ -167,7 +167,7 @@ check_lilu_for_updates() {
 		fi
 	else
 		msg "\n${YEL}no existing Lilu found${NC}\n"
-		msg "Any existing kexts will be rebuilt to insure they are current\n"
+		msg "Any existing kexts will be rebuilt to ensure they are current\n"
 		rm -rf "$RES_DIR/Kext_builds"
 	fi
 }
@@ -316,7 +316,7 @@ build_shell_tool() { #possible to automate this function?
 		fin
 		cd ..
 		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-		BASE_TOOLS="" # insure other drivers use non-patched UDK
+		BASE_TOOLS="" # ensure other drivers use non-patched UDK
 	fi
 }
 
@@ -610,22 +610,40 @@ vault_failed() {
 
 build_vault() {
 	msg "\nBuilding vault files for $BUILD_DIR ... "
-	if [ ! -e "$RES_DIR/UDK/OcSupportPkg" ]; then
-		mkdir -p "$RES_DIR/UDK/OcSupportPkg"
-		cd "$RES_DIR/UDK/OcSupportPkg"
-		ocsupporturl=$(grep "/OcSupportPkg/prebuiltRelease/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		curl -L -O "$ocsupporturl"
-		ocsupportzip=${ocsupporturl##*/}
-		tar xvf "$ocsupportzip"
-	fi
+	case $MODE in
+		prebuiltRelease)
+			if [ ! -e "$RES_DIR/UDK/OcSupportPkg" ]; then
+				mkdir -p "$RES_DIR/UDK/OcSupportPkg"
+				cd "$RES_DIR/UDK/OcSupportPkg"
+				ocsupporturl=$(grep "/OcSupportPkg/$MODE/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+				curl -L -O "$ocsupporturl"
+				ocsupportzip=${ocsupporturl##*/}
+				tar xvf "$ocsupportzip"
+			fi;;
+	esac
 	cd "$BUILD_DIR"/OC
 	ls vault* 1> /dev/null 2>&1 && rm vault.*
-	"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
+	case $MODE in
+		prebuiltRelease|latestSource)
+			"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
+			;;
+		prebuiltDaily)
+			"$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
+			;;
+	esac
 	if [ "$USE_VAULT" != "Basic" ]; then
-		if [ "$MODE" = "latestSource" ]; then
-			make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
-		fi
-		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+		case $MODE in
+			prebuiltRelease|latestSource)
+				"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+				;;
+			prebuiltDaily)
+				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
+				;;
+		esac
+#		if [ "$MODE" = "latestSource" ]; then
+#			make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
+#		fi
+#		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 		off=$((str+16))
 		len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
