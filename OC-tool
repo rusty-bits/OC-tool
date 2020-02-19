@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(160220) last checked with OpenCore version REL-056-2020-02-10"
+VER="3.2(190220) last checked with OpenCore version REL-056-2020-02-18"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1621,7 +1621,7 @@ draw_edit_text() {
 	[ -n "$DEBUG" ] && msg "db - in draw_edit_text\n"
 	num=0; S=3
 	data_field="0"
-#	if [ "$moved" = "redraw" ]; then msg "\033[$((R-4))H\033[1J"; fi
+	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
 	draw_screen_header
 	draw_plist_footer
 	while [ "$num" -le "$G10_NUM" ]
@@ -1825,11 +1825,12 @@ text_user_interface() {
 		case $CHAR in
 			a)
 				msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
-				msg "level<$level> S0 $S0 S1 $S1 S2 $S2 S3 $S3 L0 $L0 L1 $L1 L2 $L2 L3 $L3\n"
+				msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3\n"
 				msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
 				if [ "$G" -eq "10" ]; then
 					get_edit_res "$res_num"
-					msg "\nlevel<$level> S0 $S0 S1 $S1 S2 $S2 S3 $S3 L0 $L0 L1 $L1 L2 $L2 L3 $L3\n"
+					msg "get_edit_res $res_num\n"
+					msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3\n"
 					msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
 					msg "\ntype<$type> val<$val> key<$key> en<$en>"
 				fi
@@ -1837,6 +1838,11 @@ text_user_interface() {
 			b)
 				moved="true"
 				eval S="\$G${G}_NUM";;
+			d)
+				get_CHAR
+				if [ "$CHAR" = "d" ]; then
+					msg "Deleting $res_name $res_num"
+				fi;;
 			e)
 				moved="redraw"
 				if [ "$TUI_MODE" != "summary" ]; then
