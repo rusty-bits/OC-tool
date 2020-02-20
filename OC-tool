@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(190220) last checked with OpenCore version REL-056-2020-02-18"
+VER="3.2(200220) last checked with OpenCore version REL-056-2020-02-18"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -30,7 +30,7 @@ INV='\033[7m'
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
-REMOVE_RES=""; BASE_TOOLS=""; TEXT=""; IGNORE=""; UPDATE=""
+REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 USE_FULL=""; IGNORE_SAMPLE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
@@ -790,6 +790,15 @@ print_res_array() { # debug aid to list psuedo array
 				msg "$G$S|$line\n"
 		done
 	done
+	msg "$G1_START\n"
+	msg "$G2_START\n"
+	msg "$G3_START\n"
+	msg "$G4_START\n"
+	msg "$G5_START\n"
+	msg "$G6_START\n"
+	msg "$G7_START\n"
+	msg "$G8_START\n"
+	msg "$G10_NUM\n"
 }
 
 get_edit_res() {
@@ -1825,12 +1834,12 @@ text_user_interface() {
 		case $CHAR in
 			a)
 				msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
-				msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3\n"
+				msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
 				msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
 				if [ "$G" -eq "10" ]; then
 					get_edit_res "$res_num"
 					msg "get_edit_res $res_num\n"
-					msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3\n"
+					msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
 					msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
 					msg "\ntype<$type> val<$val> key<$key> en<$en>"
 				fi
@@ -1841,7 +1850,42 @@ text_user_interface() {
 			d)
 				get_CHAR
 				if [ "$CHAR" = "d" ]; then
-					msg "Deleting $res_name $res_num"
+					if [ -n "$has_higher_level" ]; then # only selete single items
+						moved="true"
+						get_edit_res "$res_num"
+						eval l=\$L$((level-1))
+						for n in $(seq $res_num $G10_NUM)
+						do
+							o=$((n+1))
+							if [ "$l" -gt "0" ]; then # no need to check if done with section
+								get_edit_res "$o"
+								eval l2=\$L$((level-1))
+								if [ "$l" -eq "$l2" ]; then
+									eval L$level=\$\(\(L$level-1\)\)
+								else
+									l="-1"
+								fi
+								set_edit_res "$n"
+							else
+								eval res10"$n"=\$res10$o # just swap
+							fi
+						done
+						eval s=\$S$level
+						if [ "$s" -eq "$LLEN" ]; then s=$((s-1)); fi
+						eval S$level=$s
+						G10_NUM=$((G10_NUM-1))
+						for n in $(seq 1 8)
+						do
+							eval l=\$G"$n"_START
+							msg "\nl<$l> res_num<$res_num>"
+							if [ "$l" -gt "$res_num" ]; then
+								l=$((l-1))
+								eval G"$n"_START=$l
+								msg " new l<$l>"
+							fi
+						done
+						get_CHAR
+					fi
 				fi;;
 			e)
 				moved="redraw"
@@ -1859,6 +1903,7 @@ text_user_interface() {
 				stty echo
 				msg "${NC}"
 				msg "$(tput rmcup)"
+				msg "$(tput cnorm)"
 				print_res_array
 				exit 0;;
 			q)
@@ -2165,7 +2210,7 @@ process_plist_txt() {
 		case "$L0" in
 			"1")
 				if [ "$en" = "+" ]; then
-					eval resme=\$miss$num
+					eval resme=\$miss"$num"
 					add_res_plist_txt
 				fi;;
 			"2")
@@ -2322,7 +2367,6 @@ process_plist() {
 #****** Start build ***************
 if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
-#	TEXT="" # no TUI use either with piped config.plist
 	TUI_MODE=""
 	filePath="stdin"
 else  #  no input found on stdin
@@ -2372,7 +2416,6 @@ case "${optchar}" in
 					msg "\twritten over because of the smaller size\n"
 					exit 0
 				fi
-#				TEXT="true"
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}t";;
@@ -2387,7 +2430,6 @@ case "${optchar}" in
 			if [ "$filePath" = "stdin" ]; then
 				msg "TUI override is not available when plist is piped to stdin\n"
 			else
-#				TEXT="true"
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}T";;
