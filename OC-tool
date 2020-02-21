@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.2(200220) last checked with OpenCore version REL-056-2020-02-18"
+VER="3.3(210220) last checked with OpenCore version REL-056-2020-02-18"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1250,17 +1250,17 @@ draw_pre_status() {
 	case "$S0" in
 		1)
 			if [ "$en" = "+" ]; then
-				msg " ${GRN}${INV} Add ${NC}"
+				msg " ${GRN}${INV} Will be ADDED ${NC}"
 			elif [ "$en" = "-" ]; then
-				msg " ${RED}${INV} Ignore ${NC}"
+				msg " ${RED}${INV} Will be ignored ${NC}"
 			elif [ "$en" = "i" ]; then
 				msg "${YEL}${U}This is yellow${NC}"
 			fi;;
 		2)
 			if [ "$en" = "+" ]; then
-				msg " ${GRN}${INV} Leave alone ${NC}"
+				msg " ${GRN}${INV} Will be left alone ${NC}"
 			elif [ "$en" = "-" ]; then
-				msg " ${RED}${INV} Remove ${NC}"
+				msg " ${RED}${INV} Will be REMOVED ${NC}"
 			elif [ "$en" = "i" ]; then
 				msg "${YEL}${U} yellow ${NC}"
 			fi;;
@@ -1841,52 +1841,12 @@ text_user_interface() {
 					msg "get_edit_res $res_num\n"
 					msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
 					msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
-					msg "\ntype<$type> val<$val> key<$key> en<$en>"
+					msg "\ntype<$type> val<$val> key<$key> en<$en> G10_NUM<$G10_NUM>"
 				fi
 				;;
 			b)
 				moved="true"
 				eval S="\$G${G}_NUM";;
-			d)
-				get_CHAR
-				if [ "$CHAR" = "d" ]; then
-					if [ -n "$has_higher_level" ]; then # only selete single items
-						moved="true"
-						get_edit_res "$res_num"
-						eval l=\$L$((level-1))
-						for n in $(seq $res_num $G10_NUM)
-						do
-							o=$((n+1))
-							if [ "$l" -gt "0" ]; then # no need to check if done with section
-								get_edit_res "$o"
-								eval l2=\$L$((level-1))
-								if [ "$l" -eq "$l2" ]; then
-									eval L$level=\$\(\(L$level-1\)\)
-								else
-									l="-1"
-								fi
-								set_edit_res "$n"
-							else
-								eval res10"$n"=\$res10$o # just swap
-							fi
-						done
-						eval s=\$S$level
-						if [ "$s" -eq "$LLEN" ]; then s=$((s-1)); fi
-						eval S$level=$s
-						G10_NUM=$((G10_NUM-1))
-						for n in $(seq 1 8)
-						do
-							eval l=\$G"$n"_START
-							msg "\nl<$l> res_num<$res_num>"
-							if [ "$l" -gt "$res_num" ]; then
-								l=$((l-1))
-								eval G"$n"_START=$l
-								msg " new l<$l>"
-							fi
-						done
-						get_CHAR
-					fi
-				fi;;
 			e)
 				moved="redraw"
 				if [ "$TUI_MODE" != "summary" ]; then
@@ -1978,6 +1938,81 @@ text_user_interface() {
 					esac
 				else
 					case "$CHAR" in # key press actions for edit plist screen
+						d) # delete field or section
+							get_CHAR
+							if [ "$CHAR" = "d" ]; then
+								get_edit_res "$res_num"
+								eval l=\$L$level
+								if [ "$l" -eq "0" ]; then
+									level=$((level-1))
+									eval s=\$S$level
+									if [ "$s" -eq "$LLEN" ]; then
+										eval S$level=$((LLEN-1))
+									fi
+								fi
+								if [ "$level" -gt "0" ]; then
+									moved="true"; skip=1
+									eval l=\$L$((level-1))
+									l2=$l
+									eval d=\$L$level
+									for n in $(seq $res_num $G10_NUM)
+									do
+										o=$((n+skip))
+										if [ "$l" -eq "$l2" ]; then # no need to check if done with section
+											get_edit_res "$o"
+											eval l2=\$L$((level-1))
+											eval d2=\$L$level
+											while [ "$d" -eq "$d2" ]
+											do
+												skip=$((skip+1))
+												o=$((n+skip))
+												get_edit_res "$o"
+												eval l2=\$L$((level-1))
+												eval d2=\$L$level
+											done
+											if [ "$l" -eq "$l2" ]; then
+												eval L$level=\$\(\(L$level-1\)\)
+											else
+												l="-1"
+											fi
+											set_edit_res "$n"
+										else
+											eval res10"$n"=\$res10$o # just swap
+										fi
+									done
+									G10_NUM=$((G10_NUM-skip))
+									eval s=\$S$level
+									if [ "$s" -eq "$LLEN" ]; then
+										s=$((s-1))
+										LLEN=0
+									elif [ "$LLEN" -eq "0" ]; then
+										s=1
+									fi
+									eval S$level=$s
+									for n in $(seq 1 8)
+									do
+										eval l=\$G"$n"_START
+										if [ "$l" -gt "$res_num" ]; then
+											l=$((l-skip))
+											eval G"$n"_START=$l
+										fi
+									done
+									for n in $(seq 1 4)
+									do
+										p=$(eval echo \$G"$n"_NUM)
+										for o in $(seq 0 "$p")
+											do
+												get_res "$n$o"
+												if [ "$enabled" -eq "$res_num" ]; then
+													eval res$n$o=""
+												elif [ "$enabled" -gt "$res_num" ]; then
+													enabled=$((enabled-skip))
+													set_res "$n$o"
+												fi
+											done
+									done
+								fi
+							fi;;
 						i)
 							show_description
 							draw_edit_text;;
@@ -2096,6 +2131,7 @@ remove_resource_msg() {
 	msg " ${RED}*** ${NC}compile time, in many cases requiring all tools to be rebuilt.\n"
 	msg " ${RED}*********************************************************************${NC}\n"
 }
+
 set_up_vault() {
 	if [ -n "$USE_VAULT_NUM" ]; then
 		get_edit_res "$USE_VAULT_NUM"
