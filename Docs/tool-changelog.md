@@ -2,8 +2,12 @@
 - **added delete field/section to config.plist editor**  
 While in config.plist editor mode, pressing d 2 times will delete the highlighted field or section.  
 
+- **missing/extra picker still a work in progress**  
+Yes, it works, but it's still ugly and not intuitive.  
+I need to work on the add a field/section to config.plist code first, then hopefully I can fix the ugly missing/extra picker.  
+
 ## VER 3.2(090220)  
-- **added missing/extra picker**
+- **added missing/extra picker**  
 When run, if OC-tool finds fields missing from config.plist it will display a picker window to select and add them automatically.  
 
 ## VER 3.1(050220)  
