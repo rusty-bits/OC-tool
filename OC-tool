@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.3(210220) last checked with OpenCore version REL-056-2020-02-18"
+VER="3.3(220220) last checked with OpenCore version DBG-056-2020-02-21"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -18,7 +18,7 @@ BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
 INPUT="$BASE_DIR/INPUT/temp"
 CONFIG_PLIST="$INPUT/config.plist" # set input plist to temp dir, no mod of original
-CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
+# CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
 SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
@@ -702,44 +702,44 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	set_res "$G$S"
 }
 
-missing_plist_sec() {
-	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $filePath\n"
-	msg "\tWill continue build, but please note this warning from the Configuration.pdf\n"
-	msg "\t${U}Note: Currently most properties try to have defined values even if not specified\n"
-	msg "\tin the configuration for safety reasons. This behaviour should not be relied upon, and\n"
-	msg "\tall fields must be properly specified in the configuration.${NC}\n"
-	num=1
-}
+#missing_plist_sec() {
+#	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $filePath\n"
+#	msg "\tWill continue build, but please note this warning from the Configuration.pdf\n"
+#	msg "\t${U}Note: Currently most properties try to have defined values even if not specified\n"
+#	msg "\tin the configuration for safety reasons. This behaviour should not be relied upon, and\n"
+#	msg "\tall fields must be properly specified in the configuration.${NC}\n"
+#	num=1
+#}
 
-add_resource() { #add_resource "Group" "Section" "subsec" "Path"
-	G=$1; S=0
-	if [ "$G" -lt "5" ]; then
-		num=$(grep -c "^$2|*$3|[0-9]*|string|$4| " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
-		for S in $(seq "0" "$((num-1))")
-		do
-			case "$G" in
-				1|2|4)
-					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-					enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
-					add_res_array;;
-				3)
-					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-					enabled="true"
-					add_res_array;;
-			esac
-		done
-	else
-# shellcheck disable=SC2013
-		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
-		do
-			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
-			set_res "$G$S"
-			S=$((S+1))
-		done
-		S=$((S-1))
-	fi
-	eval G"$G"_NUM="$S"
-}
+#add_resource() { #add_resource "Group" "Section" "subsec" "Path"
+#	G=$1; S=0
+#	if [ "$G" -lt "5" ]; then
+#		num=$(grep -c "^$2|*$3|[0-9]*|string|$4| " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
+#		for S in $(seq "0" "$((num-1))")
+#		do
+#			case "$G" in
+#				1|2|4)
+#					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
+#					enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
+#					add_res_array;;
+#				3)
+#					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
+#					enabled="true"
+#					add_res_array;;
+#			esac
+#		done
+#	else
+## shellcheck disable=SC2013
+#		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
+#		do
+#			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
+#			set_res "$G$S"
+#			S=$((S+1))
+#		done
+#		S=$((S-1))
+#	fi
+#	eval G"$G"_NUM="$S"
+#}
 
 init_res_array() { # base-resources moved into .tool-files for portability
 	G=0; S="-1"
@@ -1065,7 +1065,6 @@ draw_screen() {
 	draw_screen_header
 	for G in $(seq 1 4)
 	do
-		if [ -n "$DEBUG" ]; then msg "db - screen loop G=$G\n"; fi
 		S="0"
 		eval n="\$G${G}_NUM"
 		while [ "$S" -le "$n" ]
@@ -1620,7 +1619,7 @@ draw_plist_footer() {
 		msg "q: quit without saving\033[K"
 	else
 		PL_FOOT="$((R-3))"
-		msg "\033[${PL_FOOT}H i: info of ${INV}highlighted${NC} item  e: return to summary screen   g: go build new EFI folder\n\033[2K\n"
+		msg "\033[${PL_FOOT}H i: info of ${INV}highlighted${NC} item  d: ${RED}delete${NC} ${INV}highlighted${NC} item   g: go build new EFI folder\n\033[2K\n"
 		msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
 		msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
 	fi
@@ -1792,6 +1791,93 @@ toggle_enabled() {
 	fi
 }
 
+delete_field() {
+	get_edit_res "$res_num"
+	eval l=\$L$level
+	if [ "$l" -eq "0" ]; then
+		level=$((level-1))
+		eval s=\$S$level
+		if [ "$s" -eq "$LLEN" ]; then
+			eval S$level=$((LLEN-1))
+		fi
+	fi
+	if [ "$level" -gt "0" ]; then
+		skip=1
+		eval l=\$L$((level-1))
+		l2=$l
+		eval d=\$L$level
+		for n in $(seq $res_num $G10_NUM)
+		do
+			o=$((n+skip))
+			if [ "$l" -eq "$l2" ]; then # no need to check if done with section
+				get_edit_res "$o"
+				eval l2=\$L$((level-1))
+				eval d2=\$L$level
+				while [ "$d" -eq "$d2" ]
+				do
+					skip=$((skip+1))
+					o=$((n+skip))
+					get_edit_res "$o"
+					eval l2=\$L$((level-1))
+					eval d2=\$L$level
+				done
+				if [ "$l" -eq "$l2" ]; then
+					eval L$level=\$\(\(L$level-1\)\)
+				else
+					l="-1"
+				fi
+				set_edit_res "$n"
+			else
+				eval res10"$n"=\$res10$o # just swap
+			fi
+		done
+		G10_NUM=$((G10_NUM-skip))
+		eval s=\$S$level
+		if [ "$s" -eq "$LLEN" ]; then
+			s=$((s-1))
+			LLEN=0
+		elif [ "$LLEN" -eq "0" ]; then
+			s=1
+		fi
+		eval S$level=$s
+		for n in $(seq 1 8)
+		do
+			eval l=\$G"$n"_START
+			if [ "$l" -gt "$res_num" ]; then
+				l=$((l-skip))
+				eval G"$n"_START=$l
+			fi
+		done
+		for n in $(seq 1 4)
+		do
+			p=$(eval echo \$G"$n"_NUM)
+			resize=""
+			for o in $(seq 0 "$p")
+			do
+				get_res "$n$o"
+				if [ "$enabled" -eq "$res_num" ]; then
+					eval res$n$o=""
+					resize="true"
+				elif [ "$enabled" -gt "$res_num" ]; then
+					enabled=$((enabled-skip))
+					set_res "$n$o"
+				fi
+			done
+			if [ -n "$resize" ]; then
+				for o in $(seq 0 "$p")
+				do
+					eval a=\$res$n$o
+					if [ -z "$a" ]; then
+						eval res$n$o=\$res$n$((o+1))
+						eval res$n$((o+1))=""
+					fi
+				done
+				eval G"$n"_NUM=$((p-1))
+			fi
+		done
+	fi
+}
+
 text_user_interface() {
 	git_url=""; srce=""; dest=""; parent=""
 	BOT=0; KEY=0
@@ -1939,79 +2025,13 @@ text_user_interface() {
 				else
 					case "$CHAR" in # key press actions for edit plist screen
 						d) # delete field or section
-							get_CHAR
-							if [ "$CHAR" = "d" ]; then
-								get_edit_res "$res_num"
-								eval l=\$L$level
-								if [ "$l" -eq "0" ]; then
-									level=$((level-1))
-									eval s=\$S$level
-									if [ "$s" -eq "$LLEN" ]; then
-										eval S$level=$((LLEN-1))
-									fi
+							if [ "$level" -gt "0" ]; then
+								msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} $res_name${NC}, any other key to abort"
+								get_CHAR
+								if [ "$CHAR" = "d" ]; then
+									delete_field
 								fi
-								if [ "$level" -gt "0" ]; then
-									moved="true"; skip=1
-									eval l=\$L$((level-1))
-									l2=$l
-									eval d=\$L$level
-									for n in $(seq $res_num $G10_NUM)
-									do
-										o=$((n+skip))
-										if [ "$l" -eq "$l2" ]; then # no need to check if done with section
-											get_edit_res "$o"
-											eval l2=\$L$((level-1))
-											eval d2=\$L$level
-											while [ "$d" -eq "$d2" ]
-											do
-												skip=$((skip+1))
-												o=$((n+skip))
-												get_edit_res "$o"
-												eval l2=\$L$((level-1))
-												eval d2=\$L$level
-											done
-											if [ "$l" -eq "$l2" ]; then
-												eval L$level=\$\(\(L$level-1\)\)
-											else
-												l="-1"
-											fi
-											set_edit_res "$n"
-										else
-											eval res10"$n"=\$res10$o # just swap
-										fi
-									done
-									G10_NUM=$((G10_NUM-skip))
-									eval s=\$S$level
-									if [ "$s" -eq "$LLEN" ]; then
-										s=$((s-1))
-										LLEN=0
-									elif [ "$LLEN" -eq "0" ]; then
-										s=1
-									fi
-									eval S$level=$s
-									for n in $(seq 1 8)
-									do
-										eval l=\$G"$n"_START
-										if [ "$l" -gt "$res_num" ]; then
-											l=$((l-skip))
-											eval G"$n"_START=$l
-										fi
-									done
-									for n in $(seq 1 4)
-									do
-										p=$(eval echo \$G"$n"_NUM)
-										for o in $(seq 0 "$p")
-											do
-												get_res "$n$o"
-												if [ "$enabled" -eq "$res_num" ]; then
-													eval res$n$o=""
-												elif [ "$enabled" -gt "$res_num" ]; then
-													enabled=$((enabled-skip))
-													set_res "$n$o"
-												fi
-											done
-									done
-								fi
+								moved="true"
 							fi;;
 						i)
 							show_description
