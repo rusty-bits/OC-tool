@@ -1,3 +1,7 @@
+## VER 3.3(220220)  
+- **added delete field/section to config.plist editor**  
+While in config.plist editor mode, pressing d 2 times will delete the highlighted field or section.  
+
 ## VER 3.2(090220)  
 - **added missing/extra picker**
 When run, if OC-tool finds fields missing from config.plist it will display a picker window to select and add them automatically.  
