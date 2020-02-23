@@ -1791,6 +1791,39 @@ toggle_enabled() {
 	fi
 }
 
+add_field() {
+	for n in $(seq "$G10_NUM" "$res_num")
+	do
+		eval res10$((n+1))=\$res10$n
+	done
+	G10_NUM=$((G10_NUM+1))
+	get_edit_res "$res_num"
+	val=""; key="test$res_num"
+	msg "\n b: bool  d: data  s: string"
+	get_CHAR
+	case $CHAR in
+		b)
+			val="false"
+			type="bool";;
+		d)
+			type="data";;
+		s)
+			type="string";;
+	esac
+	set_edit_res "$res_num"
+	n=$((res_num+1))
+	get_edit_res "$n"
+	eval l=\$L$((level-1)); l2=$l
+	while [ "$l2" -eq "$l" ]
+	do
+		eval L$level=\$\(\(L$level+1\)\)
+		set_edit_res "$n"
+		n=$((n+1))
+		get_edit_res "$n"
+		eval l=\$L$((level-1))
+	done
+}
+
 delete_field() {
 	get_edit_res "$res_num"
 	eval l=\$L$level
@@ -1918,18 +1951,6 @@ text_user_interface() {
 			esac
 		fi
 		case $CHAR in
-			a)
-				msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
-				msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
-				msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
-				if [ "$G" -eq "10" ]; then
-					get_edit_res "$res_num"
-					msg "get_edit_res $res_num\n"
-					msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
-					msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
-					msg "\ntype<$type> val<$val> key<$key> en<$en> G10_NUM<$G10_NUM>"
-				fi
-				;;
 			b)
 				moved="true"
 				eval S="\$G${G}_NUM";;
@@ -2024,6 +2045,18 @@ text_user_interface() {
 					esac
 				else
 					case "$CHAR" in # key press actions for edit plist screen
+						a)
+							add_field
+							moved="true"
+#							msg "\nG<$G> S<$S> en<$enabled> key<$key> val<$val> type<$type>\n"
+#							if [ "$G" -eq "10" ]; then
+#								get_edit_res "$res_num"
+#								msg "get_edit_res $res_num\n"
+#								msg "level<$level> S $S0 $S1 $S2 $S3 L $L0 $L1 $L2 $L3 LLEN<$LLEN>\n"
+#								msg "res_num<$res_num> res_name<$res_name> EDIT_RES_NUM$<$EDIT_RES_NUM>\n"
+#								msg "\ntype<$type> val<$val> key<$key> en<$en> G10_NUM<$G10_NUM>"
+#							fi
+							;;
 						d) # delete field or section
 							if [ "$level" -gt "0" ]; then
 								msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} $res_name${NC}, any other key to abort"
