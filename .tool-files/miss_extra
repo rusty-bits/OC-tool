@@ -1,4 +1,6 @@
 |Quirks|
+UEFI|Audio|
+UEFI|Input|
 UEFI|Output|
 PlatformInfo
 Protocols
