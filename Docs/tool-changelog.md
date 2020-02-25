@@ -1,3 +1,14 @@
+## VER 3.3(250220)  
+- **added add item command to config.plist editor**  
+Can now add field of type bool, data, integer or string into plist by pressing a.  The new field will be inserted before the currently highlightd item.  
+
+Can now add new Driver from pulldown list by pressing   
+
+Pulldown list to add Kexts and Tools should be coming soon  
+
+- **added rename command to config.plist editor**  
+Can now rename the key of the highlighted item by pressing n  
+
 ## VER 3.3(220220)  
 - **added delete field/section to config.plist editor**  
 While in config.plist editor mode, pressing d 2 times will delete the highlighted field or section.  

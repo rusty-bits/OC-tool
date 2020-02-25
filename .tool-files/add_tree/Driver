@@ -1,0 +1,11 @@
+ApfsDriverLoader.efi
+AppleUsbKbDxe.efi
+AudioDxe.efi
+ChipTune.efi
+ExternalUi.efi
+FwRuntimeServices.efi
+HfsPlus.efi
+NvmExpressDxe.efi
+VBoxHfs.efi
+VirtualSmc.efi
+XhciDxe.efi

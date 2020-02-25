@@ -34,7 +34,7 @@ REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 USE_FULL=""; IGNORE_SAMPLE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
-DEBUG=""; ADD_RES_NUM="-1"
+DEBUG=""; ADD_RES_NUM="-1"; LA="1"
 
 ad2stk=""; C_TEST="ICBIZWxsbywgd29ybGQhICAK"
 
@@ -741,12 +741,13 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #	eval G"$G"_NUM="$S"
 #}
 init_add_array() {
+	ADD_FILE="${1##* }"
 	n=0
 	while read -r line
 	do
 		eval add$n="\$line"
 		n=$((n+1))
-	done < "$TOOL_FILES/add_tree/$1"
+	done < "$TOOL_FILES/add_tree/$ADD_FILE"
 	GADD_NUM="$((n-1))"
 }
 
@@ -1402,7 +1403,12 @@ split_val() {
 
 highlight_type() {
 	msg "\033[3H"
-	msg "       tab: ${YEL}cycle through types${NC}  "
+	case "$res_type" in
+		"data")
+			msg "       tab: ${YEL}cycle through types${NC}  ";;
+		"integer")
+			msg "       tab: ${BLU}cycle through types${NC}  ";;
+	esac
 	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
 	case "$res_type" in
 		"data")
@@ -1414,7 +1420,10 @@ highlight_type() {
 	msg "hex${NC} | "
 	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
 	if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
-	msg "    return: save changes    ${RED}esc esc${NC}: discard changes\033[K"
+	msg "   return: save changes\033[K"
+	if [ "$EDIT_RES_NUM" -gt "0" ]; then
+		msg "   ${RED}esc esc${NC}: discard changes"
+	fi
 }
 
 draw_edit_header() {
@@ -1443,15 +1452,24 @@ draw_edit_header() {
 					msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection\033[K"
 				fi
 			else
-				msg "       return: edit string   return: save changes   ${RED}esc esc${NC}: discard changes\033[K"
+				msg "       return: edit string\033[K"
+				if [ "$EDIT_RES_NUM" -gt "0" ]; then
+					msg "   return: save changes   ${RED}esc esc${NC}: discard changes"
+				fi
 			fi;;
 		*)
 			msg "       up dn: select section | ->: expand | <-: collapse"
-			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
-				msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
-			fi
-			if [ "${res_name##* }" = "i" ]; then
-				msg "  ${YEL}Disabled by -i option${NC}"
+			if [ "$ADD_RES_NUM" -lt "0" ]; then
+				if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
+					msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
+				fi
+				if [ "${res_name##* }" = "i" ]; then
+					msg "  ${YEL}Disabled by -i option${NC}"
+				fi
+			elif [ "$LA" -eq "2" ]; then
+				msg "    return to add ${YEL}$ADD_FILE${NC}"
+			else
+				msg "    ${RED}esc esc${NC}: to cancel"
 			fi
 			msg "\033[K";;
 	esac
@@ -1515,8 +1533,8 @@ select_add_field() {
 	do
 		S=$((S+1))
 		eval a="\$add$n"
-		msg "\033[${S}H\033[2K\t"
-		if [ "$LA" -eq "2" ]; then msg "< "; fi
+		msg "\033[${S}H\033[2K-add "
+		if [ "$LA" -eq "2" ]; then msg "< $ADD_FILE "; fi
 		if [ "$SA" -eq "$n" ]; then msg "$INV"; fi
 		msg "$a${NC}"
 		if [ "$LA" -eq "1" ]; then msg " >"; fi
@@ -1681,8 +1699,9 @@ draw_plist_footer() {
 		msg " $RED$INV ignore if missing / remove if exists $NC "
 		msg "q: quit without saving\033[K"
 	else
-		PL_FOOT="$((R-3))"
-		msg "\033[${PL_FOOT}H i: info of ${INV}highlighted${NC} item  d: ${RED}delete${NC} ${INV}highlighted${NC} item   g: go build new EFI folder\n\033[2K\n"
+		PL_FOOT="$((R-4))"
+		msg "\033[${PL_FOOT}H a: add new item to plist     d: ${RED}delete${NC} ${INV}highlighted${NC} item        g: go build new EFI folder\n\033[2K"
+		msg " i: info of ${INV}highlighted${NC} item  n: change name of ${INV}highlighted${NC} key\n\033[2K\n"
 		msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
 		msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
 	fi
@@ -1723,6 +1742,7 @@ draw_edit_text() {
 			if [ -n "$has_higher_level" ]; then
 				if [ "$EDIT_RES_NUM" -eq "$num" ]; then
 					data_field="1"
+					draw_edit_header
 					edit_val
 					set_edit_res "$num"
 				fi
@@ -1834,19 +1854,22 @@ add_field() {
 		eval res10$n=""
 	done
 	G10_NUM=$((G10_NUM+$field_len))
-	key="\n\n Enter name for new ${YEL}$new_type${NC} type field ->"
-	type="string"; res_type="string"
-	val="name"; e_val="$val"
-	data_field=1
-	draw_edit_header
-	edit_val
-	key="$val"
-	type="$new_type"
-	if [ "$type" = "bool" ]; then
-		val="false"
-	else
+	if [ -z "$new_key" ]; then
+		key="\n\n Enter key name for new ${YEL}$new_type${NC} ->"
+		val=""; e_val="$val"
+		type="string"; res_type="string"
+		data_field=1
+		draw_edit_header
+		edit_val
+		key="$val"
+		if [ -z "$key" ]; then key="NewKey"; fi
 		val=""
+	else
+		key="$new_key"
+		val="$new_val"
 	fi
+	type="$new_type"
+	if [ "$type" = "bool" ]; then val="false"; fi
 	set_edit_res "$ADD_RES_NUM"
 	n=$((ADD_RES_NUM+$field_len))
 	get_edit_res "$n"
@@ -1858,6 +1881,37 @@ add_field() {
 		n=$((n+1))
 		get_edit_res "$n"
 		eval l=\$L$((level-1))
+	done
+	for n in $(seq 1 8)
+	do
+		eval l=\$G"$n"_START
+		if [ "$l" -gt "$ADD_RES_NUM" ]; then
+			l=$((l+field_len))
+			eval G"$n"_START=$l
+		fi
+	done
+	for n in $(seq 1 4)
+	do
+		eval p=\$G"$n"_NUM
+		resize=""
+		for o in $(seq 0 "$p")
+		do
+			get_res "$n$o"
+			if [ "$enabled" -eq "$ADD_RES_NUM" ]; then resize="$o"; fi
+			if [ "$enabled" -ge "$ADD_RES_NUM" ]; then
+				enabled=$((enabled+field_len))
+				set_res "$n$o"
+			fi
+		done
+		if [ -n "$resize" ]; then
+			p=$((p+1))
+			for o in $(seq "$p" "$((resize+1))")
+			do
+				eval res$n$o=\$res$n$((o-1))
+			done
+			eval G"$n"_NUM=$p
+			eval "res$n$resize='${new_key% ?}'\|\|\|\|\|'$ADD_RES_NUM'"
+		fi
 	done
 	ADD_RES_NUM="-1"
 }
@@ -1873,21 +1927,21 @@ delete_field() {
 		fi
 	fi
 	if [ "$level" -gt "0" ]; then
-		skip=1
+		field_len=1
 		eval l=\$L$((level-1))
 		l2=$l
 		eval d=\$L$level
 		for n in $(seq $res_num $G10_NUM)
 		do
-			o=$((n+skip))
+			o=$((n+field_len))
 			if [ "$l" -eq "$l2" ]; then # no need to check if done with section
 				get_edit_res "$o"
 				eval l2=\$L$((level-1))
 				eval d2=\$L$level
 				while [ "$d" -eq "$d2" ]
 				do
-					skip=$((skip+1))
-					o=$((n+skip))
+					field_len=$((field_len+1))
+					o=$((n+field_len))
 					get_edit_res "$o"
 					eval l2=\$L$((level-1))
 					eval d2=\$L$level
@@ -1902,7 +1956,7 @@ delete_field() {
 				eval res10"$n"=\$res10$o # just swap
 			fi
 		done
-		G10_NUM=$((G10_NUM-skip))
+		G10_NUM=$((G10_NUM-field_len))
 		eval s=\$S$level
 		if [ "$s" -eq "$LLEN" ]; then
 			s=$((s-1))
@@ -1915,13 +1969,13 @@ delete_field() {
 		do
 			eval l=\$G"$n"_START
 			if [ "$l" -gt "$res_num" ]; then
-				l=$((l-skip))
+				l=$((l-field_len))
 				eval G"$n"_START=$l
 			fi
 		done
 		for n in $(seq 1 4)
 		do
-			p=$(eval echo \$G"$n"_NUM)
+			eval p=\$G"$n"_NUM
 			resize=""
 			for o in $(seq 0 "$p")
 			do
@@ -1930,7 +1984,7 @@ delete_field() {
 					eval res$n$o=""
 					resize="true"
 				elif [ "$enabled" -gt "$res_num" ]; then
-					enabled=$((enabled-skip))
+					enabled=$((enabled-field_len))
 					set_res "$n$o"
 				fi
 			done
@@ -2086,12 +2140,17 @@ text_user_interface() {
 					if [ "$ADD_RES_NUM" -lt "0" ]; then # not in add field mode
 						case "$CHAR" in # key press actions for edit plist screen
 							a)
-								init_add_array "add_tree1"
-								ADD_RES_NUM="$res_num"
-								SA=0; LA=1
-								eval SN=\$S$level
-								eval S$level="-1"
-								moved="true";;
+								if [ "$level" -gt "0" ]; then
+									init_add_array "add_tree1"
+									ADD_RES_NUM="$res_num"
+									SA=0; LA=1
+									new_key=""; new_val=""
+									eval SN=\$S$level
+									eval S$level="-1"
+									moved="true"
+								else
+									msg "\n${YEL}Can't add to base of plist yet, expand a section to add items${NC}"
+								fi;;
 							d) # delete field or section
 								if [ "$level" -gt "0" ]; then
 									msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} $res_name${NC}, any other key to abort"
@@ -2112,12 +2171,15 @@ text_user_interface() {
 									key="\n\n Enter new name for ${YEL}$val${NC} field ->"
 									type="string"; res_type="string"
 									data_field=1
+									EDIT_RES_NUM="$res_num"
 									draw_edit_header
 									edit_val
 									new_key="$val"
 									get_edit_res "$res_num"
 									key="$new_key"
+									if [ -z "$key" ]; then key="BlankKey"; fi
 									set_edit_res "$res_num"
+									EDIT_RES_NUM="-1"
 								fi
 								moved="true";;
 							r)
@@ -2183,10 +2245,25 @@ text_user_interface() {
 									eval S$level=$SN
 								fi;;
 							nl)
-								eval new_type="\$add$SA"
-								add_field
-								moved="true"
-								eval S$level=$SN;;
+								if [ "$LA" -eq "2" ]; then
+									case $ADD_FILE in
+										"Driver")
+											eval a="\$add$SA"
+											new_type="string"
+											new_key="$a +"
+											new_val="$a +"
+											add_field;;
+										"variable")
+											eval a="\$add$SA"
+											new_type="${a##* }"
+											add_field;;
+										*)
+											ADD_RES_NUM="-1";;
+									esac
+									CONFIG_CHANGED="-t option"
+									moved="true"
+									eval S$level=$SN
+								fi;;
 							A|k) # move up
 								SA=$((SA-1))
 								moved="true"
