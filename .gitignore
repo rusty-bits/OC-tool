@@ -6,9 +6,8 @@ update.log
 .tool-files/h.e
 .tool-files/k.e
 
-INPUT/config.plist
-INPUT/modified.config.plist
-INPUT/temp/*
+INPUT/*
+!INPUT/readme.txt
 
 Docs/diff_Sample.txt
 

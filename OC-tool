@@ -561,7 +561,7 @@ copy_resources() {
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
 						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="$SHELL_EFI" ;fi
-						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.config.plist"; fi
+						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						msg "Copying $dest_name to $dest ... "
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
@@ -586,7 +586,7 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 	msg "\tyou can see the differences with 'cat ./Docs/diff_Sample.txt'\n"
 	msg "\tor run the tool again with the -t option.\n"
 	msg "\t${YEL}You may want to check for any changes${NC} that could apply to\n"
-	msg "\t$filePath\n"
+	msg "\t$inputFilePath\n"
 }
 
 check_if_Sample_plist_updated() {
@@ -703,7 +703,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 }
 
 #missing_plist_sec() {
-#	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $filePath\n"
+#	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $inputFilePath\n"
 #	msg "\tWill continue build, but please note this warning from the Configuration.pdf\n"
 #	msg "\t${U}Note: Currently most properties try to have defined values even if not specified\n"
 #	msg "\tin the configuration for safety reasons. This behaviour should not be relied upon, and\n"
@@ -862,7 +862,7 @@ output_element() {
 }
 
 write_new_conf() {
-	OUT="$BASE_DIR/INPUT/modified.config.plist"
+	OUT="$BASE_DIR/INPUT/modified.$inputFileName"
 	msg "\033[J\nWriting new config.plist to $OUT ... "
 	rm -rf "$OUT"
 	num="0"; S0="0"; ad1=""; ad2=""
@@ -1048,7 +1048,7 @@ draw_screen_header() {
 	else
 		CC="${GRN}${INV} ${NC}${INV}"
 	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  INPUT=${GRN}$filePath${NC}\033[K"
+	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  INPUT=${GRN}$inputFilePath${NC}\033[K"
 	if [ "$TUI_MODE" != "pre" ]; then msg " ${U}e${NC} $e_msg\033[K"; fi
 }
 
@@ -2605,7 +2605,7 @@ process_plist() {
 	"$TOOL_FILES/parsePlistEdit.sh"
 
 	if [ ! -e "edit_subs.txt" ]; then
-		msg "\n${RED}ERROR:${NC} ${filePath} does not appear to be an OpenCore plist\n"
+		msg "\n${RED}ERROR:${NC} ${inputFilePath} does not appear to be an OpenCore plist\n"
 		msg "\tIf you don't have an OpenCore plist you can start with the sample provided\n"
 		msg "\tby the acidanthera team.  You can copy the sample to your INPUT directory\n"
 		msg "\tby using this command, but be aware if a config.plist already exists in\n"
@@ -2620,7 +2620,7 @@ process_plist() {
 if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
 	QUIET="-q" # currently stdin is not a terminal, no output to tty
 	TUI_MODE=""
-	filePath="stdin"
+	inputFilePath="stdin"
 else  #  no input found on stdin
 	TTY_OUT=$(tty)
 fi
@@ -2655,7 +2655,7 @@ case "${optchar}" in
 			VERBOSE="-v"
 			EX_COM="${EX_COM}v";;
 		t)
-			if [ "$filePath" = "stdin" ]; then
+			if [ "$inputFilePath" = "stdin" ]; then
 				msg "TUI mode unavailable when plist is piped to stdin\n"
 			else
 				R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
@@ -2679,7 +2679,7 @@ case "${optchar}" in
 			UPDATE="false"
 			EX_COM="${EX_COM}N";;
 		T)
-			if [ "$filePath" = "stdin" ]; then
+			if [ "$inputFilePath" = "stdin" ]; then
 				msg "TUI override is not available when plist is piped to stdin\n"
 			else
 				TUI_MODE="summary"
@@ -2713,31 +2713,38 @@ fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 
 if [ -z "$UPDATE" ]; then check_tool_for_updates;fi
-rm -rf "$INPUT"
-if [ "$filePath" = "stdin" ]; then # get filepath or piped data now that options are processed
+rm -rf "$INPUT" # this looks scary, but input comes from a temp folder
+if [ "$inputFilePath" = "stdin" ]; then # get filepath or piped data now that options are processed
 	mkdir -p "$INPUT"
 	cat > "$CONFIG_PLIST.tmp"
 else
-	eval filePath="\$$OPTIND"
-	if [ -e "$filePath" ]; then
-		EX_COM="${EX_COM} ${filePath}"
+	eval inputFilePath="\$$OPTIND"
+	if [ -e "$inputFilePath" ]; then
+		EX_COM="${EX_COM} ${inputFilePath}"
 	else
-		if [ -n "${filePath}" ]; then
-			msg "config.plist file '${filePath}' not found\n"
+		if [ -n "${inputFilePath}" ]; then
+			msg "config.plist file '${inputFilePath}' not found\n"
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
 		else
 			check_config
-			filePath="$BASE_DIR/INPUT/config.plist"
+			inputFilePath="$BASE_DIR/INPUT/config.plist"
 		fi
 	fi
 	mkdir -p "$INPUT"
-	cp "${filePath}" "$CONFIG_PLIST.tmp"
+	cp "${inputFilePath}" "$CONFIG_PLIST.tmp"
 fi
-if [ -n "$DEBUG" ]; then msg "\ndb - filePath $filePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
+if [ -n "$DEBUG" ]; then msg "\ndb - inputFilePath $inputFilePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 process_plist
 load_edit_text
-msg "Using ${filePath}\n"
+msg "Using ${inputFilePath}\n"
+MODI=""
+echo $inputFilePath|grep -q "INPUT/modified" || MODI="no"
+if [ -z "$MODI" ]; then
+	inputFileName="${inputFilePath##*INPUT/modified.}"
+else
+	inputFileName="${inputFilePath##*/}"
+fi
 
 if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
@@ -2797,11 +2804,13 @@ msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
 	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
 	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
-	msg "\tthe modified config.plist has also been saved in $BASE_DIR/INPUT\n"
-	msg "\tthe original $filePath ${YEL}has not been touched${NC}\n\n"
+	msg "\tmodified.$inputFileName has been saved in $BASE_DIR/INPUT\n"
+	if [ -n "$MODI" ]; then
+		msg "\tthe original $inputFilePath ${YEL}has not been touched${NC}\n\n"
+	fi
 fi
 if [ -e "$INPUT/errors.txt" ]; then
-	msg "${YEL}NOTICE:${NC} errors were found in $filePath\n"
+	msg "${YEL}NOTICE:${NC} errors were found in $inputFilePath\n"
 	msg "\tSome may have been repaired by the input scan.\n\n"
 	msg "$(cat "$INPUT/errors.txt")"
 	msg "\n\nAny error that could not be repaired may need to be addressed before booting\n"
