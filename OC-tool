@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.3(250220) last checked with OpenCore version REL-056-2020-02-23"
+VER="3.3(270220) last checked with OpenCore version REL-056-2020-02-23"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -668,28 +668,32 @@ find_srce_url() {
 }
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
-	find_srce_url
-	if [ -n "$DEBUG" ]; then msg "db - found srce $enabled val $val key $key res_name $res_name\n"; fi
-	if [ "$dest" != "OC/ACPI" ];then
-		if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-			srce=""
-		elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-			srce="$BASE_DIR/extras"
-		elif [ "${key##* }" = "-" ]; then
-			srce="unknown"
-		else
-			res_not_found "$res_name"
+	if [ "#${res_name#?}" != "$res_name" ]; then
+		find_srce_url
+		if [ -n "$DEBUG" ]; then msg "db - found srce $enabled val $val key $key res_name $res_name\n"; fi
+		if [ "$dest" != "OC/ACPI" ];then
+			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
+				srce=""
+			elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+				srce="$BASE_DIR/extras"
+			elif [ "${key##* }" = "-" ]; then
+				srce="unknown"
+			else
+				res_not_found "$res_name"
+			fi
+		else # check extras folder first for ACPI files
+			if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+				srce="$BASE_DIR/extras"
+			elif [ -n "$git_url" ]; then # found repo
+				srce=""
+			elif [ "${key##* }" = "-" ];then
+				srce="unknown"
+			else
+				res_not_found "$res_name"
+			fi
 		fi
-	else # check extras folder first for ACPI files
-		if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-			srce="$BASE_DIR/extras"
-		elif [ -n "$git_url" ]; then # found repo
-			srce=""
-		elif [ "${key##* }" = "-" ];then
-			srce="unknown"
-		else
-			res_not_found "$res_name"
-		fi
+	else
+		srce="unknown"; dest=""; parent=""
 	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
@@ -741,13 +745,17 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #	eval G"$G"_NUM="$S"
 #}
 init_add_array() {
-	ADD_FILE="${1##* }"
-	n=0
+	ADD_FILE="${2##* }"
+	n=-1
 	while read -r line
 	do
-		eval add$n="\$line"
+		if [ "$n" -lt "0" ]; then
+			field_len="$line"
+		else
+			eval add$n="\$line"
+		fi
 		n=$((n+1))
-	done < "$TOOL_FILES/add_tree/$ADD_FILE"
+	done < "$TOOL_FILES/$1/$ADD_FILE"
 	GADD_NUM="$((n-1))"
 }
 
@@ -1370,7 +1378,11 @@ load_edit_text() {
 					add_res_array
 					if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
 					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
-						key="$key +"; val="$val +"
+						#if [ "#${val#?}" = "$val" ]; then
+						#	key="$key i"; val="$val i"
+						#else
+							key="$key +"; val="$val +"
+						#fi
 						set_edit_res "$num"
 					fi
 					if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
@@ -1842,19 +1854,18 @@ toggle_enabled() {
 }
 
 add_field() {
-	field_len=1
 	get_edit_res "$ADD_RES_NUM"
-	for n in $(seq "$G10_NUM" "$ADD_RES_NUM")
+	for n in $(seq "$G10_NUM" "$ADD_RES_NUM") # shift array up
 	do
 		o=$((n+$field_len))
 		eval res10$o="\$res10$n"
 	done
-	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1)))
+	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # clear array
 	do
 		eval res10$n=""
 	done
-	G10_NUM=$((G10_NUM+$field_len))
-	if [ -z "$new_key" ]; then
+	G10_NUM=$((G10_NUM+$field_len)) # mark new length
+	if [ -z "$new_key" ]; then # get new key if not provided
 		key="\n\n Enter key name for new ${YEL}$new_type${NC} ->"
 		val=""; e_val="$val"
 		type="string"; res_type="string"
@@ -1870,7 +1881,7 @@ add_field() {
 	fi
 	type="$new_type"
 	if [ "$type" = "bool" ]; then val="false"; fi
-	set_edit_res "$ADD_RES_NUM"
+	set_edit_res "$ADD_RES_NUM" # set new resource
 	n=$((ADD_RES_NUM+$field_len))
 	get_edit_res "$n"
 	eval l=\$L$((level-1)); l2=$l
@@ -1882,7 +1893,7 @@ add_field() {
 		get_edit_res "$n"
 		eval l=\$L$((level-1))
 	done
-	for n in $(seq 1 8)
+	for n in $(seq 1 8) # move summary screen start pointers up
 	do
 		eval l=\$G"$n"_START
 		if [ "$l" -gt "$ADD_RES_NUM" ]; then
@@ -1890,7 +1901,7 @@ add_field() {
 			eval G"$n"_START=$l
 		fi
 	done
-	for n in $(seq 1 4)
+	for n in $(seq 1 4) # move linked pointer up
 	do
 		eval p=\$G"$n"_NUM
 		resize=""
@@ -1903,7 +1914,7 @@ add_field() {
 				set_res "$n$o"
 			fi
 		done
-		if [ -n "$resize" ]; then
+		if [ -n "$resize" ]; then # add linked pointer for new item
 			p=$((p+1))
 			for o in $(seq "$p" "$((resize+1))")
 			do
@@ -2141,7 +2152,7 @@ text_user_interface() {
 						case "$CHAR" in # key press actions for edit plist screen
 							a)
 								if [ "$level" -gt "0" ]; then
-									init_add_array "add_tree1"
+									init_add_array "add_tree" "add_tree1"
 									ADD_RES_NUM="$res_num"
 									SA=0; LA=1
 									new_key=""; new_val=""
@@ -2253,6 +2264,13 @@ text_user_interface() {
 											new_key="$a +"
 											new_val="$a +"
 											add_field;;
+										"Kext")
+											eval a="\$add$SA"
+											init_add_array "templates" "Kext"
+											new_type=""
+											new_val=""
+											new_key="$a +"
+											add_field;;
 										"variable")
 											eval a="\$add$SA"
 											new_type="${a##* }"
@@ -2275,13 +2293,13 @@ text_user_interface() {
 							C|l) # move right
 								if [ "$LA" -ne "2" ]; then
 									eval a="\$add$SA"
-									init_add_array "$a"
+									init_add_array "add_tree" "$a"
 									LA=2; SA=0
 									moved="true"
 								fi;;
 							D|h) # move left
 								if [ "$LA" -ne "1" ]; then
-									init_add_array "add_tree1"
+									init_add_array "add_tree" "add_tree1"
 									LA=1; SA=0
 									moved="true"
 								fi;;
