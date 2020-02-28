@@ -1,0 +1,15 @@
+1
+AirportBrcmFixup
+ATH9KFixup
+AtherosE2200Ethernet
+AtherosL1cEthernet
+BrcmBluetoothInjector
+BrcmFirmwareRepo
+BrcmNonPatchRAM
+BrcmNonPatchRAM2
+BrcmPatchRAM3
+BT4LEContinuityFixup
+IntelMausi
+IntelMausiEthernet
+RealtekRTL8100
+RealtekRTL8111

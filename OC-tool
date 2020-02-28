@@ -1881,13 +1881,27 @@ add_field() {
 	fi
 	type="$new_type"
 	if [ "$type" = "bool" ]; then val="false"; fi
-	set_edit_res "$ADD_RES_NUM" # set new resource
+#	set_edit_res "$ADD_RES_NUM" # set new resource
+	o=0
+	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
+	do
+		eval a="\$add$o"
+		L3="$o"
+		type="${a%%|*}"
+		a="${a#*|}"
+		val="${a%%|*}"
+		eval val=\"$val\"
+		key="${a##*|}"
+		eval key=\"$key\"
+		set_edit_res "$n"
+		o=$((o+1))
+	done
 	n=$((ADD_RES_NUM+$field_len))
 	get_edit_res "$n"
 	eval l=\$L$((level-1)); l2=$l
 	while [ "$l2" -eq "$l" ]
 	do
-		eval L$level=\$\(\(L$level+$field_len\)\)
+		eval L$level=\$\(\(L$level+1\)\)
 		set_edit_res "$n"
 		n=$((n+1))
 		get_edit_res "$n"
@@ -2257,19 +2271,19 @@ text_user_interface() {
 								fi;;
 							nl)
 								if [ "$LA" -eq "2" ]; then
-									case $ADD_FILE in
-										"Driver")
-											eval a="\$add$SA"
-											new_type="string"
-											new_key="$a +"
-											new_val="$a +"
-											add_field;;
-										"Kext")
-											eval a="\$add$SA"
-											init_add_array "templates" "Kext"
+									case "${ADD_FILE#*_}" in
+#										"Drivers")
+#											eval res_name="\$add$SA"
+#											new_type="string"
+#											new_key="$a +"
+#											new_val="$a +"
+#											add_field;;
+										"Drivers"|"Kexts"|"Tools")
+											eval res_name="\$add$SA"
+											init_add_array "templates" "${ADD_FILE#*_}"
 											new_type=""
 											new_val=""
-											new_key="$a +"
+											new_key="$res_name"
 											add_field;;
 										"variable")
 											eval a="\$add$SA"

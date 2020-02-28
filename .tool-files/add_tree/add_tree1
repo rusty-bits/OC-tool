@@ -1,5 +1,7 @@
 1
 single variable
-Driver
-Kext
-Tool
+Drivers
+standard_Kexts
+network_Kexts
+other_Kexts
+Tools
