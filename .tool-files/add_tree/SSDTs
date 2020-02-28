@@ -1,2 +1,11 @@
 1
-SSDTs not done yet, give me a few hours (Feb-28-2020 14:37)
+SSDT-ALS0.aml
+SSDT-AWAC.aml
+SSDT-EC-USBX.aml
+SSDT-EC.aml
+SSDT-EHCx_OFF.aml
+SSDT-PLUG.aml
+SSDT-PMC.aml
+SSDT-PNLF.aml
+SSDT-RTC0.aml
+SSDT-SBUS-MCHC.aml

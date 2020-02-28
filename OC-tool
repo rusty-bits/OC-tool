@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.3(280220) last checked with OpenCore version REL-056-2020-02-27"
+VER="3.4(280220) last checked with OpenCore version REL-056-2020-02-27"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -32,7 +32,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
-USE_FULL=""; IGNORE_SAMPLE=""
+USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 DEBUG=""; ADD_RES_NUM="-1"; LA="1"
 
@@ -640,10 +640,6 @@ build_vault() {
 				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
 				;;
 		esac
-#		if [ "$MODE" = "latestSource" ]; then
-#			make -C "$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool||return 1
-#		fi
-#		"$RES_DIR"/UDK/OcSupportPkg/Utilities/RsaTool/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 		off=$((str+16))
 		len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
@@ -689,7 +685,12 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 			elif [ "${key##* }" = "-" ];then
 				srce="unknown"
 			else
-				res_not_found "$res_name"
+				if [ "$TUI_MODE" = " plist " ]; then
+					srce="unknown"; parent=""
+					DISABLE_RES="true"
+				else
+					res_not_found "$res_name"
+				fi
 			fi
 		fi
 	else
@@ -704,6 +705,11 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 		set_edit_res "$num"
 	fi
 	set_res "$1"
+	if [ -n "$DISABLE_RES" ]; then
+		head_line="$ADD_RES_NUM"
+		toggle_enabled
+		DISABLE_RES=""
+	fi
 }
 
 #missing_plist_sec() {
@@ -715,35 +721,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #	num=1
 #}
 
-#add_resource() { #add_resource "Group" "Section" "subsec" "Path"
-#	G=$1; S=0
-#	if [ "$G" -lt "5" ]; then
-#		num=$(grep -c "^$2|*$3|[0-9]*|string|$4| " "$CONFIG_TXT")||missing_plist_sec "$2" "$3"
-#		for S in $(seq "0" "$((num-1))")
-#		do
-#			case "$G" in
-#				1|2|4)
-#					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-#					enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
-#					add_res_array "$G$S";;
-#				3)
-#					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
-#					enabled="true"
-#					add_res_array "$G$S";;
-#			esac
-#		done
-#	else
-## shellcheck disable=SC2013
-#		for res_name in $(grep "^$2|Quirks|" "$CONFIG_TXT"|cut -f7 -d'|')
-#		do
-#			enabled=$(grep "|$res_name| " "$CONFIG_TXT"|cut -f2 -d '"')
-#			set_res "$G$S"
-#			S=$((S+1))
-#		done
-#		S=$((S-1))
-#	fi
-#	eval G"$G"_NUM="$S"
-#}
 init_add_array() {
 	ADD_FILE="${2##* }"
 	n=-1
@@ -1881,7 +1858,6 @@ add_field() {
 	fi
 	type="$new_type"
 	if [ "$type" = "bool" ]; then val="false"; fi
-#	set_edit_res "$ADD_RES_NUM" # set new resource
 	o=0
 	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
 	do
@@ -1929,7 +1905,6 @@ add_field() {
 				set_res "$n$o"
 			fi
 		done
-		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 		if [ -n "$resize" ]; then # add linked pointer for new item
 			p=$((p+1))
 			for o in $(seq "$p" "$((resize+1))")
@@ -1937,18 +1912,11 @@ add_field() {
 				eval res$n$o=\$res$n$((o-1))
 			done
 			eval G"$n"_NUM=$p
-			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
 			res_name="$new_res"
 			enabled="$ADD_RES_NUM"
-#			dest="OC/Kexts"
-			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
 			add_res_array "$n$resize" # add resource + git url to build array
-			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
-#			eval "res$n$resize='${new_key% ?}'\|\|\|\|\|'$ADD_RES_NUM'"
-#	eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
 		fi
 	done
-	if [ -n "$DEBUG" ]; then msg "waiting for char\n"; get_CHAR; fi
 	ADD_RES_NUM="-1"
 }
 
@@ -2283,13 +2251,7 @@ text_user_interface() {
 							nl)
 								if [ "$LA" -eq "2" ]; then
 									case "${ADD_FILE#*_}" in
-#										"Drivers")
-#											eval res_name="\$add$SA"
-#											new_type="string"
-#											new_key="$a +"
-#											new_val="$a +"
-#											add_field;;
-										"Drivers"|"Kexts"|"Tools")
+										"Drivers"|"Kexts"|"SSDTs"|"Tools")
 											eval res_name="\$add$SA"
 											init_add_array "templates" "${ADD_FILE#*_}"
 											new_type=""
