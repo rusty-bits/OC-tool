@@ -1,7 +1,7 @@
 6
-||${res_name}.efi +
+||${res_name} +
 string||Arguments
 string|Not signed for security reasons|Comment
 bool|true|Enabled
-string|${res_name}|Name
-string|${res_name}.efi|Path
+string|${res_name%.*}|Name
+string|${res_name}|Path

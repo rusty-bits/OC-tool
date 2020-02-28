@@ -1923,7 +1923,7 @@ add_field() {
 		for o in $(seq 0 "$p")
 		do
 			get_res "$n$o"
-			if [ "$enabled" -eq "$ADD_RES_NUM" ]; then resize="$o"; fi
+			if [ "$enabled" -eq "$ADD_RES_NUM" ] && [ -z "$resize" ]; then resize="$o"; fi # found position for new item
 			if [ "$enabled" -ge "$ADD_RES_NUM" ]; then
 				enabled=$((enabled+field_len))
 				set_res "$n$o"
@@ -1938,18 +1938,17 @@ add_field() {
 			done
 			eval G"$n"_NUM=$p
 			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
-#			G="$n"
-#			S="$resize"
-#			res_name="$new_res"
-#			num="$ADD_RES_NUM"
+			res_name="$new_res"
+			enabled="$ADD_RES_NUM"
 #			dest="OC/Kexts"
-			res_name="USBInjectAll.kext"
-			add_res_array "$n$resize"
+			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
+			add_res_array "$n$resize" # add resource + git url to build array
+			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
 #			eval "res$n$resize='${new_key% ?}'\|\|\|\|\|'$ADD_RES_NUM'"
 #	eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
 		fi
 	done
-	if [ -n "$DEBUG" ]; then get_CHAR; fi
+	if [ -n "$DEBUG" ]; then msg "waiting for char\n"; get_CHAR; fi
 	ADD_RES_NUM="-1"
 }
 
