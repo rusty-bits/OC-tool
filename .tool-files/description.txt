@@ -374,3 +374,323 @@ UnblockFsConnect
 Some firmwares block partition handles by opening them in By Driver mode, which results in File System protocols being unable to install. Note : The quirk is mostly relevant for select HP laptops with no drives listed.
 Scale
 Sets text renderer HiDPI scaling in percents. Currently only 100 and 200 values are supported. Note : This option only applies to Builtin renderer.
+FadtEnableReset
+Provide reset register and flag in FADT table to enable reboot and shutdown on legacy hardware. Not recommended unless required.
+NormalizeHeaders
+Cleanup ACPI header fields to workaround macOS ACPI implementation bug causing boot crashes. Reference: Debugging AppleACPIPlatform on 10.13 by Alex James aka theracermaster. The issue is fixed in macOS Mojave (10.14).
+RebaseRegions
+Attempt to heuristically relocate ACPI memory regions. Not recommended. ACPI tables are often generated dynamically by underlying firmware implementation. Among the positionindependent code, ACPI tables may contain physical addresses of MMIO areas used for device configuration, usually grouped in regions (e.g. OperationRegion). Changing firmware settings or hardware configuration, upgrading or patching the firmware inevitably leads to changes in dynamically generated ACPI code, which sometimes lead to the shift of the addresses in aforementioned OperationRegion constructions. For this reason it is very dangerous to apply any kind of modifications to ACPI tables. The most reasonable approach is to make as few as possible changes to ACPI and try to not replace any tables, especially DSDT. When this is not possible, then at least attempt to ensure that custom DSDT is based on the most recent DSDT or remove writes and reads for the affected areas. When nothing else helps this option could be tried to avoid stalls at PCI Configuration Begin phase of macOS booting by attempting to fix the ACPI addresses. It does not do magic, and only works with most common cases. Do not use unless absolutely required.
+ResetHwSig
+Reset FACS table HardwareSignature value to 0. This works around firmwares that fail to maintain hardware signature across the reboots and cause issues with waking from hibernation.
+ResetLogoStatus
+Reset BGRT table Displayed status field to false. This works around firmwares that provide BGRT table but fail to handle screen updates afterwards.
+MmioWhitelist
+Designed to be filled with plist dict values, describing addresses critical for particular firmware functioning when DevirtualiseMmio quirk is in use. See MmioWhitelist Properties section below.
+Quirks
+Apply individual booter quirks described in Quirks Properties section below.
+AvoidRuntimeDefrag
+Protect from boot.efi runtime memory defragmentation. This option fixes UEFI runtime services (date, time, NVRAM, power control, etc.) support on many firmwares using SMM backing for select services like variable storage. SMM may try to access physical addresses, but they get moved by boot.efi. Note : Most but Apple and VMware firmwares need this quirk.
+DevirtualiseMmio
+Remove runtime attribute from select MMIO regions. This option reduces stolen memory footprint from the memory map by removing runtime bit for known memory regions. This quirk may result in the increase of KASLR slides available, but is not necessarily compatible with the target board without additional measures. In general this frees from 64 to 256 megabytes of memory (present in the debug log), and on some platforms it is the only way to boot macOS, which otherwise fails with allocation error at bootloader stage. This option is generally useful on all firmwares except some very old ones, like Sandy Bridge. On select firmwares it may require a list of exceptional addresses that still need to get their virtual addresses for proper NVRAM and hibernation functioning. Use MmioWhitelist section to do this.
+DisableSingleUser
+Disable single user mode. This is a security option allowing one to restrict single user mode usage by ignoring CMD+S hotkey and -s boot argument. The behaviour with this quirk enabled is supposed to match T2-based model behaviour. Read this article to understand how to use single user mode with this quirk enabled.
+DisableVariableWrite
+Protect from macOS NVRAM write access. This is a security option allowing one to restrict NVRAM access in macOS. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : This quirk can also be used as an ugly workaround to buggy UEFI runtime services implementations that fail to write variables to NVRAM and break the rest of the operating system.
+DiscardHibernateMap
+Reuse original hibernate memory map. This option forces XNU kernel to ignore newly supplied memory map and assume that it did not change after waking from hibernation. This behaviour is required to work by Windows, which mandates to preserve runtime memory size and location after S4 wake. Note : This may be used to workaround buggy memory maps on older hardware, and is now considered rare legacy. Examples of such hardware are Ivy Bridge laptops with Insyde firmware, like Acer V3-571G. Do not use this unless you fully understand the consequences.
+EnableSafeModeSlide
+Patch bootloader to have KASLR enabled in safe mode. This option is relevant to the users that have issues booting to safe mode (e.g. by holding shift or using -x boot argument). By default safe mode forces 0 slide as if the system was launched with slide=0 boot argument. This quirk tries to patch boot.efi to lift that limitation and let some other value (from 1 to 255) be used. This quirk requires ProvideCustomSlide to be enabled. Note : The necessity of this quirk is determined by safe mode availability. If booting to safe mode fails, this option can be tried to be enabled.
+EnableWriteUnprotector
+Permit write access to UEFI runtime services code. This option bypasses R^ X permissions in code pages of UEFI runtime services by removing write protection (WP) bit from CR0 register during their execution. This quirk requires OC_FIRMWARE_RUNTIME protocol implemented in FwRuntimeServices.efi. Note : The necessity of this quirk is determined by early boot crashes of the firmware.
+ForceExitBootServices
+Retry ExitBootServices with new memory map on failure. Try to ensure that ExitBootServices call succeeds even with outdated MemoryMap key argument by obtaining current memory map and retrying ExitBootServices call. Note : The necessity of this quirk is determined by early boot crashes of the firmware. Do not use this unless you fully understand the consequences.
+ProtectCsmRegion
+Protect CSM region areas from relocation. Ensure that CSM memory regions are marked as ACPI NVS to prevent boot.efi or XNU from relocating or using them. Note : The necessity of this quirk is determined by artifacts and sleep wake issues. As AvoidRuntimeDefrag resolves a similar problem, no known firmwares should need this quirk. Do not use this unless you fully understand the consequences.
+ProvideCustomSlide
+Provide custom KASLR slide on low memory. This option performs memory map analysis of your firmware and checks whether all slides (from 1 to 255) can be used. As boot.efi generates this value randomly with rdrand or pseudo randomly rdtsc, there is a chance of boot failure when it chooses a conflicting slide. In case potential conflicts exist, this option forces macOS to use a pseudo random value among the available ones. This also ensures that slide= argument is never passed to the operating system for security reasons. Note : The necessity of this quirk is determined by OCABC: Only N/256 slide values are usable! message in the debug log. If the message is present, this option is to be enabled.
+SetupVirtualMap
+Setup virtual memory at SetVirtualAddresses. Select firmwares access memory by virtual addresses after SetVirtualAddresses call, which results in early boot crashes. This quirk workarounds the problem by performing early boot identity mapping of assigned virtual addresses to physical memory. Note : The necessity of this quirk is determined by early boot failures.
+ShrinkMemoryMap
+Attempt to join similar memory map entries. Select firmwares have very large memory maps, which do not fit Apple kernel, permitting up to 64 slots for runtime memory. This quirk attempts to unify contiguous slots of similar types to prevent boot failures. Note : The necessity of this quirk is determined by early boot failures. It is rare to need this quirk on Haswell or newer. Do not use unless you fully understand the consequences.
+SignalAppleOS
+Report macOS being loaded through OS Info for any OS. This quirk is useful on Mac firmwares, which behave differently in different OS. For example, it is supposed to enable Intel GPU in Windows and Linux in some dual-GPU MacBook models.
+BundlePath
+Kext bundle path (e.g. Lilu.kext or MyKext.kext/Contents/PlugIns/MySubKext.kext).
+Comment
+Arbitrary ASCII string used to provide human readable reference for the entry. It is implementation defined whether this value is used.
+Enabled
+This kernel driver will not be added unless set to true.
+ExecutablePath
+Kext executable path relative to bundle (e.g. Contents/MacOS/Lilu).
+MaxKernel
+Adds kernel driver on specified macOS version or older. Kernel version can be obtained with uname -r command, and should look like 3 numbers separated by dots, for example 18.7.0 is the kernel version for 10.14.6. Kernel version interpretation is implemented as follows: P arseDarwinV ersion(, , µ) =  · 10000 Where   (0, 99) is kernel version major +  · 100 +µ Kernel version comparison is implemented as follows: = P arseDarwinV ersion(MinKernel), 0 P arseDarwinV ersion(MaxKernel),  P arseDarwinV ersion(F indDarwinV ersion()),  f (, ,  ) =      Here P arseDarwinV ersion argument is assumed to be 3 integers obtained by splitting Darwin kernel version string from left to right by the . symbol. F indDarwinV ersion function looks up Darwin kernel version by locating "Darwin Kernel Version ..µ" string in the kernel image.
+MinKernel
+Adds kernel driver on specified macOS version or newer. Note : Refer to Add MaxKernel description for matching logic.
+PlistPath
+Kext Info.plist path relative to bundle (e.g. Contents/Info.plist). If MinKernel is valid Otherwise If MaxKernel is valid Otherwise If valid "Darwin Kernel Version" is found Otherwise Where   (0, 99) is kernel version minor Where µ  (0, 99) is kernel version patch
+Cpuid1Data
+Sequence of EAX, EBX, ECX, EDX values to replace CPUID (1) call in XNU kernel. This property serves for two needs: · Enabling support of an unsupported CPU model. · Enabling XCPM support for an unsupported CPU variant. Normally it is only the value of EAX that needs to be taken care of, since it represents the full CPUID. The remaining bytes are to be left as zeroes. Byte order is Little Endian, so for example, A9 06 03 00 stands for CPUID 0x0306A9 (Ivy Bridge). For XCPM support it is recommended to use the following combinations. · Haswell-E (0x306F2) to Haswell (0x0306C3): Cpuid1Data: C3 06 03 00 00 00 00 00 00 00 00 Cpuid1Mask: FF FF FF FF 00 00 00 00 00 00 00 · Broadwell-E (0x0406F1) to Broadwell (0x0306D4): Cpuid1Data: D4 06 03 00 00 00 00 00 00 00 00 Cpuid1Mask: FF FF FF FF 00 00 00 00 00 00 00
+Cpuid1Mask
+Bit mask of active bits in Cpuid1Data. When each Cpuid1Mask bit is set to 0, the original CPU bit is used, otherwise set bits take the value of Cpuid1Data. 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 Further explanations can be found at acidanthera/bugtracker#365. See Special NOTES for Haswell+ low-end.
+AppleCpuPmCfgLock
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in AppleIntelCPUPowerManagement.kext, commonly causing early kernel panic, when it is locked from writing. Certain firmwares lock PKG_CST_CONFIG_CONTROL MSR register. To check its state one can use bundled VerifyMsrE2 tool. Select firmwares have this register locked on some cores only. As modern firmwares provide CFG Lock setting, which allows configuring PKG_CST_CONFIG_CONTROL MSR register lock, this option should be avoided whenever possible. For several APTIO firmwares not displaying CFG Lock setting in the GUI it is possible to access the option directly: (a) Download UEFITool and IFR-Extractor. (b) Open your firmware image in UEFITool and find CFG Lock unicode string. If it is not present, your firmware may not have this option and you should stop. (c) Extract the Setup.bin PE32 Image Section (the one UEFITool found) through Extract Body menu option. (d) Run IFR-Extractor on the extracted file (e.g. ./ifrextract Setup.bin Setup.txt). (e) Find CFG Lock, VarStoreInfo (VarOffset/VarName): in Setup.txt and remember the offset right after it (e.g. 0x123). (f) Download and run Modified GRUB Shell compiled by brainsucker or use a newer version by datasone. (g) Enter setup_var 0x123 0x00 command, where 0x123 should be replaced by your actual offset, and reboot. WARNING: Variable offsets are unique not only to each motherboard but even to its firmware version. Never ever try to use an offset without checking.
+AppleXcpmCfgLock
+Disables PKG_CST_CONFIG_CONTROL (0xE2) MSR modification in XNU kernel, commonly causing early kernel panic, when it is locked from writing (XCPM power management). Note : This option should be avoided whenever possible. See AppleCpuPmCfgLock description for more details.
+AppleXcpmExtraMsrs
+Disables multiple MSR access critical for select CPUs, which have no native XCPM support. This is normally used in conjunction with Emulate section on Haswell-E, Broadwell-E, Skylake-X, and similar CPUs. More details on the XCPM patches are outlined in acidanthera/bugtracker#365. Note : Additional not provided patches will be required for Ivy Bridge or Pentium CPUs. It is recommended to use AppleIntelCpuPowerManagement.kext for the former.
+AppleXcpmForceBoost
+Forces maximum performance in XCPM mode. This patch writes 0xFF00 to MSR_IA32_PERF_CONTROL (0x199), effectively setting maximum multiplier for all the time. Note : While this may increase the performance, this patch is strongly discouraged on all systems but those explicitly dedicated to scientific or media calculations. In general only certain Xeon models benefit from the patch.
+CustomSMBIOSGuid
+Performs GUID patching for UpdateSMBIOSMode Custom mode. Usually relevant for Dell laptops.
+DisableIoMapper
+Disables IOMapper support in XNU (VT-d), which may conflict with the firmware implementation. Note : This option is a preferred alternative to dropping DMAR ACPI table and disabling VT-d in firmware preferences, which does not break VT-d support in other systems in case they need it.
+DummyPowerManagement
+Disables AppleIntelCpuPowerManagement. Note : This option is a preferred alternative to NullCpuPowerManagement.kext for CPUs without native power management driver in macOS.
+ExternalDiskIcons
+Apply icon type patches to AppleAHCIPort.kext to force internal disk icons for all AHCI disks. Note : This option should be avoided whenever possible. Modern firmwares usually have compatible AHCI controllers.
+IncreasePciBarSize
+Increases 32-bit PCI bar size in IOPCIFamily from 1 to 4 GBs. Note : This option should be avoided whenever possible. In general the necessity of this option means misconfigured or broken firmware.
+LapicKernelPanic
+Disables kernel panic on LAPIC interrupts.
+PanicNoKextDump
+Prevent kernel from printing kext dump in the panic log preventing from observing panic details. Affects 10.13 and above.
+PowerTimeoutKernelPanic
+Disables kernel panic on setPowerState timeout. An additional security measure was added to macOS Catalina (10.15) causing kernel panic on power change timeout for Apple drivers. Sometimes it may cause issues on misconfigured hardware, notably digital audio, which sometimes fails to wake up. For debug kernels setpowerstate_panic=0 boot argument should be used, which is otherwise equivalent to this quirk.
+ThirdPartyDrives
+Apply vendor patches to IOAHCIBlockStorage.kext to enable native features for third-party drives, such as TRIM on SSDs or hibernation support on 10.15 and newer. Note : This option may be avoided on user preference. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
+XhciPortLimit
+Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should be avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
+BuiltinTextRenderer
+Enables experimental builtin text renderer. This option makes all text going through standard console output render through builtin text renderer bypassing firmware services. While still experimental and feature incomplete, this option effecitly avoids the need for various quirks like ReplaceTabWithSpace or SanitiseClearScreen. It should also increase the dimensions of the output area. Since builtin text renderer works in graphics mode, extra care may need to be paid to ConsoleBehaviourOs, ConsoleBehaviourUi, ConsoleControl, and IgnoreTextInGraphics options. While individual for the target system, it is recommended to use ForceGraphics and builtin ConsoleControl to avoid compatibility issues. Note : Some Macs, namely MacPro5,1, may have broken console output with newer GPUs, and thus enabling this option can be required for them.
+ConsoleMode
+Sets console output mode as specified with the WxH (e.g. 80x24) formatted string. Set to empty string not to change console mode. Set to Max to try to use largest available console mode. Note : This field is best to be left empty on most firmwares.
+ConsoleBehaviourOs
+Set console control behaviour upon operating system load. Console control is a legacy protocol used for switching between text and graphics screen output. Some firmwares do not provide it, yet select operating systems require its presence, which is what ConsoleControl UEFI protocol is for. When console control is available, OpenCore can be made console control aware, and set different modes for the operating system booter (ConsoleBehaviourOs), which normally runs in graphics mode, and its own user interface (ConsoleBehaviourUi), which normally runs in text mode. Possible behaviours, set as values of these options, include: · · · · · Empty string -- Do not modify console control mode. Text -- Switch to text mode. Graphics -- Switch to graphics mode. ForceText -- Switch to text mode and preserve it (requires ConsoleControl). ForceGraphics -- Switch to graphics mode and preserve it (require ConsoleControl). Hints: · Unless empty works, firstly try to set ConsoleBehaviourOs to Graphics and ConsoleBehaviourUi to Text. · On APTIO IV (Haswell and earlier) it is usually enough to have ConsoleBehaviourOs set to Graphics and ConsoleBehaviourUi set to ForceText to avoid visual glitches. · On APTIO V (Broadwell and newer) ConsoleBehaviourOs set to ForceGraphics and ConsoleBehaviourUi set to ForceText usually works best. · On Apple firmwares ConsoleBehaviourOs set to Graphics and ConsoleBehaviourUi set to Text is supposed to work best. Note : IgnoreTextInGraphics and SanitiseClearScreen may need to be enabled for select firmware implementations. Particularly APTIO firmwares.
+ConsoleBehaviourUi
+Set console control behaviour upon OpenCore user interface load. Refer to ConsoleBehaviourOs description for details.
+HibernateMode
+Hibernation detection mode. The following modes are supported: · · · · None -- Avoid hibernation for your own good. Auto -- Use RTC and NVRAM detection. RTC -- Use RTC detection. NVRAM -- Use NVRAM detection.
+HideSelf
+Hides own boot entry from boot picker. This may potentially hide other entries, for instance, when another UEFI OS is installed on the same volume and driver boot is used.
+PollAppleHotKeys
+Enable modifier hotkey handling in boot picker. In addition to action hotkeys, which are partially described in UsePicker section and are normally handled by Apple BDS, there exist modifier keys, which are handled by operating system bootloader, namely boot.efi. These keys allow to change operating system behaviour by providing different boot modes. On some firmwares it may be problematic to use modifier keys due to driver incompatibilities. To workaround this problem this option allows registering select hotkeys in a more permissive manner from within boot picker. Such extensions include the support of tapping on keys in addition to holding and pressing Shift along with other keys instead of just Shift alone, which is not detectible on many PS/2 keyboards. This list of known modifier hotkeys includes: · · · · · · CMD+C+MINUS -- disable board compatibility checking. CMD+K -- boot release kernel, similar to kcsuffix=release. CMD+S -- single user mode. CMD+S+MINUS -- disable KASLR slide, requires disabled SIP. CMD+V -- verbose mode. Shift -- safe mode.
+Resolution
+Sets console output screen resolution. · Set to WxH@Bpp (e.g. 1920x1080@32) or WxH (e.g. 1920x1080) formatted string to request custom resolution from GOP if available. · Set to empty string not to change screen resolution. · Set to Max to try to use largest available screen resolution. On HiDPI screens APPLE_VENDOR_VARIABLE_GUID UIScale NVRAM variable may need to be set to 02 to enable HiDPI scaling in FileVault 2 UEFI password interface and boot screen logo. Refer to Recommended Variables section for more details. Note : This will fail when console handle has no GOP protocol. When the firmware does not provide it, it can be added with ProvideConsoleGop UEFI quirk set to true.
+ShowPicker
+Show simple boot picker to allow boot entry selection.
+TakeoffDelay
+Delay in microseconds performed before handling picker startup and action hotkeys. Introducing a delay may give extra time to hold the right action hotkey sequence to e.g. boot to recovery mode. On some platforms setting this option to at least 5000-10000 microseconds may be necessary to access action hotkeys at all due to the nature of the keyboard driver.
+Timeout
+Timeout in seconds in boot picker before automatic booting of the default boot entry. Use 0 to disable timer.
+UsePicker
+Use OpenCore built-in boot picker for boot management. UsePicker set to false entirely disables all boot management in OpenCore except policy enforcement. In this case a custom user interface may utilise OcSupportPkg OcBootManagementLib to implement a user friendly boot picker oneself. Reference example of external graphics interface is provided in ExternalUi test driver. OpenCore built-in boot picker contains a set of actions chosen during the boot process. The list of supported actions is similar to Apple BDS and in general can be accessed by holding action hotkeys during boot process. Currently the following actions are considered: · Default -- this is the default option, and it lets OpenCore built-in boot picker to loads the default boot option as specified in Startup Disk preference pane. · ShowPicker -- this option forces picker to show. Normally it can be achieved by holding OPT key during boot. Setting ShowPicker to true will make ShowPicker the default option. · ResetNvram -- this option performs select UEFI variable erase and is normally achieved by holding CMD+OPT+P+R key combination during boot. Another way to erase UEFI variables is to choose Reset NVRAM in the picker. This option requires AllowNvramReset to be set to true. · BootApple -- this options performs booting to the first found Apple operating system unless the default chosen operating system is already made by Apple. Hold X key to choose this option. · BootAppleRecovery -- this option performs booting to Apple operating system recovery. Either the one related to the default chosen operating system, or first found in case default chosen operating system is not made by Apple or has no recovery. Hold CMD+R key combination to choose this option. Note : Activated KeySupport, AppleUsbKbDxe, or similar driver is required for key handling to work. On many firmwares it is not possible to get all the keys function. In addition to OPT OpenCore supports Escape key ShowPicker. This key exists for firmwares with PS/2 keyboards that fail to report held OPT key and require continual presses of Escape key to enter the boot menu.
+DisableWatchDog
+Select firmwares may not succeed in quickly booting the operating system, especially in debug mode, which results in watch dog timer aborting the process. This option turns off watch dog timer.
+DisplayDelay
+Delay in microseconds performed after every printed line visible onscreen (i.e. console).
+DisplayLevel
+EDK II debug level bitmask (sum) showed onscreen. Unless Target enables console (onscreen) printing, onscreen debug output will not be visible. The following levels are supported (discover more in DebugLib.h): · · · · 0x00000002 0x00000040 0x00400000 0x80000000 (bit (bit (bit (bit 1) -- DEBUG_WARN in DEBUG, NOOPT, RELEASE. 6) -- DEBUG_INFO in DEBUG, NOOPT. 22) -- DEBUG_VERBOSE in custom builds. 31) -- DEBUG_ERROR in DEBUG, NOOPT, RELEASE.
+Target
+A bitmask (sum) of enabled logging targets. By default all the logging output is hidden, so this option is required to be set when debugging is necessary. The following logging targets are supported: · 0x01 (bit 0) -- Enable logging, otherwise all log is discarded. · 0x02 (bit 1) -- Enable basic console (onscreen) logging. · 0x04 (bit 2) -- Enable logging to Data Hub. 29 Enable Enable Enable Enable serial port logging. UEFI variable logging. non-volatile UEFI variable logging. logging to file. Console logging prints less than all the other variants. Depending on the build type (RELEASE, DEBUG, or NOOPT) different amount of logging may be read (from least to most). Data Hub log will not log kernel and kext patches. To obtain Data Hub log use the following command in macOS: ioreg -lw0 -p IODeviceTree | grep boot-log | sort | sed s/.*<\(.*\)>.*/\1/ | xxd -r -p UEFI variable log does not include some messages and has no performance data. For safety reasons log size is limited to 32 kilobytes. Some firmwares may truncate it much earlier or drop completely if they have no memory. Using non-volatile flag will write the log to NVRAM flash after every printed line. To obtain UEFI variable log use the following command in macOS: nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:boot-log | awk {gsub(/%0d%0a%00/,"");gsub(/%0d%0a/,"\n")}1 Warning : Some firmwares are reported to have broken NVRAM garbage collection. This means that they may not be able to always free space after variable deletion. Do not use non-volatile NVRAM logging without extra need on such devices. While OpenCore boot log already contains basic version information with build type and date, this data may also be found in NVRAM in opencore-version variable even with boot log disabled. File logging will create a file named opencore-YYYY-MM-DD-HHMMSS.txt at EFI volume root with log contents (the upper case letter sequence is replaced with date and time from the firmware). Please be warned that some file system drivers present in firmwares are not reliable, and may corrupt data when writing files through UEFI. Log is attempted to be written in the safest manner, and thus is very slow. Ensure that DisableWatchDog is set to true when you use a slow drive.
+AllowNvramReset
+Allow CMD+OPT+P+R handling and enable showing NVRAM Reset entry in boot picker.
+AllowSetDefault
+Allow CTRL+Enter and CTRL+Index handling to set the default boot option in boot picker.
+AuthRestart
+Enable VirtualSMC-compatible authenticated restart. Authenticated restart is a way to reboot FileVault 2 enabled macOS without entering the password. To perform authenticated restart one can use a dedicated terminal command: sudo fdesetup authrestart. It is also used when installing operating system updates. VirtualSMC performs authenticated restart by saving disk encryption key split in NVRAM and RTC, which despite being removed as soon as OpenCore starts, may be considered a security risk and thus is optional.
+ExposeSensitiveData
+Sensitive data exposure bitmask (sum) to operating system. · 0x01 -- Expose printable booter path as an UEFI variable. 30 · 0x02 -- Expose OpenCore version as an UEFI variable. · 0x04 -- Expose OpenCore version in boot picker menu title. · 0x08 -- Expose OEM information as a set of UEFI variables. Exposed booter path points to OpenCore.efi or its booter depending on the load order. To obtain booter path use the following command in macOS: nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:boot-path To use booter path for mounting booter volume use the following command in macOS: u=$(nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:boot-path | sed if [ "$u" != "" ]; then sudo diskutil mount $u ; fi To obtain OpenCore version use the following command in macOS: nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:opencore-version To obtain OEM information use the following commands in macOS: nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-product # SMBIOS Type1 ProductName nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-vendor # SMBIOS Type2 Manufacturer nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:oem-board # SMBIOS Type2 ProductName
+HaltLevel
+EDK II debug level bitmask (sum) causing CPU to halt (stop execution) after obtaining a message of HaltLevel. Possible values match DisplayLevel values.
+RequireSignature
+Require vault.sig signature file for vault.plist in OC directory. This file should contain a raw 256 byte RSA-2048 signature from SHA-256 hash of vault.plist. The signature is verified against the public key embedded into OpenCore.efi. To embed the public key you should do either of the following: · Provide public key during the OpenCore.efi compilation in OpenCoreVault.c file. · Binary patch OpenCore.efi replacing zeroes with the public key between =BEGIN OC VAULT= and ==END OC VAULT== ASCII markers. RSA public key 520 byte format description can be found in Chromium OS documentation. To convert public key from X.509 certificate or from PEM file use RsaTool. Note : vault.sig is used regardless of this option when public key is embedded into OpenCore.efi. Setting it to true will only ensure configuration sanity, and abort the boot process when public key is not set but was supposed to be used for verification.
+RequireVault
+Require vault.plist file present in OC directory. This file should contain SHA-256 hashes for all files used by OpenCore. Presence of this file is highly recommended to ensure that unintentional file modifications (including filesystem corruption) do not happen unnoticed. To create this file automatically use create_vault.sh script. Regardless of the underlying filesystem, path name and case must match between config.plist and vault.plist. Note : vault.plist is tried to be read regardless of the value of this option, but setting it to true will ensure configuration sanity, and abort the boot process. 31 s/.*GPT,\([^,]*\),.*/\1/ ); \ The complete set of commands to: · · · · Create vault.plist. Create a new RSA key (always do this to avoid loading old configuration). Embed RSA key into OpenCore.efi. Create vault.sig. Can look as follows: cd /Volumes/EFI/EFI/OC /path/to/create_vault.sh . /path/to/RsaTool -sign vault.plist vault.sig vault.pub off=$(($(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d dd of=OpenCore.efi if=vault.pub bs=1 seek=$off count=528 conv=notrunc rm vault.pub Note : While it may appear obvious, but you have to use an external method to verify OpenCore.efi and BOOTx64.efi for secure boot path. For this you are recommended to at least enable UEFI SecureBoot with a custom certificate, and sign OpenCore.efi and BOOTx64.efi with your custom key. More details on customising secure boot on modern firmwares can be found in Taming UEFI SecureBoot paper (in Russian).
+ScanPolicy
+Define operating system detection policy. This value allows to prevent scanning (and booting) from untrusted source based on a bitmask (sum) of select flags. As it is not possible to reliably detect every file system or device type, this feature cannot be fully relied upon in open environments, and the additional measures are to be applied. Third party drivers may introduce additional security (and performance) measures following the provided scan policy. Scan policy is exposed in scan-policy variable of 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102 GUID for UEFI Boot Services only. · 0x00000001 (bit 0) -- OC_SCAN_FILE_SYSTEM_LOCK, restricts scanning to only known file systems defined as a part of this policy. File system drivers may not be aware of this policy, and to avoid mounting of undesired file systems it is best not to load its driver. This bit does not affect dmg mounting, which may have any file system. Known file systems are prefixed with OC_SCAN_ALLOW_FS_. · 0x00000002 (bit 1) -- OC_SCAN_DEVICE_LOCK, restricts scanning to only known device types defined as a part of this policy. This is not always possible to detect protocol tunneling, so be aware that on some systems it may be possible for e.g. USB HDDs to be recognised as SATA. Cases like this must be reported. Known device types are prefixed with OC_SCAN_ALLOW_DEVICE_. · 0x00000100 (bit 8) -- OC_SCAN_ALLOW_FS_APFS, allows scanning of APFS file system. · 0x00000200 (bit 9) -- OC_SCAN_ALLOW_FS_HFS, allows scanning of HFS file system. · 0x00000400 (bit 10) -- OC_SCAN_ALLOW_FS_ESP, allows scanning of EFI System Partition file system. · 0x00000800 (bit 11) -- OC_SCAN_ALLOW_FS_NTFS, allows scanning of NTFS (Msft Basic Data) file system. · 0x00001000 (bit 12) -- OC_SCAN_ALLOW_FS_EXT, allows scanning of EXT (Linux Root) file system. · 0x00010000 (bit 16) -- OC_SCAN_ALLOW_DEVICE_SATA, allow scanning SATA devices. · 0x00020000 (bit 17) -- OC_SCAN_ALLOW_DEVICE_SASEX, allow scanning SAS and Mac NVMe devices. · 0x00040000 (bit 18) -- OC_SCAN_ALLOW_DEVICE_SCSI, allow scanning SCSI devices. · 0x00080000 (bit 19) -- OC_SCAN_ALLOW_DEVICE_NVME, allow scanning NVMe devices. · 0x00100000 (bit 20) -- OC_SCAN_ALLOW_DEVICE_ATAPI, allow scanning CD/DVD devices. · 0x00200000 (bit 21) -- OC_SCAN_ALLOW_DEVICE_USB, allow scanning USB devices. · 0x00400000 (bit 22) -- OC_SCAN_ALLOW_DEVICE_FIREWIRE, allow scanning FireWire devices. · 0x00800000 (bit 23) -- OC_SCAN_ALLOW_DEVICE_SDCARD, allow scanning card reader devices. Note : Given the above description, 0xF0103 value is expected to allow scanning of SATA, SAS, SCSI, and NVMe devices with APFS file system, and prevent scanning of any devices with HFS or FAT32 file systems in addition to not scanning APFS file systems on USB, CD, and FireWire drives. The combination reads as: · OC_SCAN_FILE_SYSTEM_LOCK · OC_SCAN_DEVICE_LOCK 32 OC_SCAN_ALLOW_FS_APFS OC_SCAN_ALLOW_DEVICE_SATA OC_SCAN_ALLOW_DEVICE_SASEX OC_SCAN_ALLOW_DEVICE_SCSI OC_SCAN_ALLOW_DEVICE_NVME
+LegacyEnable
+Enables loading of NVRAM variable file named nvram.plist from EFI volume root. This file must have root plist dictionary type and contain two fields: · Version -- plist integer, file version, must be set to 1. · Add -- plist dictionary, equivalent to Add from config.plist. Variable loading happens prior to Block (and Add) phases. Unless LegacyOverwrite is enabled, it will not overwrite any existing variable. Variables allowed to be set must be specified in LegacySchema. Third-party scripts may be used to create nvram.plist file. An example of such script can be found in Utilities. The use of third-party scripts may require ExposeSensitiveData set to 0x3 to provide boot-path variable with OpenCore EFI partition UUID. WARNING: This feature is very dangerous as it passes unprotected data to your firmware variable services. Use it only when no hardware NVRAM implementation is provided by the firmware or it is incompatible.
+LegacyOverwrite
+Permits overwriting firmware variables from nvram.plist. Note : Only variables accessible from the operating system will be overwritten.
+LegacySchema
+Allows setting select NVRAM variables from a map (plist dict) of GUIDs to an array (plist array) of variable names in plist string format. You can use * value to accept all variables for select GUID. WARNING: Choose variables very carefully, as nvram.plist is not vaulted. For instance, do not put boot-args or csr-active-config, as this can bypass SIP.
+WriteFlash
+Enables writing to flash memory for all added variables. Note : This value is recommended to be enabled on most firmwares, but is left configurable for firmwares that may have issues with NVRAM variable storage garbage collection or alike. To read NVRAM variable value from macOS one could use nvram by concatenating variable GUID and name separated by : symbol. For example, nvram 7C436110-AB2A-4BBB-A880-FE41995C9F82:boot-args. A continuously updated variable list can be found in a corresponding document: NVRAM Variables.
+Automatic
+Generate PlatformInfo based on Generic section instead of using values from DataHub, NVRAM, and SMBIOS sections. Enabling this option is useful when Generic section is flexible enough. When enabled SMBIOS, DataHub, and PlatformNVRAM data is unused.
+UpdateDataHub
+Update Data Hub fields. These fields are read from Generic or DataHub sections depending on Automatic value.
+UpdateNVRAM
+Update NVRAM fields related to platform information. These fields are read from Generic or PlatformNVRAM sections depending on Automatic value. All the other fields are to be specified with NVRAM section. If UpdateNVRAM is set to false the aforementioned variables can be updated with NVRAM section. If UpdateNVRAM is set to true the behaviour is undefined when any of the fields are present in NVRAM section.
+UpdateSMBIOS
+Update SMBIOS fields. These fields are read from Generic or SMBIOS sections depending on Automatic value.
+UpdateSMBIOSMode
+Update SMBIOS fields approach: · TryOverwrite -- Overwrite if new size is <= than the page-aligned original and there are no issues with legacy region unlock. Create otherwise. Has issues with some firmwares. · Create -- Replace the tables with newly allocated EfiReservedMemoryType at AllocateMaxAddress without any fallbacks. · Overwrite -- Overwrite existing gEfiSmbiosTableGuid and gEfiSmbiosTable3Guid data if it fits new size. Abort with unspecified state otherwise. · Custom -- Write first SMBIOS table (gEfiSmbiosTableGuid) to gOcCustomSmbiosTableGuid to workaround firmwares overwriting SMBIOS contents at ExitBootServices. Otherwise equivalent to Create. Requires patching AppleSmbios.kext and AppleACPIPlatform.kext to read from another GUID: "EB9D2D31" "EB9D2D35" (in ASCII), done automatically by CustomSMBIOSGuid quirk.
+Generic
+Update all fields. This section is read only when Automatic is active.
+DataHub
+Update Data Hub fields. This section is read only when Automatic is not active.
+PlatformNVRAM
+Update platform NVRAM fields. This section is read only when Automatic is not active.
+SMBIOS
+Update SMBIOS fields. This section is read only when Automatic is not active.
+SpoofVendor
+Sets SMBIOS vendor fields to Acidanthera. It is dangerous to use Apple in SMBIOS vendor fields for reasons given in SystemManufacturer description. However, certain firmwares may not provide valid values otherwise, which could break some software.
+AdviseWindows
+Forces Windows support in FirmwareFeatures. Added bits to FirmwareFeatures: · FW_FEATURE_SUPPORTS_CSM_LEGACY_MODE (0x1) - Without this bit it is not possible to reboot to Windows installed on a drive with EFI partition being not the first partition on the disk. · FW_FEATURE_SUPPORTS_UEFI_WINDOWS_BOOT (0x20000000) - Without this bit it is not possible to reboot to Windows installed on a drive with EFI partition being the first partition on the disk.
+SystemProductName
+Refer to SMBIOS SystemProductName.
+SystemSerialNumber
+Refer to SMBIOS SystemSerialNumber.
+SystemUUID
+Refer to SMBIOS SystemUUID. 39
+MLB
+Refer to SMBIOS BoardSerialNumber.
+ROM
+Refer to 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ROM.
+PlatformName
+Sets name in gEfiMiscSubClassGuid. Value found on Macs is platform in ASCII.
+SystemProductName
+Sets Model in gEfiMiscSubClassGuid. Value found on Macs is equal to SMBIOS SystemProductName in Unicode.
+SystemSerialNumber
+Sets SystemSerialNumber in gEfiMiscSubClassGuid. Value found on Macs is equal to SMBIOS SystemSerialNumber in Unicode.
+SystemUUID
+Sets system-id in gEfiMiscSubClassGuid. Value found on Macs is equal to SMBIOS SystemUUID.
+BoardProduct
+Sets board-id in gEfiMiscSubClassGuid. Value found on Macs is equal to SMBIOS BoardProduct in ASCII.
+BoardRevision
+Sets board-rev in gEfiMiscSubClassGuid. Value found on Macs seems to correspond to internal board revision (e.g. 01).
+StartupPowerEvents
+Sets StartupPowerEvents in gEfiMiscSubClassGuid. Value found on Macs is power management state bitmask, normally 0. Known bits read by X86PlatformPlugin.kext: · · · · · · · · · · 0x00000001 0x00000002 0x00000004 0x00000008 0x00000010 0x00000020 0x00000040 0xffffff80 0x00010000 0x00020000 -- -- -- -- -- -- -- -- -- -- Shutdown cause was a PWROK event (Same as GEN_PMCON_2 bit 0) Shutdown cause was a SYS_PWROK event (Same as GEN_PMCON_2 bit 1) Shutdown cause was a THRMTRIP# event (Same as GEN_PMCON_2 bit 3) Rebooted due to a SYS_RESET# event (Same as GEN_PMCON_2 bit 4) Power Failure (Same as GEN_PMCON_3 bit 1 PWR_FLR) Loss of RTC Well Power (Same as GEN_PMCON_3 bit 2 RTC_PWR_STS) General Reset Status (Same as GEN_PMCON_3 bit 9 GEN_RST_STS) SUS Well Power Loss (Same as GEN_PMCON_3 bit 14) Wake cause was a ME Wake event (Same as PRSTS bit 0, ME_WAKE_STS) Cold Reboot was ME Induced event (Same as PRSTS bit 1 ME_HRST_COLD_STS) 40 0x00040000 0x00080000 0x00100000 0x00200000 Warm Reboot was ME Induced event (Same as PRSTS bit 2 ME_HRST_WARM_STS) Shutdown was ME Induced event (Same as PRSTS bit 3 ME_HOST_PWRDN) Global reset ME Wachdog Timer event (Same as PRSTS bit 6) Global reset PowerManagment Wachdog Timer event (Same as PRSTS bit 15)
+InitialTSC
+Sets InitialTSC in gEfiProcessorSubClassGuid. Sets initial TSC value, normally 0.
+FSBFrequency
+Sets FSBFrequency in gEfiProcessorSubClassGuid. Sets CPU FSB frequency. This value equals to CPU nominal frequency divided by CPU maximum bus ratio and is specified in Hz. Refer to MSR_NEHALEM_PLATFORM_INFO (CEh) MSR value to determine maximum bus ratio on modern Intel CPUs. Note : This value is not used on Skylake and newer but is still provided to follow suit.
+ARTFrequency
+Sets ARTFrequency in gEfiProcessorSubClassGuid. This value contains CPU ART frequency, also known as crystal clock frequency. Its existence is exclusive to Skylake generation and newer. The value is specified in Hz, and is normally 24 MHz for client Intel segment, 25 MHz for server Intel segment, and 19.2 MHz for Intel Atom CPUs. macOS till 10.15 inclusive assumes 24 MHz by default. Note : On Intel Skylake X ART frequency may be a little less (approx. 0.25%) than 24 or 25 MHz due to special EMI-reduction circuit as described in Acidanthera Bugtracker.
+DevicePathsSupported
+Sets DevicePathsSupported in gEfiMiscSubClassGuid. Must be set to 1 for AppleACPIPlatform.kext to append SATA device paths to Boot#### and efi-boot-device-data variables. Set to 1 on all modern Macs.
+SmcRevision
+Sets REV in gEfiMiscSubClassGuid. Custom property read by VirtualSMC or FakeSMC to generate SMC REV key.
+SmcBranch
+Sets RBr in gEfiMiscSubClassGuid. Custom property read by VirtualSMC or FakeSMC to generate SMC RBr key.
+SmcPlatform
+Sets RPlt in gEfiMiscSubClassGuid. Custom property read by VirtualSMC or FakeSMC to generate SMC RPlt key.
+BID
+Specifies the value of NVRAM variable 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:HW_BID.
+ROM
+Specifies the values of NVRAM variables 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:HW_ROM and 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ROM.
+MLB
+Specifies the values of NVRAM variables 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:HW_MLB and 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:MLB.
+FirmwareFeatures
+This variable comes in pair with FirmwareFeaturesMask. Specifies the values of NVRAM variables: · 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:FirmwareFeatures · 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ExtendedFirmwareFeatures
+FirmwareFeaturesMask
+This variable comes in pair with FirmwareFeatures. Specifies the values of NVRAM variables: · 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:FirmwareFeaturesMask · 4D1EDE05-38C7-4A6A-9CC6-4BCCA8B38C14:ExtendedFirmwareFeaturesMask
+BIOSVendor
+BIOS Vendor. All rules of SystemManufacturer do apply.
+BIOSVersion
+Firmware version. This value gets updated and takes part in update delivery configuration and macOS version compatibility. This value could look like MM71.88Z.0234.B00.1809171422 in older firmwares, and is described in BiosId.h. In newer firmwares it should look like 236.0.0.0.0 or 220.230.16.0.0 (iBridge: 16.16.2542.0.0,0). iBridge version is read from BridgeOSVersion variable, and is only present on macs with T2. Apple ROM Version BIOS ID: MBP151.88Z.F000.B00.1811142212 Model: MBP151 EFI Version: 220.230.16.0.0 Built by: root@quinoa Date: Wed Nov 14 22:12:53 2018 Revision: 220.230.16 (B&I) ROM Version: F000_B00 Build Type: Official Build, RELEASE Compiler: Apple LLVM version 10.0.0 (clang-1000.2.42) UUID: E5D1475B-29FF-32BA-8552-682622BA42E1 UUID: 151B0907-10F9-3271-87CD-4BF5DBECACF5
+BIOSReleaseDate
+Firmware release date. Similar to BIOSVersion. May look like 12/08/2017.
+SystemManufacturer
+OEM manufacturer of the particular board. Shall not be specified unless strictly required. Should not contain Apple Inc., as this confuses numerous services present in the operating system, such as firmware updates, eficheck, as well as kernel extensions developed in Acidanthera, such as Lilu and its plugins. In addition it will also make some operating systems like Linux unbootable.
+SystemProductName
+Preferred Mac model used to mark the device as supported by the operating system. This value must be specified by any configuration for later automatic generation of the related values in this and other SMBIOS tables and related configuration parameters. If SystemProductName is not compatible with the target operating system, -no_compat_check boot argument may be used as an override. Note : If SystemProductName is unknown, and related fields are unspecified, default values should be assumed as being set to MacPro6,1 data. The list of known products can be found in MacInfoPkg.
+SystemVersion
+Product iteration version number. May look like 1.1.
+SystemSerialNumber
+Product serial number in defined format. Known formats are described in macserial.
+SystemUUID
+A UUID is an identifier that is designed to be unique across both time and space. It requires no central registration process.
+SystemSKUNumber
+Mac Board ID (board-id). May look like Mac-7BA5B2D9E42DDD94 or Mac-F221BEC8 in older models. Sometimes it can be just empty.
+SystemFamily
+Family name. May look like iMac Pro.
+BoardManufacturer
+Board manufacturer. All rules of SystemManufacturer do apply.
+BoardProduct
+Mac Board ID (board-id). May look like Mac-7BA5B2D9E42DDD94 or Mac-F221BEC8 in older models.
+BoardVersion
+Board version number. Varies, may match SystemProductName or SystemProductVersion.
+BoardSerialNumber
+Board serial number in defined format. Known formats are described in macserial.
+BoardAssetTag
+Asset tag number. Varies, may be empty or Type2 - Board Asset Tag.
+BoardType
+Either 0xA (Motherboard (includes processor, memory, and I/O) or 0xB (Processor/Memory Module), refer to Table 15 ­ Baseboard: Board Type for more details.
+BoardLocationInChassis
+Varies, may be empty or Part Component.
+ChassisManufacturer
+Board manufacturer. All rules of SystemManufacturer do apply.
+ChassisType
+Chassis type, refer to Table 17 -- System Enclosure or Chassis Types for more details.
+ChassisVersion
+Should match BoardProduct.
+ChassisSerialNumber
+Should match SystemSerialNumber.
+ChassisAssetTag
+Chassis type name. Varies, could be empty or MacBook-Aluminum.
+PlatformFeature
+Platform features bitmask. Refer to AppleFeatures.h for more details. Use 0xFFFFFFFF value to not provide this table.
+SmcVersion
+ASCII string containing SMC version in upper case. Missing on T2 based Macs. Ignored when zero.
+FirmwareFeatures
+64-bit firmware features bitmask. Refer to AppleFeatures.h for more details. Lower 32 bits match FirmwareFeatures. Upper 64 bits match ExtendedFirmwareFeatures.
+FirmwareFeaturesMask
+Supported bits of extended firmware features bitmask. Refer to AppleFeatures.h for more details. Lower 32 bits match FirmwareFeaturesMask. Upper 64 bits match ExtendedFirmwareFeaturesMask.
+ProcessorType
+Combined of Processor Major and Minor types.
+MemoryFormFactor
+Memory form factor. On Macs it should be DIMM or SODIMM.
+ConnectDrivers
+Perform UEFI controller connection after driver loading. This option is useful for loading filesystem drivers, which usually follow UEFI driver model, and may not start by themselves. While effective, this option may not be necessary for drivers performing automatic connection, and may slightly slowdown the boot. Note : Some firmwares, made by Apple in particular, only connect the boot drive to speedup the boot process. Enable this option to be able to see all the boot options when having multiple drives.
+Drivers
+Load selected drivers from OC/Drivers directory. Designed to be filled with string filenames meant to be loaded as UEFI drivers. Depending on the firmware a different set of drivers may be required. Loading an incompatible driver may lead your system to unbootable state or even cause permanent firmware damage. Some of the known drivers include: · ApfsDriverLoader -- APFS file system bootstrap driver adding the support of embedded APFS drivers in bootable APFS containers in UEFI firmwares. · FwRuntimeServices -- OC_FIRMWARE_RUNTIME protocol implementation that increases the security of OpenCore and Lilu by supporting read-only and write-only NVRAM variables. Some quirks, like RequestBootVarRouting, require this driver for proper function. Due to the nature of being a runtime driver, i.e. functioning in parallel with the target operating system, it cannot be implemented within OpenCore itself, but is bundled with OpenCore releases. · EnhancedFatDxe -- FAT filesystem driver from FatPkg. This driver is embedded in all UEFI firmwares, and cannot be used from OpenCore. It is known that multiple firmwares have a bug in their FAT support implementation, which leads to corrupted filesystems on write attempt. Embedding this driver within the firmware may be required in case writing to EFI partition is needed during the boot process. · NvmExpressDxe -- NVMe support driver from MdeModulePkg. This driver is included in most firmwares starting with Broadwell generation. For Haswell and earlier embedding it within the firmware may be more favourable in case a NVMe SSD drive is installed. · AppleUsbKbDxe -- USB keyboard driver adding the support of AppleKeyMapAggregator protocols on top of a custom USB keyboard driver implementation. This is an alternative to builtin KeySupport, which may work better or worse depending on the firmware. · VBoxHfs -- HFS file system driver with bless support. This driver is an alternative to a closed source HFSPlus driver commonly found in Apple firmwares. While it is feature complete, it is approximately 3 times slower and is yet to undergo a security audit. · XhciDxe -- XHCI USB controller support driver from MdeModulePkg. This driver is included in most firmwares starting with Sandy Bridge generation. For earlier firmwares or legacy systems it may be used to support external USB 3.0 PCI cards. To compile the drivers from UDK (EDK II) use the same command you do normally use for OpenCore compilation, but choose a corresponding package: git clone https://github.com/acidanthera/audk UDK cd UDK source edksetup.sh make -C BaseTools build -a X64 -b RELEASE -t XCODE5 -p FatPkg/FatPkg.dsc build -a X64 -b RELEASE -t XCODE5 -p MdeModulePkg/MdeModulePkg.dsc
+Input
+Apply individual settings designed for input (keyboard and mouse) in Input Properties section below.
+Protocols
+Force builtin versions of select protocols described in Protocols Properties section below. Note : all protocol instances are installed prior to driver loading.
+Quirks
+Apply individual firmware quirks described in Quirks Properties section below.
+KeyForgetThreshold
+Remove key unless it was submitted during this timeout in milliseconds. AppleKeyMapAggregator protocol is supposed to contain a fixed length buffer of currently pressed keys. However, the majority of the drivers only report key presses as interrupts and pressing and holding the key on the keyboard results in subsequent submissions of this key with some defined time interval. As a result we use a timeout to remove once pressed keys from the buffer once the timeout expires and no new submission of this key happened. This option allows to set this timeout based on your platform. The recommended value that works on the majority of the platforms is 5 milliseconds. For reference, holding one key on VMware will repeat it roughly every 2 milliseconds and the same value for APTIO V is 3-4 milliseconds. Thus it is possible to set a slightly lower value on faster platforms and slightly higher value on slower platforms for more responsive input.
+KeyMergeThreshold
+Assume simultaneous combination for keys submitted within this timeout in milliseconds. Similarly to KeyForgetThreshold, this option works around the sequential nature of key submission. To be able to recognise simultaneously pressed keys in the situation when all keys arrive sequentially, we are required to set a timeout within which we assume the keys were pressed together. Holding multiple keys results in reports every 2 and 1 milliseconds for VMware and APTIO V respectively. Pressing keys one after the other results in delays of at least 6 and 10 milliseconds for the same platforms. The recommended value for this option is 2 milliseconds, but it may be decreased for faster platforms and increased for slower.
+KeySupport
+Enable internal keyboard input translation to AppleKeyMapAggregator protocol. This option activates the internal keyboard interceptor driver, based on AppleGenericInput aka (AptioInputFix), to fill AppleKeyMapAggregator database for input functioning. In case a separate driver is used, such as AppleUsbKbDxe, this option should never be enabled.
+KeySupportMode
+Set internal keyboard input translation to AppleKeyMapAggregator protocol mode. · · · · Auto -- Performs automatic choice as available with the following preference: AMI, V2, V1. V1 -- Uses UEFI standard legacy input protocol EFI_SIMPLE_TEXT_INPUT_PROTOCOL. V2 -- Uses UEFI standard modern input protocol EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL. AMI -- Uses APTIO input protocol AMI_EFIKEYCODE_PROTOCOL.
+KeySwap
+Swap Command and Option keys during submission. This option may be useful for keyboard layouts with Option key situated to the right of Command key.
+PointerSupport
+Enable internal pointer driver. This option implements standard UEFI pointer protocol (EFI_SIMPLE_POINTER_PROTOCOL) through select OEM protocols. The option may be useful on Z87 ASUS boards, where EFI_SIMPLE_POINTER_PROTOCOL is broken.
+PointerSupportMode
+Set OEM protocol used for internal pointer driver. Currently the only supported variant is ASUS, using specialised protocol available on select Z87 and Z97 ASUS boards. More details can be found in LongSoft/UefiTool#116.
+TimerResolution
+Set architecture timer resolution. This option allows to update firmware architecture timer period with the specified value in 100 nanosecond units. Setting a lower value generally improves performance and responsiveness of the interface and input handling. The recommended value is 50000 (5 milliseconds) or slightly higher. Select ASUS Z87 boards use 60000 for the interface. Apple boards use 100000. You may leave it as 0 in case there are issues.
+AppleBootPolicy
+Reinstalls Apple Boot Policy protocol with a builtin version. This may be used to ensure APFS compatibility on VMs or legacy Macs. Note : Some Macs, namely MacPro5,1, do have APFS compatibility, but their Apple Boot Policy protocol contains recovery detection issues, thus using this option is advised on them as well.
+AppleEvent
+Reinstalls Apple Event protocol with a builtin version. This may be used to ensure File Vault 2 compatibility on VMs or legacy Macs.
+AppleImageConversion
+Reinstalls Apple Image Conversion protocol with a builtin version.
+AppleKeyMap
+Reinstalls Apple Key Map protocols with builtin versions.
+AppleSmcIo
+Reinstalls Apple SMC I/O protocol with a builtin version. This protocol replaces legacy VirtualSmc UEFI driver, and is compatible with any SMC kernel extension. However, in case FakeSMC kernel extension is used, manual NVRAM key variable addition may be needed.
+AppleUserInterfaceTheme
+Reinstalls Apple User Interface Theme protocol with a builtin version.
+ConsoleControl
+Replaces Console Control protocol with a builtin version. macOS bootloader requires console control protocol for text output, which some firmwares miss. This option is required to be set when the protocol is already available in the firmware, and other console control options are used, such as IgnoreTextInGraphics, SanitiseClearScreen, and sometimes ConsoleBehaviourOs with ConsoleBehaviourUi).
+DataHub
+Reinstalls Data Hub protocol with a builtin version. This will drop all previous properties if the protocol was already installed.
+DeviceProperties
+Reinstalls Device Property protocol with a builtin version. This will drop all previous properties if it was already installed. This may be used to ensure full compatibility on VMs or legacy Macs.
+FirmwareVolume
+Forcibly wraps Firmware Volume protocols or installs new to support custom cursor images for File Vault 2. Should be set to true to ensure File Vault 2 compatibility on everything but VMs and legacy Macs.
+HashServices
+Forcibly reinstalls Hash Services protocols with builtin versions. Should be set to true to ensure File Vault 2 compatibility on platforms providing broken SHA-1 hashing. Can be diagnosed by invalid cursor size with UIScale set to 02, in general platforms prior to APTIO V (Haswell and older) are affected.
+OSInfo
+Forcibly reinstalls OS Info protocol with builtin versions. This protocol is generally used to receive notifications from macOS bootloader, by the firmware or by other applications.
+UnicodeCollation
+Forcibly reinstalls unicode collation services with builtin version. Should be set to true to ensure UEFI Shell compatibility on platforms providing broken unicode collation. In general legacy Insyde and APTIO platforms on Ivy Bridge and earlier are affected.
