@@ -1,9 +1,9 @@
 8
-||${res_name}.kext +
-string|${res_name}.kext|BundlePath
+||${res_name} +
+string|${res_name}|BundlePath
 string||Comment
 bool|true|Enabled
-string|Contents/MacOS/${res_name}|ExecutablePath
+string|Contents/MacOS/${res_name%.*}|ExecutablePath
 string||MaxKernel
 string||MinKernel
 string|Contents/Info.plist|PlistPath

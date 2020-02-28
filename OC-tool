@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.3(270220) last checked with OpenCore version REL-056-2020-02-23"
+VER="3.3(280220) last checked with OpenCore version REL-056-2020-02-27"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -668,9 +668,9 @@ find_srce_url() {
 }
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
-	if [ "#${res_name#?}" != "$res_name" ]; then
+	if [ "#${res_name#?}" != "$res_name" ]; then # ignore res with #
 		find_srce_url
-		if [ -n "$DEBUG" ]; then msg "db - found srce $enabled val $val key $key res_name $res_name\n"; fi
+		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 		if [ "$dest" != "OC/ACPI" ];then
 			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 				srce=""
@@ -703,7 +703,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 		val="$key"
 		set_edit_res "$num"
 	fi
-	set_res "$G$S"
+	set_res "$1"
 }
 
 #missing_plist_sec() {
@@ -725,11 +725,11 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #				1|2|4)
 #					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
 #					enabled=$(grep "^$2|*$3|$S|bool|Enabled| " "$CONFIG_TXT"|cut -f2 -d '"')
-#					add_res_array;;
+#					add_res_array "$G$S";;
 #				3)
 #					res_name=$(grep "^$2|*$3|$S|string|$4| " "$CONFIG_TXT"|cut -f2 -d '"')
 #					enabled="true"
-#					add_res_array;;
+#					add_res_array "$G$S";;
 #			esac
 #		done
 #	else
@@ -768,7 +768,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		if [ "$MODE" = "latestSource" ]; then
 				get_res "0$S"
 				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
-				add_res_array
+				add_res_array "$G$S"
 				res_name="base"
 				set_res "0$S"
 		fi
@@ -778,7 +778,7 @@ init_res_array() { # base-resources moved into .tool-files for portability
 		S=$((S+1))
 		eval "res0$S=\$line\|true"
 		get_res "0$S"
-		add_res_array
+		add_res_array "$G$S"
 	done < "$TOOL_FILES/pre-base-resources"
 	G0_NUM=$((S+1))
 	eval "res0$G0_NUM=config.plist\|\|'$INPUT'\|OC\|\|true"
@@ -1375,7 +1375,7 @@ load_edit_text() {
 					res_name="${key% ?}"
 					enabled="$num"; S="$((L2-1))"
 					if [ -n "$DEBUG" ]; then msg "db - prep $enabled val $val key $key res_name $res_name\n"; fi
-					add_res_array
+					add_res_array "$G$S"
 					if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
 					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
 						#if [ "#${val#?}" = "$val" ]; then
@@ -1565,7 +1565,7 @@ edit_val() {
 		draw_bit_editor
 	fi
 	if [ -e "$TOOL_FILES/string_maps/$res_name" ]; then
-		msg "\n\033[2K\n"
+		msg "\033[${S}H\n\033[2K\n"
 		while read -r line
 		do
 			msg "  $line\033[K\n"
@@ -1896,6 +1896,7 @@ add_field() {
 		set_edit_res "$n"
 		o=$((o+1))
 	done
+	new_res="$res_name"
 	n=$((ADD_RES_NUM+$field_len))
 	get_edit_res "$n"
 	eval l=\$L$((level-1)); l2=$l
@@ -1928,6 +1929,7 @@ add_field() {
 				set_res "$n$o"
 			fi
 		done
+		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 		if [ -n "$resize" ]; then # add linked pointer for new item
 			p=$((p+1))
 			for o in $(seq "$p" "$((resize+1))")
@@ -1935,9 +1937,19 @@ add_field() {
 				eval res$n$o=\$res$n$((o-1))
 			done
 			eval G"$n"_NUM=$p
-			eval "res$n$resize='${new_key% ?}'\|\|\|\|\|'$ADD_RES_NUM'"
+			if [ -n "$DEBUG" ]; then msg "db - add field n<$n> o<$o> p<$p> resize<$resize> ADD_RES_NUM<$ADD_RES_NUM> res_name<$res_name>\n"; fi
+#			G="$n"
+#			S="$resize"
+#			res_name="$new_res"
+#			num="$ADD_RES_NUM"
+#			dest="OC/Kexts"
+			res_name="USBInjectAll.kext"
+			add_res_array "$n$resize"
+#			eval "res$n$resize='${new_key% ?}'\|\|\|\|\|'$ADD_RES_NUM'"
+#	eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
 		fi
 	done
+	if [ -n "$DEBUG" ]; then get_CHAR; fi
 	ADD_RES_NUM="-1"
 }
 
