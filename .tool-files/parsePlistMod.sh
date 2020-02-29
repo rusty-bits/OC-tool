@@ -111,8 +111,8 @@ while read -r line; do
 			;;
 		"<dict/")
 			found_empty_dict
-#			echo "PLIST|<key>$key</key>" >> config.plist.txt
-#			echo "PLIST|$line" >> config.plist.txt
+#			echo "PLIST|<key>$key</key>" >> "config.plist.txt"
+			echo "PLIST|$line" >> "$IN.txt"
 			;;
 		"<array")
 			ds=""

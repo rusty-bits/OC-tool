@@ -529,7 +529,7 @@ res_not_found() {
 		exit 1
 	else
 		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON or extras directory - ${YEL}IGNORING${NC}\n"
-		IGNORE="yes"
+		if [ "$IGNORE" = "true" ]; then IGNORE="yes"; fi
 		CONFIG_CHANGED="-i option" # need to write new config before build
 	fi
 }
@@ -670,7 +670,7 @@ find_srce_url() {
 }
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
-	if [ "#${res_name#?}" != "$res_name" ]; then # ignore res with #
+#	if [ "#${res_name#?}" != "$res_name" ]; then # ignore res with #
 		find_srce_url
 		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 		if [ "$dest" != "OC/ACPI" ];then
@@ -699,9 +699,9 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 				fi
 			fi
 		fi
-	else
-		srce="unknown"; dest=""; parent=""
-	fi
+#	else
+#		srce="unknown"; dest=""; parent=""
+#	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
 		IGNORE="true"
@@ -812,6 +812,7 @@ get_edit_res() {
 	type="${key%%|*}"; key="${key#*|}"
 	val=${key%%|*}; key="${key#*|}"
 	en="${key##* }"
+	if [ "${#en}" -gt "1" ]; then en="$key"; fi
 }
 
 pushAD() {
@@ -2700,6 +2701,8 @@ case "${optchar}" in
 			DEBUG="true";;
 		F)
 			USE_FULL="true";;
+		I)
+			IGNORE="TRUE";;
 		N)
 			UPDATE="false"
 			EX_COM="${EX_COM}N";;
