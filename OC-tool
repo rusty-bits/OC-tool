@@ -624,8 +624,11 @@ build_vault() {
 	cd "$BUILD_DIR"/OC
 	ls vault* 1> /dev/null 2>&1 && rm vault.*
 	case $MODE in
-		prebuiltRelease|latestSource)
+		prebuiltRelease)
 			"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
+			;;
+		latestSource)
+			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
 			;;
 		prebuiltDaily)
 			"$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
@@ -633,8 +636,11 @@ build_vault() {
 	esac
 	if [ "$USE_VAULT" != "Basic" ]; then
 		case $MODE in
-			prebuiltRelease|latestSource)
+			prebuiltRelease)
 				"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+				;;
+			latestSource)
+				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 				;;
 			prebuiltDaily)
 				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
