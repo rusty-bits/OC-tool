@@ -32,7 +32,7 @@ MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
-USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""
+USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 DEBUG=""; ADD_RES_NUM="-1"; LA="1"
 
@@ -1865,7 +1865,7 @@ add_field() {
 	type="$new_type"
 	if [ "$type" = "bool" ]; then val="false"; fi
 	o=0
-	if [ "$field_len" -gt "1" ]; then
+	if [ -n "$USING_TEMPLATE" ]; then
 		for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
 		do
 			eval a="\$add$o"
@@ -1881,6 +1881,7 @@ add_field() {
 		done
 	else
 		set_edit_res "$ADD_RES_NUM"
+		USING_TEMPLATE=""
 	fi
 	new_res="$res_name"
 	n=$((ADD_RES_NUM+field_len))
@@ -2264,6 +2265,7 @@ text_user_interface() {
 										"Drivers"|"Kexts"|"SSDTs"|"Tools")
 											eval res_name="\$add$SA"
 											init_add_array "templates" "${ADD_FILE#*_}"
+											USING_TEMPLATE="true"
 											new_type=""
 											new_val=""
 											new_key="$res_name"
