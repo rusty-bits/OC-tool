@@ -8,7 +8,7 @@ HWPEnabler.kext
 LiluFriend.kext
 NoTouchID.kext
 NoVPAJpeg.kext
-NVMEFix.kext
+NVMeFix.kext
 RTCMemoryFixup.kext
 SerialMouse.kext
 SystemProfilerMemoryFixup.kext

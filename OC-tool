@@ -1456,7 +1456,8 @@ draw_edit_header() {
 					msg "  ${YEL}Disabled by -i option${NC}"
 				fi
 			elif [ "$LA" -eq "2" ]; then
-				msg "    return to add ${YEL}$ADD_FILE${NC}"
+				eval a="\$add$SA"
+				msg "    return to add ${YEL}${a##* }${NC}"
 			else
 				msg "    ${RED}esc esc${NC}: to cancel"
 			fi
@@ -1522,7 +1523,12 @@ select_add_field() {
 	do
 		S=$((S+1))
 		eval a="\$add$n"
-		msg "\033[${S}H\033[2K-add "
+		msg "\033[${S}H\033[2K"
+		if [ "$n" -eq "$SA" ]; then
+			msg "- add "
+		else
+			msg "      "
+		fi
 		if [ "$LA" -eq "2" ]; then msg "< $ADD_FILE "; fi
 		if [ "$SA" -eq "$n" ]; then msg "$INV"; fi
 		msg "$a${NC}"
@@ -1834,14 +1840,14 @@ add_field() {
 	get_edit_res "$ADD_RES_NUM"
 	for n in $(seq "$G10_NUM" "$ADD_RES_NUM") # shift array up
 	do
-		o=$((n+$field_len))
+		o=$((n+field_len))
 		eval res10$o="\$res10$n"
 	done
 	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # clear array
 	do
 		eval res10$n=""
 	done
-	G10_NUM=$((G10_NUM+$field_len)) # mark new length
+	G10_NUM=$((G10_NUM+field_len)) # mark new length
 	if [ -z "$new_key" ]; then # get new key if not provided
 		key="\n\n Enter key name for new ${YEL}$new_type${NC} ->"
 		val=""; e_val="$val"
@@ -1859,21 +1865,25 @@ add_field() {
 	type="$new_type"
 	if [ "$type" = "bool" ]; then val="false"; fi
 	o=0
-	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
-	do
-		eval a="\$add$o"
-		L3="$o"
-		type="${a%%|*}"
-		a="${a#*|}"
-		val="${a%%|*}"
-		eval val=\"$val\"
-		key="${a##*|}"
-		eval key=\"$key\"
-		set_edit_res "$n"
-		o=$((o+1))
-	done
+	if [ "$field_len" -gt "1" ]; then
+		for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
+		do
+			eval a="\$add$o"
+			L3="$o"
+			type="${a%%|*}"
+			a="${a#*|}"
+			val="${a%%|*}"
+			eval val=\"$val\"
+			key="${a##*|}"
+			eval key=\"$key\"
+			set_edit_res "$n"
+			o=$((o+1))
+		done
+	else
+		set_edit_res "$ADD_RES_NUM"
+	fi
 	new_res="$res_name"
-	n=$((ADD_RES_NUM+$field_len))
+	n=$((ADD_RES_NUM+field_len))
 	get_edit_res "$n"
 	eval l=\$L$((level-1)); l2=$l
 	while [ "$l2" -eq "$l" ]
@@ -2140,7 +2150,7 @@ text_user_interface() {
 							if [ "$G" -gt "8" ]; then G=1; fi
 							moved="true";;
 					esac
-				else
+				else # user is in plist edit screen
 					if [ "$ADD_RES_NUM" -lt "0" ]; then # not in add field mode
 						case "$CHAR" in # key press actions for edit plist screen
 							a)
@@ -2260,6 +2270,8 @@ text_user_interface() {
 											add_field;;
 										"variable")
 											eval a="\$add$SA"
+											new_val=""
+											new_key=""
 											new_type="${a##* }"
 											add_field;;
 										*)
@@ -2744,7 +2756,7 @@ process_plist
 load_edit_text
 msg "Using ${inputFilePath}\n"
 MODI=""
-echo $inputFilePath|grep -q "INPUT/modified" || MODI="no"
+echo "$inputFilePath"|grep -q "INPUT/modified" || MODI="no"
 if [ -z "$MODI" ]; then
 	inputFileName="${inputFilePath##*INPUT/modified.}"
 else
