@@ -44,13 +44,13 @@ get_next() {
 			4)
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
-				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "BundlePath" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Address" ] && [ "$C0$C1" = "BooterMmioWhitelist" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelBlock" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Name" ] && [ "$C0$C1" = "MiscEntries" ]; then echo "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Address" ] && [ "$C0$C1" = "BooterMmioWhitelist" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Name" ] && [ "$C0$C1" = "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				P=5
 				;;
 			5)
@@ -63,9 +63,9 @@ get_next() {
 write_out() {
 	if [ "$P" -eq "4" ] && [ -z "$key" ]; then P=5; fi
 	if [ "$P" -lt "5" ]; then
-		echo "$L0|$L1|$L2|$L3|$ar|||$1 " >> edit_text.tmp
+		printf "%s\n" "$L0|$L1|$L2|$L3|$ar|||$1 " >> edit_text.tmp
 	else
-		echo "$L0|$L1|$L2|$L3|$ar|$type|$val|$1" >> edit_text.tmp
+		printf "%s\n" "$L0|$L1|$L2|$L3|$ar|$type|$val|$1" >> edit_text.tmp
 	fi
 }
 
@@ -122,7 +122,7 @@ while read -r line; do
 	ar=""
 	line_num=$((line_num+1))
 	if [ "$section" = "PLIST" ]; then
-		echo "0|0|0|0||||$sub1" >> edit_text.tmp
+		printf "%s\n" "0|0|0|0||||$sub1" >> edit_text.tmp
 	else
 		msg
 	fi
@@ -142,11 +142,11 @@ if [ -e "edit_subs.txt" ]; then
 		if [ "$en" = "true" ]; then new="$new +"; fi
 #		if [ "$en" = "false" ]; then new="$new\ -"; fi
 		if [ "$en" = "false" ]; then new="$new -"; fi
-		echo "s|$old |$new|" >> comm.txt
+		printf "%s\n" "s|$old |$new|" >> comm.txt
 #		com="$com -e s\|'$old '\|'$new'\|"
 #		com="$com -e \"s/'$old '/'$new'/\""
 	done < edit_subs.txt
-	# echo $com > com1.txt
+	# printf "%s\n" $com > com1.txt
 
 	sed -f comm.txt  edit_text.tmp > edit_text.txt
 #	eval sed "$com" edit_text.tmp > edit_text.txt

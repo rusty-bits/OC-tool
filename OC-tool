@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.4(290220) last checked with OpenCore version REL-056-2020-02-27"
+VER="3.4(010320) last checked with OpenCore version REL-056-2020-02-29"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -30,7 +30,7 @@ INV='\033[7m'
 MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
-REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""
+REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
@@ -43,6 +43,14 @@ msg() { #write $1 to screen if not quiet
 		printf "%b" "$1" > "$TTY_OUT"
 	else
 		printf "%b" "$1"
+	fi
+}
+
+msgs() { #write $1 to screen if not quiet don't interpres esc codes
+	if [ -z "$QUIET" ]; then
+		printf "%s" "$1" > "$TTY_OUT"
+	else
+		printf "%s" "$1"
 	fi
 }
 
@@ -256,7 +264,7 @@ curl_parent() {
 				fi
 			fi
 			fin
-			echo "$(date) Downloaded $zip_name - $(printf "%b" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
+			echo "$(date) Downloaded $zip_name - $(printf "%s" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
 		else
 			msg "\nCan't download $zip_name while using -n option.\n"
 			exit 0
@@ -788,7 +796,8 @@ print_res_array() { # debug aid to list psuedo array
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
 		do
 				eval line="\$res$G$S"
-				msg "$G$S|$line\n"
+				msgs "$G$S|$line"
+				msg "\n"
 		done
 	done
 	msg "$G1_START\n"
@@ -831,9 +840,9 @@ clearAD2() {
 		popAD
 		case "$ad2" in
 			"A")
-				echo "</array>" >> "$OUT";;
+				printf "%s\n" "</array>" >> "$OUT";;
 			"D")
-				echo "</dict>" >> "$OUT";;
+				printf "%s\n" "</dict>" >> "$OUT";;
 		esac
 	done
 }
@@ -841,13 +850,13 @@ clearAD2() {
 output_element() {
 	if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi # key + value
 	if [ "$type" = "bool" ]; then
-		echo "<$val/>" >> "$OUT"
+		printf "%s\n" "<$val/>" >> "$OUT"
 	elif [ -n "$type" ]; then
 		if [ "$en" = "$key" ]; then # no + or -
-			echo "<$type>$val</$type>" >> "$OUT"
+			printf "%s\n" "<$type>$val</$type>" >> "$OUT"
 		else
 			if [ "$en" = "+" ]; then
-				echo "<$type>${val% ?}</$type>" >> "$OUT"
+				printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
 			fi
 		fi
 	fi
@@ -866,55 +875,55 @@ write_new_conf() {
 				clearAD2
 				case "$ad1" in
 					"A")
-						echo "</array>" >> "$OUT";;
+						printf "%s\n" "</array>" >> "$OUT";;
 					"D")
-						echo "</dict>" >> "$OUT";;
+						printf "%s\n" "</dict>" >> "$OUT";;
 				esac
-				echo "</dict>" >> "$OUT"
-				echo "</plist>" >> "$OUT"
+				printf "%s\n" "</dict>" >> "$OUT"
+				printf "%s\n" "</plist>" >> "$OUT"
 			elif [ -z "$type" ]; then
-				echo "$key" >> "$OUT"
+				printf "%s\n" "$key" >> "$OUT"
 			else
-				echo "<key>$key</key>" >> "$OUT"
-				echo "<$type>$val</$type>" >> "$OUT"
+				printf "%s\n" "<key>$key</key>" >> "$OUT"
+				printf "%s\n" "<$type>$val</$type>" >> "$OUT"
 			fi
 		else
 			if [ "$L1" -eq "0" ]; then # new L0
 				clearAD2
 				case "$ad1" in
 					"A")
-						echo "</array>" >> "$OUT";;
+						printf "%s\n" "</array>" >> "$OUT";;
 					"D")
-						echo "</dict>" >> "$OUT";;
+						printf "%s\n" "</dict>" >> "$OUT";;
 				esac
 				ad1=""
-				if [ "$L0" -ne "1" ]; then echo "</dict>" >> "$OUT"; fi
-				echo "<key>$key</key>" >> "$OUT"
-				echo "<dict>" >> "$OUT"
+				if [ "$L0" -ne "1" ]; then printf "%s\n" "</dict>" >> "$OUT"; fi
+				printf "%s\n" "<key>$key</key>" >> "$OUT"
+				printf "%s\n" "<dict>" >> "$OUT"
 			elif [ "$L2" -eq "0" ]; then # new something at L1
 				clearAD2
 				if [ -z "$type" ]; then # new L1 subsection
 					case "$ad1" in
 						"A")
-							echo "</array>" >> "$OUT";;
+							printf "%s\n" "</array>" >> "$OUT";;
 						"D")
-							echo "</dict>" >> "$OUT";;
+							printf "%s\n" "</dict>" >> "$OUT";;
 					esac
 					ad1=""
-					echo "<key>$key</key>" >> "$OUT"
+					printf "%s\n" "<key>$key</key>" >> "$OUT"
 					case "$AD" in
 						"A")
-							echo "<array>" >> "$OUT";;
+							printf "%s\n" "<array>" >> "$OUT";;
 						"D")
-							echo "<dict>" >> "$OUT";;
+							printf "%s\n" "<dict>" >> "$OUT";;
 					esac
 					ad1="$AD"
 				else # item not in dict/array
 					case "$ad1" in
 						"A")
-							echo "</array>" >> "$OUT";;
+							printf "%s\n" "</array>" >> "$OUT";;
 						"D")
-							echo "</dict>" >> "$OUT";;
+							printf "%s\n" "</dict>" >> "$OUT";;
 					esac
 					ad1=""
 					output_element
@@ -924,20 +933,20 @@ write_new_conf() {
 					popAD
 					case "$ad2" in
 						"A")
-							echo "</array>" >> "$OUT";;
+							printf "%s\n" "</array>" >> "$OUT";;
 						"D")
-							echo "</dict>" >> "$OUT";;
+							printf "%s\n" "</dict>" >> "$OUT";;
 					esac
 					if [ "$en" != "$key" ]; then
-						echo "<dict>" >> "$OUT"
+						printf "%s\n" "<dict>" >> "$OUT"
 						pushAD "D"
 					else
-						echo "<key>$key</key>" >> "$OUT"
+						printf "%s\n" "<key>$key</key>" >> "$OUT"
 						case "$AD" in
 							"A")
-								echo "<array>" >> "$OUT";;
+								printf "%s\n" "<array>" >> "$OUT";;
 							"D")
-								echo "<dict>" >> "$OUT";;
+								printf "%s\n" "<dict>" >> "$OUT";;
 						esac
 						pushAD "$AD"
 					fi
@@ -947,9 +956,9 @@ write_new_conf() {
 						popAD
 						case "$ad2" in
 							"A")
-								echo "</array>" >> "$OUT";;
+								printf "%s\n" "</array>" >> "$OUT";;
 							"D")
-								echo "</dict>" >> "$OUT";;
+								printf "%s\n" "</dict>" >> "$OUT";;
 						esac
 					done
 					output_element
@@ -961,9 +970,9 @@ write_new_conf() {
 						popAD
 						case "$ad2" in
 							"A")
-								echo "</array>" >> "$OUT";;
+								printf "#s\n" "</array>" >> "$OUT";;
 							"D")
-								echo "</dict>" >> "$OUT";;
+								printf "%s\n" "</dict>" >> "$OUT";;
 						esac
 					done
 				fi
@@ -1015,11 +1024,18 @@ set_color() { # set TUI section color based on resource
 }
 
 select_MSG() { # draw highligted resource in TUI
-	if [ "$G" -ne "10" ]; then  msg "\033[${ROW};${COL}H$color$INV $res_name $MSG \033[0m"; fi
+	if [ "$G" -ne "10" ]; then
+		msg "\033[${ROW};${COL}H$color$INV "
+		msgs "$res_name $MSG "
+		msg "\033[0m"
+	fi
 }
 
 unselect_MSG() { # clear highlighted resource in TUI
-	if [ "$G" -ne "10" ]; then  msg "\033[${ROW};${COL}H$color $res_name $MSG "; fi
+	if [ "$G" -ne "10" ]; then
+		msg "\033[${ROW};${COL}H$color "
+		msgs "$res_name $MSG "
+	fi
 }
 
 draw_key() {
@@ -1117,7 +1133,7 @@ draw_screen() {
 
 draw_footer() {
 	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q: quit without saving   r: redraw screen"
+	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q: quit without saving   s: save to INPUT/modified.$inputFileName and exit"
 }
 
 get_CHAR() {
@@ -1130,17 +1146,17 @@ compute_data_vals() {
 	case $data_field in
 		0|1)
 			val="$e_val"
-			hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-			asc_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
 		2)
 			hex_val="$e_val"
-			val=$(printf "%b" "$hex_val"|xxd -p -r|base64)
-			asc_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+			val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
+			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
 		3)
 			if [ -z "$asc_touched" ]; then
 				asc_val="$e_val"
-				val=$(printf "%b" "$asc_val"|base64)
-				hex_val=$(printf "%b" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+				val=$(printf "%s" "$asc_val"|base64)
+				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
 			fi;;
 		esac
 }
@@ -1189,22 +1205,36 @@ sample_text(){
 
 draw_edit_val() {
 	if [ "$key" = "$val" ] && [ -z "$LONE" ]; then
-		msg "\033[${S}H${e_text}$e_val${NC}\033[K"
+		msg "\033[${S}H${e_text}"
+		msgs "$e_val"
+		msg "${NC}\033[K"
 	else
 		case "$type" in
 			"data")
 				compute_data_vals
-				msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | $asc_val |\033[K"
+				msg "\033[${S}H${e_text}"
+				msgs "$key"
+				msg "${NC} | "
+				msgs "$val |$hex_val | $asc_val |"
+				msg "\033[K"
 				if [ -n "$e_split" ]; then
 					case $data_field in
 						1)
-							msg "\033[${S}H${e_text}$key${NC} | "
+							msg "\033[${S}H${e_text}"
+							msgs "$key"
+							msg "${NC} | "
 							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
 						2)
-							msg "\033[${S}H${e_text}$key${NC} | $val |"
+							msg "\033[${S}H${e_text}"
+							msgs "$key"
+							msg "${NC} | "
+							msgs "$val |"
 							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
 						3)
-							msg "\033[${S}H${e_text}$key${NC} | $val |$hex_val | "
+							msg "\033[${S}H${e_text}"
+							msgs "$key"
+							msg "${NC} | "
+							msgs "$val |$hex_val | "
 							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
 					esac
 				fi;;
@@ -1225,22 +1255,46 @@ draw_edit_val() {
 						fi;;
 				esac
 				if [ -n "$BIT_NUM" ] && [ "$CHAR" != "sp" ]; then draw_bit_editor; fi
-				msg "\033[${S}H${e_text}$key${NC} | $val | 0x$hex_val |\033[K"
+				msg "\033[${S}H${e_text}"
+				msgs "$key"
+				msg "${NC} | $val | 0x$hex_val |\033[K"
 				if [ -n "$BIT_NUM" ] && [ "$res_name" = "PickerAttributes" ]; then sample_text; fi
 				if [ -n "$e_split" ]; then
 					case "$data_field" in
 						1)
-							msg "\033[${S}H${e_text}$key${NC} | "
+							msg "\033[${S}H${e_text}"
+							msgs "$key"
+							msg "${NC} | "
 							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
 						2)
-							msg "\033[${S}H${e_text}$key${NC} | $val | 0x"
+							msg "\033[${S}H${e_text}"
+							msgs "$key"
+							msg "${NC} | $val | 0x"
 							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
 					esac
 				fi;;
 			*)
-				msg "\033[${S}H${e_text}$key${NC} | $e_val |\033[K"
+				msg "\033[${S}H${e_text}"
+				if [ -n "$SPEC_KEY" ]; then
+					msg "$key"
+					msgs "$SPEC_KEY"
+					msg "${NC}$SPEC_END"
+				else
+					msgs "$key"
+				fi
+				msg "${NC} | "
+				msgs "$e_val |"
+				msg "\033[K"
 				if [ -n "$e_split" ]; then
-					msg "\033[${S}H${e_text}$key${NC} | "
+					msg "\033[${S}H${e_text}"
+					if [ -n "$SPEC_KEY" ]; then
+						msg "$key"
+						msgs "$SPEC_KEY"
+						msg "${NC}$SPEC_END"
+					else
+						msgs "$key"
+					fi
+					msg "${NC} | "
 					printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
 				fi;;
 		esac
@@ -1283,7 +1337,9 @@ draw_edit_key() {
 		if [ -n "$selected" ] && [ "$level" -gt "$selected" ]; then opn="---"; fi
 		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
 			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
-		msg "\033[${S}H${e_text}$key${NC} $opn  \033[K"
+		msg "\033[${S}H${e_text}"
+		msgs "$key"
+		msg "${NC} $opn  \033[K"
 		opn=""
 	else
 		case $type in
@@ -1393,8 +1449,9 @@ set_edit_res() {
 }
 
 split_val() {
-	val1=$(printf "%.${e_split}b" "$e_val")
-	val2="${e_val#$val1}"
+	e_len="${#e_val}"
+	val1="$(printf "%.${e_split}s" "$e_val")"
+	val2="$(printf "%s" "$e_val" | tail -c $((e_len-e_split)))"
 }
 
 highlight_type() {
@@ -1618,7 +1675,7 @@ edit_val() {
 							e_val="$hex_val"
 							data_field="2";;
 						2)
-							hex_val=$(printf "%b" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
+							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
 							e_val="$asc_val"
 							data_field="3";;
 						3)
@@ -1702,8 +1759,8 @@ draw_plist_footer() {
 		msg "q: quit without saving\033[K"
 	else
 		PL_FOOT="$((R-4))"
-		msg "\033[${PL_FOOT}H a: add new item to plist     d: ${RED}delete${NC} ${INV}highlighted${NC} item        g: go build new EFI folder\n\033[2K"
-		msg " i: info of ${INV}highlighted${NC} item  n: change name of ${INV}highlighted${NC} key\n\033[2K\n"
+		msg "\033[${PL_FOOT}H a: add new item to plist     d: ${RED}delete${NC} highlighted item        g: go build new EFI folder\n\033[2K"
+		msg " i: info of ${INV}highlighted${NC} item  n: change name of highlighted key\n\033[2K\n"
 		msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
 		msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
 	fi
@@ -1759,6 +1816,7 @@ draw_edit_text() {
 		done
 	fi
 	draw_edit_header
+	n=$((S+1))
 	msg "\033[${S}H\n"
 	res_name="${res_name% ?}"
 }
@@ -1778,7 +1836,9 @@ show_description() {
 		fi
 	done < "$TOOL_FILES/description.txt"
 	if [ -z "$DESC" ]; then DESC="No description found."; fi
-	msg "$NC\033[2K\n$DESC\033[K\n\033[2K"
+	msg "$NC\033[2K\n"
+	msgs "$DESC"
+	msg "\033[K\n\033[2K"
 	moved="redraw"
 	if [ -n "$DEBUG" ]; then msg "db - going to select_MSG\n"; fi
 	select_MSG
@@ -2189,14 +2249,14 @@ text_user_interface() {
 							n)
 								get_edit_res "$res_num"
 								if [ "$key" = "$en" ]; then
-									val="$key"; e_val="$val"
-									key="\n\n Enter new name for ${YEL}$val${NC} field ->"
+									val="$key"; e_val="$val"; SPEC_KEY="$val"; SPEC_END=" field --> "
+									key="\n\nEnter new name for ${YEL}"
 									type="string"; res_type="string"
 									data_field=1
 									EDIT_RES_NUM="$res_num"
 									draw_edit_header
 									edit_val
-									new_key="$val"
+									new_key="$val"; SPEC_KEY=""
 									get_edit_res "$res_num"
 									key="$new_key"
 									if [ -z "$key" ]; then key="BlankKey"; fi
@@ -2445,7 +2505,7 @@ remove_res_plist_txt() {
 	while read -r line
 	do
 		if [ "${line%| *}" != "$1" ]; then
-			echo "$line" >> config.plist.txt
+			printf "%s\n" "$line" >> config.plist.txt
 		fi
 	done < config.plist.tmp
 	rm config.plist.tmp
@@ -2460,7 +2520,7 @@ add_res_plist_txt() {
 			srch="${resme%|?*|?*|?*|?*}"
 			lines="${line%|?*|?*|?*|?*}"
 			if [ "$srch" = "$lines" ]; then
-				echo "$resme" >> config.plist.txt
+				printf "%s\n" "$resme" >> config.plist.txt
 				written="y"
 			else
 				srch="${srch%%|*}"
@@ -2469,12 +2529,12 @@ add_res_plist_txt() {
 			fi
 			if [ -n "$found_sec" ] && [ -z "$written" ]; then
 				if [ "$srch" != "$lines" ]; then # end of section place here
-					echo "$resme" >> config.plist.txt
+					printf "%s\n" "$resme" >> config.plist.txt
 					written="y"
 				fi
 			fi
 		fi
-		echo "$line" >> config.plist.txt
+		printf "%s\n" "$line" >> config.plist.txt
 	done < config.plist.tmp
 	rm config.plist.tmp
 }

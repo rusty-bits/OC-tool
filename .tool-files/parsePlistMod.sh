@@ -14,7 +14,7 @@ GRN='\033[0;32m'
 NC='\033[0m'
 
 msg() {
-	echo "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> "$IN.txt"
+	printf "%s\n" "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> "$IN.txt"
 #	if [ -z "$WROTE_KEY" ]; then
 #		echo "<key>$key</key>" >> "$IN.mod"
 #		WROTE_KEY="y"
@@ -69,7 +69,7 @@ while read -r line; do
 					section=$key
 					key=""
 				else
-					echo "PLIST|$line" >> "$IN.txt" # no key just echo the line
+					printf "%s\n" "PLIST|$line" >> "$IN.txt" # no key just echo the line
 				fi
 			elif [ -z "$array" ]; then
 				dict=$((dict+1))
@@ -102,7 +102,7 @@ while read -r line; do
 				elif [ -n "$section" ];then
 					section=""
 				else
-					echo "PLIST|$line" >> "$IN.txt"
+					printf "%s\n" "PLIST|$line" >> "$IN.txt"
 				fi
 			else
 				if [ "$dict" -gt "0" ]; then dict=$((dict-1)); fi
@@ -112,7 +112,7 @@ while read -r line; do
 		"<dict/")
 			found_empty_dict
 #			echo "PLIST|<key>$key</key>" >> "config.plist.txt"
-			echo "PLIST|$line" >> "$IN.txt"
+			printf "%s\n" "PLIST|$line" >> "$IN.txt"
 			;;
 		"<array")
 			ds=""
@@ -239,7 +239,7 @@ while read -r line; do
 			msg
 			key="";;
 		*)
-			echo "PLIST|$line" >> "$IN.txt"
+			printf "%s\n" "PLIST|$line" >> "$IN.txt"
 			;;
 	esac
 #	if [ -z "$WRITTEN" ]; then
