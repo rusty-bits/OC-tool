@@ -1916,12 +1916,14 @@ add_field() {
 	done
 	G10_NUM=$((G10_NUM+field_len)) # mark new length
 	if [ -z "$new_key" ]; then # get new key if not provided
-		key="\n\n Enter key name for new ${YEL}$new_type${NC} ->"
+		SPEC_KEY="$new_type"; SPEC_END=" --> "
+		key="\n\n Enter key name for new ${YEL}"
 		val=""; e_val="$val"
 		type="string"; res_type="string"
 		data_field=1
 		draw_edit_header
 		edit_val
+		SPEC_KEY=""
 		key="$val"
 		if [ -z "$key" ]; then key="NewKey"; fi
 		val=""
@@ -2235,7 +2237,9 @@ text_user_interface() {
 								fi;;
 							d) # delete field or section
 								if [ "$level" -gt "0" ]; then
-									msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} $res_name${NC}, any other key to abort"
+									msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} "
+									msgs "$res_name"
+									msg "${NC}, any other key to abort"
 									get_CHAR
 									if [ "$CHAR" = "d" ]; then
 										delete_field
