@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.4(030320) last checked with OpenCore version REL-056-2020-02-29"
+VER="3.5(030320) last checked with OpenCore version DBG-056-2020-03-03"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -583,6 +583,20 @@ copy_resources() {
 			fi
 		done
 	done
+	FOUND_WAVS=""
+	cd "$BASE_DIR/extras"
+	ls *.wav 1> /dev/null 2>&1 > "$INPUT/found_wavs" && FOUND_WAVS="true"
+	if [ -n "$FOUND_WAVS" ]; then
+		dest="OC/Resources/Audio"
+		mkdir -p "$BUILD_DIR/$dest"
+		while read -r line
+		do
+			msg "Copying $line to $dest ... "
+			cp "$line" "$BUILD_DIR/$dest/."
+			num=$((num+1))
+			fin
+		done < "$INPUT/found_wavs"
+	fi
 	msg "Copied $num resources to $BUILD_DIR\n"
 }
 
