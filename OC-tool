@@ -1492,7 +1492,7 @@ draw_edit_header() {
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				if [ "$TUI_MODE" = "pre" ]; then
 					if [ "$MODE" = "prebuiltRelease" ]; then
-						msg " ${INV}using 0.5.5 plist${NC}"
+						msg " ${INV}using 0.5.6 plist${NC}"
 					fi
 					msg "  space: select/unselect  - "
 					case "$S0" in
@@ -2582,15 +2582,15 @@ process_plist() {
 	if [ -z "$IGNORE_SAMPLE" ]; then
 		if [ -z "$USE_FULL" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/Sample055.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/Sample056.plist" sample.plist.tmp
 			else
 				cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
 			fi
 		else
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleFull055.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleFull056.plist" sample.plist.tmp
 			else
-				cp "$BASE_DIR/Docs/Sample055.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/Sample056.plist" sample.plist.tmp
 			fi
 		fi
 		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
