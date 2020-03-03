@@ -1,9 +1,9 @@
 ## VER 3.5(030320)  
 - **added support for .wav files**  
-.wav files that are placed in the extras folder will be copied into EFI/OC/Resources/Audio  
-for example, OCEFIAudio_VoiceOver_Boot.wav  for the startup chime
-Any .wav files will be copied before the vault files are built allowing Misc>Secutily>Vault Secure  
-and Misc>Security>Vault Basic to work as expected  
+.wav files that are placed in the `extras` folder will be copied into `EFI/OC/Resources/Audio`  
+for example, `OCEFIAudio_VoiceOver_Boot.wav`  for the startup chime  
+Any .wav files will be copied before the vault files are built allowing `Misc>Security>Vault Secure`  
+and `Misc>Security>Vault Basic` to work as expected  
 
 ## VER 3.4(030320)  
 - **updated prebuilt release to OpenCore version 0.5.6**  
