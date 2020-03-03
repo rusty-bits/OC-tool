@@ -1,3 +1,11 @@
+## VER 3.4(030320)  
+- **updated prebuilt release to OpenCore version 0.5.6**  
+`./OC-tool` and `./OC-tool -r` will now build version 0.5.6 from the prebuilt release  
+`./OC-tool -d` and `./OC-tool -dr` will now build version 0.5.7 from the prebuilt daily  
+`./OC-tool -s` and `./OC-tool -sr` will now build version 0.5.7 from current source  
+
+- **pulldown lists for Kexts and Tools has been added**  
+
 ## VER 3.3(250220)  
 - **added add item command to config.plist editor**  
 Can now add field of type bool, data, integer or string into plist by pressing a.  The new field will be inserted before the currently highlightd item.  
