@@ -44,6 +44,7 @@ get_next() {
 			4)
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
+				if [ -z "$ar" ]; then ar="D"; fi
 				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
@@ -150,6 +151,8 @@ if [ -e "edit_subs.txt" ]; then
 
 	sed -f comm.txt  edit_text.tmp > edit_text.txt
 #	eval sed "$com" edit_text.tmp > edit_text.txt
+else
+	cp edit_text.tmp edit_text.txt
 fi
 
 # rm -rf edit_text.tmp

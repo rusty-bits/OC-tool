@@ -37,10 +37,10 @@ found_split() {
 }
 
 found_empty_array() {
-	echo "Line number $line_num" >> errors.minor.txt
-	echo "Found empty <array> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
-	echo "This may not be an issue for certain sections" >> errors.minor.txt
-	echo "" >> errors.minor.txt
+	echo "Line number $line_num" >> errors.txt
+	echo "Found empty <array> in $section $sub1 $sub2 $item $key" >> errors.txt
+	echo "This may not be an issue for certain sections" >> errors.txt
+	echo "" >> errors.txt
 }
 
 found_empty_dict() {
@@ -48,6 +48,7 @@ found_empty_dict() {
 	echo "Found empty <dict> in $section $sub1 $sub2 $item $key" >> errors.txt
 	echo "It is recommended that all sections be complete" >> errors.txt
 	echo "" >> errors.txt
+	ds=""
 	type=""
 	val=""
 	msg
@@ -83,7 +84,7 @@ while read -r line; do
 				esac
 				key=""
 			fi
-			ds="t" # found start of dict
+			ds="true" # found start of dict
 			;;
 		"</dict")
 			if [ -z "$ds" ]; then
@@ -112,7 +113,7 @@ while read -r line; do
 		"<dict/")
 			found_empty_dict
 #			echo "PLIST|<key>$key</key>" >> "config.plist.txt"
-			printf "%s\n" "PLIST|$line" >> "$IN.txt"
+#			printf "%s\n" "PLIST|$line" >> "$IN.txt"
 			;;
 		"<array")
 			ds=""
