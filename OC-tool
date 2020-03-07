@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(050320) last checked with OpenCore version REL-057-2020-03-05"
+VER="3.5(750320) last checked with OpenCore version REL-057-2020-03-05"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1257,7 +1257,8 @@ draw_edit_val() {
 				case $data_field in
 					0|1)
 						val="$e_val"
-						hex_val=$(echo "obase=16; $val"|bc) # avoid octal
+#						hex_val=$(echo "obase=16; $val"|bc) # avoid octal
+						hex_val=$(printf "%x" "$val")
 						if [ -z "$hex_val" ]; then hex_val=0; fi
 						hex_val=$(printf "%0${HEX_LEN}X" "0x$hex_val");;
 					2)
@@ -1564,7 +1565,8 @@ draw_bit_editor() {
 		while [ "$test_value" -ne "$bit_value" ]
 		do
 			if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
-			test_value=$(echo "2^$test_bit"|bc)
+#			test_value=$(echo "2^$test_bit"|bc)
+			test_value=$((2 ** test_bit))
 			test_bit=$((test_bit-1))
 		done
 		if [ "$bit_value" -le "$bit_total" ]; then
@@ -1572,7 +1574,8 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${RED}"
 				e_val=$((val - bit_value))
-				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
+#				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
+				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
 				e_split=${#e_val}
 			else
 				msg "${GRN}"
@@ -1583,7 +1586,8 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${GRN}"
 				e_val=$((val + bit_value))
-				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
+#				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
+				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
 				e_split=${#e_val}
 			else
 				msg "${RED}"
@@ -2617,11 +2621,12 @@ process_plist() {
 	fin
 
 	if [ -z "$IGNORE_SAMPLE" ]; then
+		tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
 		msg "Checking for missing fields ... "
 		while read -r line
 		do
 			grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
-		done < "$TOOL_FILES/miss_extra"
+		done < miss_extra.txt
 		while read -r line
 		do
 			grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
