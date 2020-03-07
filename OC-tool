@@ -2658,7 +2658,7 @@ process_plist() {
 		while read -r line
 		do
 			grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
-		done < "$TOOL_FILES/miss_extra"
+		done < miss_extra.txt
 		while read -r line
 		do
 			grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
