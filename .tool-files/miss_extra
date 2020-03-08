@@ -1,10 +1,8 @@
 |Quirks|
-UEFI|Audio|
-UEFI|Input|
-UEFI|Output|
-PlatformInfo
-Protocols
 Misc|Boot|
 Misc|Debug|
 Misc|Security|
-NVRAM|
+UEFI|Audio|
+UEFI|Input|
+UEFI|Output|
+UEFI|Protocols|

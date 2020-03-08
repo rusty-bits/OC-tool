@@ -1243,7 +1243,7 @@ draw_edit_val() {
 				msg "\033[${S}H${e_text}"
 				msgs "$key"
 				msg "${NC} | "
-				msgs "$val | 0x$hex_val | $asc_val |"
+				msgs "$val | $hex_val | $asc_val |"
 				msg "\033[K"
 				if [ -n "$e_split" ]; then
 					case $data_field in
@@ -1256,13 +1256,13 @@ draw_edit_val() {
 							msg "\033[${S}H${e_text}"
 							msgs "$key"
 							msg "${NC} | "
-							msgs "$val | 0x"
+							msgs "$val | "
 							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
 						3)
 							msg "\033[${S}H${e_text}"
 							msgs "$key"
 							msg "${NC} | "
-							msgs "$val | 0x$hex_val | "
+							msgs "$val | $hex_val | "
 							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
 					esac
 				fi;;
