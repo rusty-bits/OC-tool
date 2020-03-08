@@ -1258,9 +1258,10 @@ draw_edit_val() {
 					0|1)
 						val="$e_val"
 #						hex_val=$(echo "obase=16; $val"|bc) # avoid octal
-						hex_val=$(printf "%x" "$val")
+						hex_val=$(echo "$e_val"|sed 's/^0*//')
 						if [ -z "$hex_val" ]; then hex_val=0; fi
-						hex_val=$(printf "%0${HEX_LEN}X" "0x$hex_val");;
+						if [ "$hex_val" = "-" ]; then hex_val=0; fi
+						hex_val=$(printf "%0${HEX_LEN}x" "$hex_val");;
 					2)
 						hex_val="$e_val"
 						if [ -z "$e_val" ]; then
@@ -1555,7 +1556,8 @@ init_bit_editor() {
 
 draw_bit_editor() {
 	msg "\033[$((S + BIT_NUM + 2))H\033[K"
-	bit="$((BIT_NUM - 2))"; bit_total="$val"
+	bit="$((BIT_NUM - 2))"; bit_total=$(echo "$val"|sed 's/^0*//')
+	if [ -z "$bit_total" ]; then bit_total=0; fi
 	test_bit="31"; test_value="4294967296" # use bit length of 32 when parsing
 	while [ "$bit" -ge "0" ]
 	do
