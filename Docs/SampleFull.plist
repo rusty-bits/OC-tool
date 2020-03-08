@@ -917,6 +917,8 @@
 		</dict>
 		<key>Input</key>
 		<dict>
+			<key>KeyFiltering</key>
+			<false/>
 			<key>KeyForgetThreshold</key>
 			<integer>5</integer>
 			<key>KeyMergeThreshold</key>
@@ -951,7 +953,7 @@
 			<key>DirectGopRendering</key>
 			<false/>
 			<key>DirectGopCacheMode</key>
-			<integer>-1</integer>
+			<string></string>
 			<key>ReconnectOnResChange</key>
 			<false/>
 			<key>ReplaceTabWithSpace</key>

@@ -583,19 +583,29 @@ copy_resources() {
 			fi
 		done
 	done
-	FOUND_WAVS=""
-	cd "$BASE_DIR/extras"
-	ls *.wav 1> /dev/null 2>&1 > "$INPUT/found_wavs" && FOUND_WAVS="true"
-	if [ -n "$FOUND_WAVS" ]; then
-		dest="OC/Resources/Audio"
-		mkdir -p "$BUILD_DIR/$dest"
-		while read -r line
-		do
-			msg "Copying $line to $dest ... "
-			cp "$line" "$BUILD_DIR/$dest/."
-			num=$((num+1))
-			fin
-		done < "$INPUT/found_wavs"
+	rd="$BASE_DIR/INPUT/Resources/Audio"
+	n="$(ls "$rd" 2>/dev/null|wc -l)"
+	if [ "$n" -gt "0" ]; then
+		mkdir -p "$BUILD_DIR/OC/Resources"
+		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+		num=$((num+n))
+		msg "Copied $n Audio resource(s) to OUTPUT\n"
+	fi
+	rd="$BASE_DIR/INPUT/Resources/Font"
+	n="$(ls "$rd" 2>/dev/null|wc -l)"
+	if [ "$n" -gt "0" ]; then
+		mkdir -p "$BUILD_DIR/OC/Resources"
+		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+		num=$((num+n))
+		msg "Copied $n Font resource(s) to OUTPUT\n"
+	fi
+	rd="$BASE_DIR/INPUT/Resources/Image"
+	n="$(ls "$rd" 2>/dev/null|wc -l)"
+	if [ "$n" -gt "0" ]; then
+		mkdir -p "$BUILD_DIR/OC/Resources"
+		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+		num=$((num+n))
+		msg "Copied $n Image resource(s) to OUTPUT\n"
 	fi
 	msg "Copied $num resources to $BUILD_DIR\n"
 }
