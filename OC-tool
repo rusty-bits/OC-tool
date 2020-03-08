@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(750320) last checked with OpenCore version REL-057-2020-03-05"
+VER="3.5(080320) last checked with OpenCore version REL-057-2020-03-05"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1160,17 +1160,21 @@ compute_data_vals() {
 	case $data_field in
 		0|1)
 			val="$e_val"
-			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+#			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+			hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
+#			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		2)
 			hex_val="$e_val"
 			val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
-			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+#			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		3)
 			if [ -z "$asc_touched" ]; then
 				asc_val="$e_val"
 				val=$(printf "%s" "$asc_val"|base64)
-				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+#				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+				hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
 			fi;;
 		esac
 }
@@ -1229,7 +1233,7 @@ draw_edit_val() {
 				msg "\033[${S}H${e_text}"
 				msgs "$key"
 				msg "${NC} | "
-				msgs "$val |$hex_val | $asc_val |"
+				msgs "$val | 0x$hex_val | $asc_val |"
 				msg "\033[K"
 				if [ -n "$e_split" ]; then
 					case $data_field in
@@ -1242,13 +1246,13 @@ draw_edit_val() {
 							msg "\033[${S}H${e_text}"
 							msgs "$key"
 							msg "${NC} | "
-							msgs "$val |"
+							msgs "$val | 0x"
 							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
 						3)
 							msg "\033[${S}H${e_text}"
 							msgs "$key"
 							msg "${NC} | "
-							msgs "$val |$hex_val | "
+							msgs "$val | 0x$hex_val | "
 							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
 					esac
 				fi;;
@@ -1695,7 +1699,8 @@ edit_val() {
 							e_val="$hex_val"
 							data_field="2";;
 						2)
-							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
+#							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
+							hex_val=$(printf "%s" "$e_val"|xxd -p -r|xxd -p)
 							e_val="$asc_val"
 							data_field="3";;
 						3)
@@ -1707,8 +1712,12 @@ edit_val() {
 				elif [ "$type" = "integer" ]; then
 					case $data_field in
 						1)
-							e_val="$hex_val"
-							data_field="2";;
+							tval=$(echo $val|sed 's/^0*//')
+							if [ -z "$tval" ]; then tval=0; fi
+							if [ "$tval" -ge "0" ]; then
+								e_val="$hex_val"
+								data_field="2"
+							fi;;
 						2)
 							e_val="$val"
 							data_field="1";;
