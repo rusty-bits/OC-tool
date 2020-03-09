@@ -1,9 +1,20 @@
+## VER 3.5(080320)
+- **added initial support for OcBinaryData**  
+to have OcBinaryData files included in the EFI/OC/Resources folder place the desired resources in the corresponding INPUT/Resources folder  
+
+`INPUT/Resources/Audio`  
+`INPUT/Resources/Font`  
+`INPUT/Resources/Image`  
+
+OC-tool will check these folders and copy any files into the OUTPUT/EFI/EC/Resources before building the vault files  
+
 ## VER 3.5(030320)  
-- **added support for .wav files**  
+~~- **added support for .wav files**  
 .wav files that are placed in the `extras` folder will be copied into `EFI/OC/Resources/Audio`  
 for example, `OCEFIAudio_VoiceOver_Boot.wav`  for the startup chime  
 Any .wav files will be copied before the vault files are built allowing `Misc>Security>Vault Secure`  
-and `Misc>Security>Vault Basic` to work as expected  
+and `Misc>Security>Vault Basic` to work as expected~~  
+changed by 3.5(080320)
 
 ## VER 3.4(030320)  
 - **updated prebuilt release to OpenCore version 0.5.6**  
