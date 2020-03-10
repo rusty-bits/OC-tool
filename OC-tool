@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(090320) last checked with OpenCore version REL-057-2020-03-08"
+VER="3.5(100320) last checked with OpenCore version REL-057-2020-03-08"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -111,7 +111,9 @@ update_log() {
 
 clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
-		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
+#		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
+		pkg_name="$1"
+		pkg_name="${pkg_name##*/}"
 	else
 		pkg_name="$2"
 	fi
@@ -184,8 +186,10 @@ check_resources_for_updates() {
 	res_updated=""
 	msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
 	if [ -d "$RES_DIR" ]; then
-		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
+#		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
+		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d)
 		do
+			git_dir="${git_dir%/*}"
 			cd "$git_dir"
 			git fetch --all -q||git_failed "${git_dir##*/}"
 			msg "\033[2K\r${git_dir##*/} - "
@@ -418,7 +422,9 @@ missing_iasl() {
 build_acpi() { # compile .dsl into .aml if user hasn't already
 	pkg_name=${res_name%%.*}
 
-	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
+#	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
+	srce="${git_url%/*}"
+	srce="${srce##*/}"
 	if [ -e "$srce/$res_name" ];then
 		return 0
 	elif [ -e "$RES_DIR/$git_url" ];then
