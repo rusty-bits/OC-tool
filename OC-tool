@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(100320) last checked with OpenCore version REL-057-2020-03-08"
+VER="3.5(130320) last checked with OpenCore version REL-057-2020-03-12"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
