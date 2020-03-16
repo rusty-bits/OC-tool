@@ -1,12 +1,13 @@
 1
 ApfsDriverLoader.efi
-AppleUsbKbDxe.efi
 AudioDxe.efi
 ChipTune.efi
 ExternalUi.efi
-FwRuntimeServices.efi
 HfsPlus.efi
 NvmExpressDxe.efi
+OpenCanopy.efi
+OpenUsbKbDxe.efi
+OpenRuntime.efi
 VBoxHfs.efi
 VirtualSmc.efi
 XhciDxe.efi

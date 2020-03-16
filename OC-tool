@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(160320) last checked with OpenCore version REL-057-2020-03-12"
+VER="3.5(160320) last checked with OpenCore version REL-057-2020-03-16"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -2936,9 +2936,6 @@ if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 prepare_resources
 if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
 set_up_dest_dir
-
-print_res_array
-
 copy_resources
 
 if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
