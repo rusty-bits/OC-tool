@@ -275,6 +275,8 @@ curl_parent() {
 		fi
 	fi
 	srce="$(pwd)"
+	p=$(grep "/$res_name/$MODE/@0/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"') || p=""
+	if [ -n "$p" ]; then srce="$srce/$p"; fi
 }
 
 curl_child() { # need parent first, then zip source
@@ -2934,6 +2936,9 @@ if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 prepare_resources
 if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
 set_up_dest_dir
+
+print_res_array
+
 copy_resources
 
 if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
