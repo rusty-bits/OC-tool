@@ -1,4 +1,8 @@
-## VER 3.5(080320)
+## VER 3.5(260320)  
+- **extras folder will be checked first for all resources now, not just ACPI files**  
+any resources copied from extras will be noted in the output command line text  
+
+## VER 3.5(080320)  
 - **added initial support for OcBinaryData**  
 to have OcBinaryData files included in the EFI/OC/Resources folder place the desired resources in the corresponding INPUT/Resources folder  
 
