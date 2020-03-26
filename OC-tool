@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(200320) last checked with OpenCore version REL-057-2020-03-16"
+VER="3.5(260320) last checked with OpenCore version REL-057-2020-03-25"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -9,7 +9,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dhinoqrstvDIFNTVX"
+OPTSPEC="dfhinoqrstvDIFNTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -2626,7 +2626,7 @@ process_plist() {
 	fi
 
 	cd "$INPUT"
-	if [ -z "$IGNORE_SAMPLE" ]; then
+	if [ "$IGNORE_SAMPLE" != "true" ]; then
 		if [ -z "$USE_FULL" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
 				cp "$BASE_DIR/Docs/Sample056.plist" sample.plist.tmp
@@ -2649,8 +2649,12 @@ process_plist() {
 	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
 	fin
 
-	if [ -z "$IGNORE_SAMPLE" ]; then
-		tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
+	if [ "$IGNORE_SAMPLE" != "true" ]; then
+		if [ "$IGNORE_SAMPLE" = "full" ]; then
+			tr -d '\r' < "$TOOL_FILES/miss_extra_full" > miss_extra.txt # strip CRLF ?
+		else
+			tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
+		fi
 		msg "Checking for missing fields ... "
 		while read -r line
 		do
@@ -2669,7 +2673,7 @@ process_plist() {
 			do
 				num=$((num+1))
 				get_config_txt_res "$line"
-				field="$t_section > $t_sub1 > $t_key"
+				field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : $t_val"
 				msg "\t$field\n"
 				eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
 				eval miss$num="\$line"
@@ -2705,7 +2709,7 @@ process_plist() {
 				num=$((num+1))
 				ex_num=$((ex_num+1))
 				get_config_txt_res "$line"
-				field="$t_section > $t_sub1 > $t_key"
+				field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : $t_val"
 				msg "\t$field\n"
 				eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
 				eval extra$ex_num="\$line"
@@ -2773,6 +2777,8 @@ case "${optchar}" in
 		d)
 			MODE="prebuiltDaily"
 			EX_COM="${EX_COM}d";;
+		f)
+			IGNORE_SAMPLE="full";;
 		h) # help
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;

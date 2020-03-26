@@ -1,0 +1,11 @@
+|Quirks|
+DeviceProperties|Add|
+Misc|Boot|
+Misc|Debug|
+Misc|Security|
+NVRAM|
+PlatformInfo|
+UEFI|Audio|
+UEFI|Input|
+UEFI|Output|
+UEFI|Protocols|
