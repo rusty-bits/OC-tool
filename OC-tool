@@ -578,7 +578,11 @@ copy_resources() {
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
 						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="$SHELL_EFI" ;fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
-						msg "Copying $dest_name to $dest ... "
+						if [ "${srce##*/}" = "extras" ]; then
+							msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
+						else
+							msg "Copying $dest_name to $dest ... "
+						fi
 						mkdir -p "$BUILD_DIR/$dest"
 						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
 						if [ -z "$QUIET" ]; then
@@ -713,20 +717,20 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #	if [ "#${res_name#?}" != "$res_name" ]; then # ignore res with #
 		find_srce_url
 		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
-		if [ "$dest" != "OC/ACPI" ];then
-			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-				srce=""
-			elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-				srce="$BASE_DIR/extras"
-			elif [ "${key##* }" = "-" ]; then
-				srce="unknown"
-			else
-				res_not_found "$res_name"
-			fi
-		else # check extras folder first for ACPI files
+#		if [ "$dest" != "OC/ACPI" ];then
+#			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
+#				srce=""
+#			elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+#				srce="$BASE_DIR/extras"
+#			elif [ "${key##* }" = "-" ]; then
+#				srce="unknown"
+#			else
+#				res_not_found "$res_name"
+#			fi
+#		else # check extras folder first for ACPI files
 			if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
 				srce="$BASE_DIR/extras"
-			elif [ -n "$git_url" ]; then # found repo
+			elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 				srce=""
 			elif [ "${key##* }" = "-" ];then
 				srce="unknown"
@@ -738,7 +742,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 					res_not_found "$res_name"
 				fi
 			fi
-		fi
+#		fi
 #	else
 #		srce="unknown"; dest=""; parent=""
 #	fi
