@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(040420) last checked with OpenCore version REL-057-2020-04-04"
+VER="3.5(060420) last checked with OpenCore version REL-057-2020-04-04\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -2633,13 +2633,13 @@ process_plist() {
 	if [ "$IGNORE_SAMPLE" != "true" ]; then
 		if [ -z "$USE_FULL" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/Sample056.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/Sample057.plist" sample.plist.tmp
 			else
 				cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
 			fi
 		else
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleFull056.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleFull057.plist" sample.plist.tmp
 			else
 				cp "$BASE_DIR/Docs/SampleFull.plist" sample.plist.tmp
 			fi
