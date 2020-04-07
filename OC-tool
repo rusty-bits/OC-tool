@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(060420) last checked with OpenCore version REL-057-2020-04-04\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5(070420) last checked with OpenCore version REL-057-2020-04-07\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -21,7 +21,7 @@ CONFIG_PLIST="$INPUT/config.plist" # set input plist to temp dir, no mod of orig
 # CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
-SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
+# SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
@@ -487,11 +487,12 @@ prepare_resources() {
 						"latestSource")
 							case ${res_name##*.} in
 							"base"|"efi")
-								if [ "$res_name" = "Shell.efi" ]; then #special case
-									build_shell_tool||build_failed
-								else
+#								if [ "$res_name" = "Shell.efi" ]; then #special case
+#									build_shell_tool||build_failed
+#								else
 									build_driver||build_failed
-								fi;;
+#								fi;;
+								;;
 							"kext")
 								if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
 									set_build_type "debug"
@@ -576,7 +577,7 @@ copy_resources() {
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
-						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="$SHELL_EFI" ;fi
+						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi" ;fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "${srce##*/}" = "extras" ]; then
 							msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
@@ -618,6 +619,14 @@ copy_resources() {
 		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
 		num=$((num+n))
 		msg "Copied $n Image resource(s) to OUTPUT\n"
+	fi
+	rd="$BASE_DIR/INPUT/Resources/Label"
+	n="$(ls "$rd" 2>/dev/null|wc -l)"
+	if [ "$n" -gt "0" ]; then
+		mkdir -p "$BUILD_DIR/OC/Resources"
+		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+		num=$((num+n))
+		msg "Copied $n Label resource(s) to OUTPUT\n"
 	fi
 	msg "Copied $num resources to $BUILD_DIR\n"
 }
