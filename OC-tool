@@ -714,8 +714,11 @@ find_srce_url() {
 }
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
-#	if [ "#${res_name#?}" != "$res_name" ]; then # ignore res with #
+	temp=""
+	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
 		find_srce_url
+		res_name="$temp$res_name"
+		temp=""
 		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 #		if [ "$dest" != "OC/ACPI" ];then
 #			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
@@ -891,9 +894,9 @@ output_element() {
 		if [ "$en" = "$key" ]; then # no + or -
 			printf "%s\n" "<$type>$val</$type>" >> "$OUT"
 		else
-			if [ "$en" = "+" ]; then
+#			if [ "$en" = "+" ]; then
 				printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
-			fi
+#			fi
 		fi
 	fi
 }
@@ -1421,7 +1424,7 @@ load_edit_text() {
 		eval "res10$num=\$line"
 		get_edit_res "$num"
 		if [ "$L0" -ne "0" ]; then
-			if [ -n "$DEBUG" ]; then msg "db - loading $type $key\n"; fi
+			if [ -n "$DEBUG" ]; then msg "db - in(load_edit_text) loading $type $key\n"; fi
 			if [ "$type" = "integer" ]; then
 				val=$(printf "%d" "$val") # if hex, make decimal
 				set_edit_res "$num"
@@ -1463,7 +1466,11 @@ load_edit_text() {
 						#if [ "#${val#?}" = "$val" ]; then
 						#	key="$key i"; val="$val i"
 						#else
+						if [ "#${key#?}" = "$key" ]; then
+							key="$key -"; val="$val -"
+						else
 							key="$key +"; val="$val +"
+						fi
 						#fi
 						set_edit_res "$num"
 					fi
@@ -1941,10 +1948,11 @@ toggle_enabled() {
 	elif [ "$en" != "$key" ]; then
 		get_edit_res "$res_num"
 		if [ "$en" = "+" ]; then
-			key="${key% ?} -"
+			key="#${key% ?} -"
 			CONFIG_CHANGED="-t option"
 			moved="changed"
 		elif [ "$en" = "-" ]; then
+			key="${key#?}"
 			key="${key% ?} +"
 			CONFIG_CHANGED="-t option"
 			moved="changed"
@@ -2265,6 +2273,7 @@ text_user_interface() {
 							fi
 							toggle_enabled
 							CONFIG_CHANGED="-t option"
+							if [ "$G" -eq "3" ]; then res_name="${key% ?}"; set_res "$G$S"; fi
 							draw_screen_header;;
 						ht)
 							G=$((G+1))
