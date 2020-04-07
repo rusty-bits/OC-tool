@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(060420) last checked with OpenCore version REL-057-2020-04-04\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5(070420) last checked with OpenCore version REL-057-2020-04-07\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -619,6 +619,14 @@ copy_resources() {
 		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
 		num=$((num+n))
 		msg "Copied $n Image resource(s) to OUTPUT\n"
+	fi
+	rd="$BASE_DIR/INPUT/Resources/Label"
+	n="$(ls "$rd" 2>/dev/null|wc -l)"
+	if [ "$n" -gt "0" ]; then
+		mkdir -p "$BUILD_DIR/OC/Resources"
+		cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+		num=$((num+n))
+		msg "Copied $n Label resource(s) to OUTPUT\n"
 	fi
 	msg "Copied $num resources to $BUILD_DIR\n"
 }
