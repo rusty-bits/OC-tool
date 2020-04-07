@@ -1,3 +1,11 @@
+## VER 3.5(060420)  
+- **updated release sources to OpenCore 0.5.7**  
+lots of changes in the Sample.config  
+
+- **prebuilt daily and build from source now build OpenCore 0.5.8**  
+
+- **Driver section now accepts # at start of name to disable**  
+
 ## VER 3.5(260320)  
 - **extras folder will be checked first for all resources now, not just ACPI files**  
 any resources copied from extras will be noted in the output command line text  
