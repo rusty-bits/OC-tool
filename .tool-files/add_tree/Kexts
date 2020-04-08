@@ -6,5 +6,6 @@ SMCLightSensor.kext
 SMCProcessor.kext
 SMCSuperIO.kext
 USBInjectAll.kext
+USBMap.kext
 VirtualSMC.kext
 WhateverGreen.kext
