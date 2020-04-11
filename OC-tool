@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5(070420) last checked with OpenCore version REL-058-2020-04-07\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5.7(110420) last checked with OpenCore version REL-058-2020-04-07\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -540,7 +540,11 @@ res_not_found() {
 			msg "\n${RED}ERROR:${NC}\t$1 - no prebuilt found for $1\n"
 		fi
 		msg "\t$1 file not found in extras directory\n"
-		msg "\tEither place $1 in extras directory to build EFI with $1\n"
+		msg "\tCheck the spelling of the resource, case matters as well.\n"
+		msg "\tAlso check the Configuration.pdf and the Sample.plist to be\n"
+		msg "\tsure the resource hasn't been removed or renamed.\n"
+		msg "\t${YEL}If you are sure you want this resource${NC} then you can\n"
+		msg "\teither place $1 in extras directory to build EFI with $1\n"
 		msg "\tor run with -i option to build EFI without $1\n"
 		msg "\tfor example, try '$INIT_COM -i$EX_COM'\n"
 		exit 1
@@ -1312,7 +1316,7 @@ draw_edit_val() {
 				msg "\033[${S}H${e_text}"
 				msgs "$key"
 				msg "${NC} | $val | 0x$hex_val |\033[K"
-				if [ -n "$BIT_NUM" ] && [ "$res_name" = "PickerAttributes" ]; then sample_text; fi
+				if [ -n "$BIT_NUM" ] && [ "$res_name" = "ConsoleAttributes" ]; then sample_text; fi
 				if [ -n "$e_split" ]; then
 					case "$data_field" in
 						1)

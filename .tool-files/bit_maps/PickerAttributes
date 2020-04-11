@@ -1,9 +1,6 @@
-0x01 — EFI_BLUE
-0x02 — EFI_GREEN
-0x04 — EFI_RED
-0x08 — EFI_DARKGRAY
-0x10 — EFI_BACKGROUND_BLUE
-0x20 — EFI_BACKGROUND_GREEN
-0x40 — EFI_BACKGROUND_RED
+0x0001 — OC_ATTR_USE_VOLUME_ICON, provides custom icons for boot entries
+0x0002 — OC_ATTR_USE_DISK_LABEL_FILE, provides custom rendered titles for boot entries
+0x0004 — OC_ATTR_USE_GENERIC_LABEL_IMAGE, provides predefined label images for boot entries
+0x0008 — OC_ATTR_USE_ALTERNATE_ICONS, changes used icon set to an alternate one if it is supported
 
-0 failsafe
+1 failsafe
