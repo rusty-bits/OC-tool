@@ -484,7 +484,6 @@
 /KernelTest.efi/latestSource "https://github.com/acidanthera/OpenCorePkg"
 /KernelTest.efi/parent "OpenCorePkg"
 /KernelTest.efi/path ""
-/ApfsDriverLoader.efi/latestSource "https://github.com/acidanthera/AppleSupportPkg"
 /ApfsDriverLoader.efi/parent "AppleSupportPkg"
 /ApfsDriverLoader.efi/path "Drivers"
 /AudioDxe.efi/latestSource "https://github.com/acidanthera/AppleSupportPkg"
