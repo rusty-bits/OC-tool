@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.7(130420) last checked with OpenCore version REL-058-2020-04-13\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5.7(140420) last checked with OpenCore version REL-058-2020-04-13\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -27,14 +27,14 @@ RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
 
-MODE="prebuiltRelease"; TYPE="debug"  # set default to debug version of prebuilt release
+MODE="prebuiltRelease"; TYPE="release"  # set default to release version of prebuilt release
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
 USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
-DEBUG=""; ADD_RES_NUM="-1"; LA="1"
+ADD_RES_NUM="-1"; LA="1"
 
 ad2stk=""; C_TEST="ICBIZWxsbywgd29ybGQhICAK"
 
@@ -732,7 +732,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 		find_srce_url
 		res_name="$temp$res_name"
 		temp=""
-		if [ -n "$DEBUG" ]; then msg "db - found srce enabled<$enabled> val<$val> key<$key> res_name<$res_name>\n"; fi
 #		if [ "$dest" != "OC/ACPI" ];then
 #			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 #				srce=""
@@ -1098,7 +1097,6 @@ draw_key() {
 }
 
 draw_screen_header() {
-	if [ -n "$DEBUG" ]; then msg "db - in draw_screen_header\n"; fi
 	syms="REL"
 	[ "$TYPE" = "debug" ] && syms="DBG"
 	e_msg="to edit"
@@ -1113,7 +1111,6 @@ draw_screen_header() {
 }
 
 draw_col_header() {
-	if [ -n "$DEBUG" ]; then msg "db - in draw_col_header\n"; fi
 	G='CH'; color=${NC}
 	for S in $(seq 1 4)
 	do
@@ -1127,7 +1124,6 @@ draw_col_header() {
 }
 
 draw_screen() {
-	if [ -n "$DEBUG" ]; then msg "db - in draw_screen\n"; fi
 	OLD_G=$G; OLD_S=$S; BOT=0
 	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
 	C=$((C/4))
@@ -1428,7 +1424,6 @@ draw_edit_key() {
 }
 
 load_edit_text() {
-	[ -n "$DEBUG" ] && msg "\ndb - loading edit text\n"
 	num=0; SEC=""; SUB=""
 	A0="0"; A1="0"; A2="0"
 	G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
@@ -1437,7 +1432,6 @@ load_edit_text() {
 		eval "res10$num=\$line"
 		get_edit_res "$num"
 		if [ "$L0" -ne "0" ]; then
-			if [ -n "$DEBUG" ]; then msg "db - in(load_edit_text) loading $type $key\n"; fi
 			if [ "$type" = "integer" ]; then
 				val=$(printf "%d" "$val") # if hex, make decimal
 				set_edit_res "$num"
@@ -1472,9 +1466,7 @@ load_edit_text() {
 				if [ "$G" -gt "0" ]; then
 					res_name="${key% ?}"
 					enabled="$num"; S="$((L2-1))"
-					if [ -n "$DEBUG" ]; then msg "db - prep $enabled val $val key $key res_name $res_name\n"; fi
 					add_res_array "$G$S"
-					if [ -n "$DEBUG" ]; then msg "db - added $enabled val $val key $key res_name $res_name\n"; fi
 					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
 						#if [ "#${val#?}" = "$val" ]; then
 						#	key="$key i"; val="$val i"
@@ -1487,10 +1479,8 @@ load_edit_text() {
 						#fi
 						set_edit_res "$num"
 					fi
-					if [ -n "$DEBUG" ]; then msg "db - enabled $enabled val $val key $key res_name $res_name\n"; fi
 				fi
 			fi
-			if [ -n "$DEBUG" ]; then msg "db - loaded $type $key\n"; fi
 		fi
 		num=$((num+1))
 	done < "$INPUT/edit_text.txt"
@@ -1838,7 +1828,6 @@ draw_plist_footer() {
 }
 
 draw_edit_text() {
-	[ -n "$DEBUG" ] && msg "db - in draw_edit_text\n"
 	num=0; S=3
 	data_field="0"
 	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
@@ -1893,7 +1882,6 @@ draw_edit_text() {
 }
 
 show_description() {
-	if [ -n "$DEBUG" ]; then msg "db - in show_description\n"; fi
 	DESC=""
 	if [ "$TUI_MODE" = "pre" ]; then
 		res_name="${res_name#*>*> }"
@@ -1911,9 +1899,7 @@ show_description() {
 	msgs "$DESC"
 	msg "\033[K\n\033[2K"
 	moved="redraw"
-	if [ -n "$DEBUG" ]; then msg "db - going to select_MSG\n"; fi
 	select_MSG
-	if [ -n "$DEBUG" ]; then msg "db - going to get_CHAR\n"; fi
 	get_CHAR
 }
 
@@ -2796,7 +2782,6 @@ else  #  no input found on stdin
 	TTY_OUT=$(tty)
 fi
 start_logging
-if [ -n "$DEBUG" ]; then msg "\ndb - start logging\n"; fi
 
 while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
@@ -2819,8 +2804,8 @@ case "${optchar}" in
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
 		r)
-			TYPE="release"
-			EX_COM="${EX_COM}r";;
+			TYPE="release";; # no longer needed, release is now default
+#			EX_COM="${EX_COM}r";;
 		s)
 			MODE="latestSource"
 			EX_COM="${EX_COM}s";;
@@ -2844,8 +2829,8 @@ case "${optchar}" in
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}t";;
-		D) # for when I break stuff
-			DEBUG="true";;
+		D) # default type is now release
+			TYPE="debug";;
 		F)
 			USE_FULL="true";;
 		I)
@@ -2909,7 +2894,6 @@ else
 	mkdir -p "$INPUT"
 	cp "${inputFilePath}" "$CONFIG_PLIST.tmp"
 fi
-if [ -n "$DEBUG" ]; then msg "\ndb - inputFilePath $inputFilePath CONFIG_PLIST $CONFIG_PLIST\n"; fi
 process_plist
 load_edit_text
 msg "Using ${inputFilePath}\n"
@@ -2921,7 +2905,6 @@ else
 	inputFileName="${inputFilePath##*/}"
 fi
 
-if [ -n "$DEBUG" ]; then msg "\ndb -loaded edit text\n"; fi
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 
 set_build_type "$TYPE"
@@ -2932,7 +2915,6 @@ if [ -z "$UPDATE" ]; then
 fi
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
-if [ -n "$DEBUG" ]; then msg "\ndb - MODE $MODE TYPE $TYPE UNAME $UNAME\n"; fi
 
 init_res_array
 
@@ -2953,7 +2935,6 @@ fi
 set_up_vault
 
 if [ -n "$CONFIG_CHANGED" ]; then
-	if [ -n "$DEBUG" ]; then msg "\ndb - writing new conf ... done\n"; fi
 	write_new_conf
 
 	if [ -z "$HAS_PLUTIL" ]; then
@@ -2966,7 +2947,6 @@ fi
 if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 
 prepare_resources
-if [ -n "$DEBUG" ]; then msg "\ndb - prepare_resources ... done\n"; fi
 set_up_dest_dir
 copy_resources
 

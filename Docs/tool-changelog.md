@@ -1,3 +1,8 @@
+## VER 3.5.7(140420)  
+- **default behavior will now build Release version**  
+-r option will still build Release version for now, but is no longer needed  
+-D option is now required to build Debug versions  
+
 ## VER 3.5(060420)  
 - **updated release sources to OpenCore 0.5.7**  
 lots of changes in the Sample.config  
