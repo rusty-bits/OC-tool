@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.7(140420) last checked with OpenCore version REL-058-2020-04-13\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5.7(150420) last checked with OpenCore version REL-058-2020-04-13\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1194,21 +1194,21 @@ compute_data_vals() {
 	case $data_field in
 		0|1)
 			val="$e_val"
-#			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-			hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
-#			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
+			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+#			hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
+			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+#			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		2)
 			hex_val="$e_val"
 			val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
-#			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
+			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+#			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		3)
 			if [ -z "$asc_touched" ]; then
 				asc_val="$e_val"
 				val=$(printf "%s" "$asc_val"|base64)
-#				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-				hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
+				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+#				hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
 			fi;;
 		esac
 }
@@ -1731,8 +1731,8 @@ edit_val() {
 							e_val="$hex_val"
 							data_field="2";;
 						2)
-#							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
-							hex_val=$(printf "%s" "$e_val"|xxd -p -r|xxd -p)
+							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
+#							hex_val=$(printf "%s" "$e_val"|xxd -p -r|xxd -p)
 							e_val="$asc_val"
 							data_field="3";;
 						3)
