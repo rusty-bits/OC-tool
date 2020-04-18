@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.7(150420) last checked with OpenCore version REL-058-2020-04-13\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5.7(180420) last checked with OpenCore version REL-058-2020-04-18\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -581,7 +581,7 @@ copy_resources() {
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
-						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi" ;fi
+#						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi" ;fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "${srce##*/}" = "extras" ]; then
 							msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
@@ -2804,6 +2804,7 @@ case "${optchar}" in
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
 		r)
+			msg "\n${YEL}INFO:${NC} -r option no longer needed for release.  Release is now default.\n\n"
 			TYPE="release";; # no longer needed, release is now default
 #			EX_COM="${EX_COM}r";;
 		s)
