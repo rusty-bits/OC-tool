@@ -1,6 +1,7 @@
 #!/bin/sh -e
 
 VER="3.5.7(230420) last checked with OpenCore version REL-058-2020-04-18\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+REL_VER="057"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
@@ -1512,7 +1513,7 @@ draw_edit_header() {
 			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
 				if [ "$TUI_MODE" = "pre" ]; then
 					if [ "$MODE" = "prebuiltRelease" ]; then
-						msg " ${INV}using 0.5.7 plist${NC}"
+						msg " ${INV}using $REL_VER plist${NC}"
 					fi
 					msg "  space: select/unselect  - "
 					case "$S0" in
@@ -2611,13 +2612,13 @@ process_plist() {
 	if [ "$IGNORE_SAMPLE" != "true" ]; then
 		if [ -z "$USE_FULL" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/Sample057.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
 			else
 				cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
 			fi
 		else
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleFull057.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleFull$REL_VER.plist" sample.plist.tmp
 			else
 				cp "$BASE_DIR/Docs/SampleFull.plist" sample.plist.tmp
 			fi
