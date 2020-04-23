@@ -31,7 +31,7 @@ MODE="prebuiltRelease"; TYPE="release"  # set default to release version of preb
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
-IGNORE_BOOL=""; USE_VAULT=""; USE_SIG=""; USE_VAULT_NUM=""; USE_SIG_NUM=""
+IGNORE_BOOL=""; USE_VAULT=""
 USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 ADD_RES_NUM="-1"; LA="1"
@@ -1437,8 +1437,8 @@ load_edit_text() {
 				val=$(printf "%d" "$val") # if hex, make decimal
 				set_edit_res "$num"
 			fi
-			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi # deprecated
-			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi # deprecated
+#			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi # deprecated
+#			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi # deprecated
 			if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
 			if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
 				val="false"
@@ -2499,39 +2499,40 @@ remove_resource_msg() {
 }
 
 set_up_vault() {
-	if [ -n "$USE_VAULT_NUM" ]; then
-		get_edit_res "$USE_VAULT_NUM"
-		USE_VAULT="$val"
-	fi
-	if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
-		get_edit_res "$USE_SIG_NUM"
-		USE_VAULT="$val"
-	fi
+#	if [ -n "$USE_VAULT_NUM" ]; then
+#		get_edit_res "$USE_VAULT_NUM"
+#		USE_VAULT="$val"
+#	fi
+#	if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
+#		get_edit_res "$USE_SIG_NUM"
+#		USE_VAULT="$val"
+#	fi
 	if [ -n "$USE_VAULT_STR" ]; then
 		get_edit_res "$USE_VAULT_STR"
 		USE_VAULT="$val"
 	fi
 
-	if [ "$USE_VAULT" = "false" ] || [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
+#	if [ "$USE_VAULT" = "false" ] || [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
+	if [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
 
 	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 		if [ -n "$USE_VAULT" ] && [ "$USE_VAULT" != "Optional" ]; then
 			CONFIG_CHANGED="temp vault disable"
-			if [ -n "$USE_VAULT_NUM" ]; then
-				get_edit_res "$USE_VAULT_NUM"
-				val="false"
-				set_edit_res "$USE_VAULT_NUM"
-			fi
-			if [ -n "$USE_SIG_NUM" ]; then
-				get_edit_res "$USE_SIG_NUM"
-				val="false"
-				set_edit_res "$USE_SIG_NUM"
-			fi
-			if [ -n "$USE_VAULT_STR" ]; then
+#			if [ -n "$USE_VAULT_NUM" ]; then
+#				get_edit_res "$USE_VAULT_NUM"
+#				val="false"
+#				set_edit_res "$USE_VAULT_NUM"
+#			fi
+#			if [ -n "$USE_SIG_NUM" ]; then
+#				get_edit_res "$USE_SIG_NUM"
+#				val="false"
+#				set_edit_res "$USE_SIG_NUM"
+#			fi
+#			if [ -n "$USE_VAULT_STR" ]; then
 				get_edit_res "$USE_VAULT_STR"
 				val="Optional"
 				set_edit_res "$USE_VAULT_STR"
-			fi
+#			fi
 			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 			msg "\tvault disabled for prebuilts not made on macOS\n"
 		fi
