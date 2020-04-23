@@ -21,7 +21,6 @@ CONFIG_PLIST="$INPUT/config.plist" # set input plist to temp dir, no mod of orig
 # CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
-# SHELL_EFI="Shell_EA4BB293-2D7F-4456-A681-1F22F42CD0BC.efi"
 
 RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'; BLU='\033[0;34m'
 NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
@@ -306,39 +305,12 @@ build_failed() { # failed build even after backing up 5 commits
 	exit 1
 }
 
-build_shell_tool() { #possible to automate this function?
-	mkdir -p "$RES_DIR"
-	cd "$RES_DIR"
-	clone "$git_url"
-	cd "$pkg_name"
-	srce="$(pwd)/UDK/Build/Shell/$AUDK_BUILD_DIR/X64"
-	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		[ ! -e "$srce/$SHELL_EFI" ]; then
-		rm -rf "$srce"
-		clone "https://github.com/acidanthera/audk -b master --depth=1" "UDK"
-		cd UDK
-		msg "Making audk BaseTools for Shell.efi ... "
-		make_base_tools; fin
-
-		msg "Patching audk for Shell.efi ... "
-		for p in ../Patches/* ; do
-			git apply "$p"||echo "$p ignored, does not apply or alread done"
-		done; fin
-
-		msg "Building $AUDK_CONFIG Shell.efi ($SHELL_EFI) ... "
-		build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p ShellPkg/ShellPkg.dsc
-		fin
-		cd ..
-		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-		BASE_TOOLS="" # ensure other drivers use non-patched UDK
-	fi
-}
-
 build_driver() {
 	cd "$RES_DIR/UDK"
 	clone "$git_url"
 	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
 	cd "$pkg_name"
+	if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
 		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
@@ -487,11 +459,7 @@ prepare_resources() {
 						"latestSource")
 							case ${res_name##*.} in
 							"base"|"efi")
-#								if [ "$res_name" = "Shell.efi" ]; then #special case
-#									build_shell_tool||build_failed
-#								else
-									build_driver||build_failed
-#								fi;;
+								build_driver||build_failed
 								;;
 							"kext")
 								if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
@@ -581,7 +549,6 @@ copy_resources() {
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
 						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
-#						if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi" ;fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" == "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
 						if [ "${srce##*/}" = "extras" ]; then
