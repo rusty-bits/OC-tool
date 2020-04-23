@@ -2535,6 +2535,7 @@ set_up_vault() {
 #			fi
 			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 			msg "\tvault disabled for prebuilts not made on macOS\n"
+			USE_VAULT=""
 		fi
 	fi
 }
