@@ -2784,6 +2784,9 @@ if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
 else  #  no input found on stdin
 	TTY_OUT=$(tty)
 fi
+
+if [ -e "last_run_issues.txt" ]; then rm last_run_issues.txt; fi
+
 start_logging
 
 while getopts "$OPTSPEC" optchar; do

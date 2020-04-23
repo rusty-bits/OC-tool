@@ -29,7 +29,7 @@ msg() {
 }
 
 found_split() {
-	echo "Line number $line_num" >> errors.txt
+	echo "$IN - Line number $line_num" >> errors.txt
 	echo "Found split <$1> in $section $sub1 $sub2 $item $key" >> errors.txt
 	echo "${GRN}Combined to one line in modified.config.plist${NC}" >> errors.txt
 	echo "" >> errors.txt
@@ -37,17 +37,17 @@ found_split() {
 }
 
 found_empty_array() {
-	echo "Line number $line_num" >> errors.minor.txt
+	echo "$IN - Line number $line_num" >> errors.minor.txt
 	echo "Found empty <array> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
 	echo "This may not be an issue for certain sections" >> errors.minor.txt
 	echo "" >> errors.minor.txt
 }
 
 found_empty_dict() {
-	echo "Line number $line_num" >> errors.txt
-	echo "Found empty <dict> in $section $sub1 $sub2 $item $key" >> errors.txt
-	echo "It is recommended that all sections be complete" >> errors.txt
-	echo "" >> errors.txt
+	echo "$IN - Line number $line_num" >> errors.minor.txt
+	echo "Found empty <dict> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
+	echo "This may not be an issue for certain sections" >> errors.minor.txt
+	echo "" >> errors.minor.txt
 	ds=""
 	type=""
 	val=""
