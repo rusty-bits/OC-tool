@@ -1,0 +1,2 @@
+None -- do nothing
+Bootstrap -- create or update top-priority \EFI\OC\Bootstrap\Bootstrap.efi boot option
