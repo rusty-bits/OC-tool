@@ -49,6 +49,7 @@ get_next() {
 				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C0$C1" = "UEFIReservedMemory" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Address" ] && [ "$C0$C1" = "BooterMmioWhitelist" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Name" ] && [ "$C0$C1" = "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi

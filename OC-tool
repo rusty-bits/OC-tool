@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.7(240420) last checked with OpenCore version REL-058-2020-04-25\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
+VER="3.5.7(250420) last checked with OpenCore version REL-058-2020-04-25\n\nprebuilt release -> 0.5.7\nprebuilt daily/latest source -> 0.5.8"
 REL_VER="057"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -820,15 +820,15 @@ print_res_array() { # debug aid to list psuedo array
 				msg "\n"
 		done
 	done
-	msg "$G1_START\n"
-	msg "$G2_START\n"
-	msg "$G3_START\n"
-	msg "$G4_START\n"
-	msg "$G5_START\n"
-	msg "$G6_START\n"
-	msg "$G7_START\n"
-	msg "$G8_START\n"
-	msg "$G10_NUM\n"
+	msg "G1 $G1_START\n"
+	msg "G2 $G2_START\n"
+	msg "G3 $G3_START\n"
+	msg "G4 $G4_START\n"
+	msg "G5 $G5_START\n"
+	msg "G6 $G6_START\n"
+	msg "G7 $G7_START\n"
+	msg "G8 $G8_START\n"
+	msg "TOT $G10_NUM\n"
 }
 
 get_edit_res() {
@@ -890,8 +890,8 @@ write_new_conf() {
 	while [ "$num" -le "$G10_NUM" ]
 	do
 		get_edit_res "$num"
-		if [ "$L0" -eq "0" ]; then
-			if [ "$key" = "</plist>" ]; then
+		if [ "$L0" -eq "0" ]; then # part of plist
+			if [ "$key" = "</dict>" ] || [ "$key" = "</plist>" ]; then
 				clearAD2
 				case "$ad1" in
 					"A")
@@ -899,8 +899,13 @@ write_new_conf() {
 					"D")
 						printf "%s\n" "</dict>" >> "$OUT";;
 				esac
-				printf "%s\n" "</dict>" >> "$OUT"
-				printf "%s\n" "</plist>" >> "$OUT"
+				ad1=""
+				if [ "$key" = "</plist>" ]; then
+					printf "%s\n" "</dict>" >> "$OUT"
+					printf "%s\n" "$key" >> "$OUT"
+				else
+					printf "%s\n" "$key" >> "$OUT"
+				fi
 			elif [ -z "$type" ]; then
 				printf "%s\n" "$key" >> "$OUT"
 			else
@@ -971,31 +976,32 @@ write_new_conf() {
 						pushAD "$AD"
 					fi
 				else
-					while [ -n "$ad2stk" ]
-					do
-						popAD
-						case "$ad2" in
-							"A")
-								printf "%s\n" "</array>" >> "$OUT";;
-							"D")
-								printf "%s\n" "</dict>" >> "$OUT";;
-						esac
-					done
+					clearAD2
+#					while [ -n "$ad2stk" ]
+#					do
+#						popAD
+#						case "$ad2" in
+#							"A")
+#								printf "%s\n" "</array>" >> "$OUT";;
+#							"D")
+#								printf "%s\n" "</dict>" >> "$OUT";;
+#						esac
+#					done
 					output_element
 				fi
 			else
-				if [ -z "$AD" ]; then
-					while [ -n "$ad2stk" ]
-					do
-						popAD
-						case "$ad2" in
-							"A")
-								printf "#s\n" "</array>" >> "$OUT";;
-							"D")
-								printf "%s\n" "</dict>" >> "$OUT";;
-						esac
-					done
-				fi
+				if [ -z "$AD" ]; then clearAD2; fi
+#					while [ -n "$ad2stk" ]
+#					do
+#						popAD
+#						case "$ad2" in
+#							"A")
+#								printf "%s\n" "</array>" >> "$OUT";;
+#							"D")
+#								printf "%s\n" "</dict>" >> "$OUT";;
+#						esac
+#					done
+#				fi
 				output_element
 			fi
 		fi
