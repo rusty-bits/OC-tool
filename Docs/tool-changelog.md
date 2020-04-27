@@ -1,3 +1,7 @@
+## VER 3.5.7(270420)  
+- **auto create EFI\OC\Bootstrap if needed**  
+if `Misc > Security > BootProtect` is set to `Bootstrap` then OC-tool will create the needed `EFI\OC\Bootstrap` directory and copy `BOOTx64.efi` into it as `Bootstrap.efi`
+
 ## VER 3.5.7(140420)  
 - **default behavior will now build Release version**  
 -r option will still build Release version for now, but is no longer needed  
