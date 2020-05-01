@@ -6,4 +6,5 @@ UEFI|APFS|
 UEFI|Audio|
 UEFI|Input|
 UEFI|Output|
-UEFI|Protocols|
+UEFI|ProtocolOverrides|
+UEFI|||ReservedMemory|
