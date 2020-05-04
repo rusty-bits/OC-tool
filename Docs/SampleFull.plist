@@ -846,7 +846,7 @@
 			<key>ChassisSerialNumber</key>
 			<string>W00000000001</string>
 			<key>ChassisType</key>
-			<integer>9</integer>
+			<integer>13</integer>
 			<key>ChassisVersion</key>
 			<string>Mac-AA95B1DDAB278B95</string>
 			<key>FirmwareFeatures</key>

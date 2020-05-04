@@ -18,5 +18,3 @@ resources/*
 
 extras/*
 !extras/README.txt
-!extras/READMElibcryptoSource.txt
-!extras/libcrypto.1.0.0.dylib
