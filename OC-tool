@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.8(150520) last checked with OpenCore version REL-059-2020-05-15\n\nprebuilt release -> 0.5.8\nprebuilt daily/latest source -> 0.5.9"
+VER="3.5.8(170520) last checked with OpenCore version REL-059-2020-05-15\n\nprebuilt release -> 0.5.8\nprebuilt daily/latest source -> 0.5.9"
 REL_VER="058"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -781,18 +781,18 @@ init_add_array() {
 
 init_res_array() { # base-resources moved into .tool-files for portability
 	G=0; S="-1"
-	while read -r line
-	do
-		S=$((S+1))
-		eval "res0$S=\$line\|true"
-		if [ "$MODE" = "latestSource" ]; then
-				get_res "0$S"
-				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
-				add_res_array "$G$S"
-				res_name="base"
-				set_res "0$S"
-		fi
-	done < "$TOOL_FILES/no-pre-base-resources"
+#	while read -r line
+#	do
+#		S=$((S+1))
+#		eval "res0$S=\$line\|true"
+#		if [ "$MODE" = "latestSource" ]; then
+#				get_res "0$S"
+#				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
+#				add_res_array "$G$S"
+#				res_name="base"
+#				set_res "0$S"
+#		fi
+#	done < "$TOOL_FILES/no-pre-base-resources"
 	while read -r line
 	do
 		S=$((S+1))
