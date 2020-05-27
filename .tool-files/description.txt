@@ -86,6 +86,16 @@ MinKernel
 Adds kernel driver on specified macOS version or newer. Note : Refer to Add MaxKernel description for matching logic.
 PlistPath
 Kext Info.plist path relative to bundle (e.g. Contents/Info.plist). If MinKernel is valid Otherwise If MaxKernel is valid Otherwise If valid "Darwin Kernel Version" is found Otherwise Where   (0, 99) is kernel version minor Where µ  (0, 99) is kernel version patch
+Comment
+Arbitrary ASCII string used to provide human readable reference for the entry. It is implementation defined whether this value is used.
+Enabled
+This kernel driver will not be blocked unless set to true.
+Identifier
+Kext bundle identifier (e.g. com.apple.driver.AppleTyMCEDriver).
+MaxKernel
+Blocks kernel driver on specified macOS version or older. Note : Refer to Add MaxKernel description for matching logic.
+MinKernel
+Blocks kernel driver on specified macOS version or newer. Note : Refer to Add MaxKernel description for matching logic.
 Cpuid1Data
 Sequence of EAX, EBX, ECX, EDX values to replace CPUID (1) call in XNU kernel. This property serves for two needs: · Enabling support of an unsupported CPU model. · Enabling XCPM support for an unsupported CPU variant. Normally it is only the value of EAX that needs to be taken care of, since it represents the full CPUID. The remaining bytes are to be left as zeroes. Byte order is Little Endian, so for example, A9 06 03 00 stands for CPUID 0x0306A9 (Ivy Bridge). For XCPM support it is recommended to use the following combinations. · Haswell-E (0x306F2) to Haswell (0x0306C3): Cpuid1Data: C3 06 03 00 00 00 00 00 00 00 00 Cpuid1Mask: FF FF FF FF 00 00 00 00 00 00 00 · Broadwell-E (0x0406F1) to Broadwell (0x0306D4): Cpuid1Data: D4 06 03 00 00 00 00 00 00 00 00 Cpuid1Mask: FF FF FF FF 00 00 00 00 00 00 00
 Cpuid1Mask
@@ -120,6 +130,18 @@ ThirdPartyDrives
 Apply vendor patches to IOAHCIBlockStorage.kext to enable native features for third-party drives, such as TRIM on SSDs or hibernation support on 10.15 and newer. Note : This option may be avoided on user preference. NVMe SSDs are compatible without the change. For AHCI SSDs on modern macOS version there is a dedicated built-in utility called trimforce. Starting from 10.15 this utility creates EnableTRIM variable in APPLE_BOOT_VARIABLE_GUID namespace with 01 00 00 00 value.
 XhciPortLimit
 Patch various kexts (AppleUSBXHCI.kext, AppleUSBXHCIPCI.kext, IOUSBHostFamily.kext) to remove USB port count limit of 15 ports. Note : This option should be avoided whenever possible. USB port limit is imposed by the amount of used bits in locationID format and there is no possible way to workaround this without heavy OS modification. The only valid solution is to limit the amount of used ports to 15 (discarding some). More details can be found on AppleLife.ru.
+Boot
+Apply boot configuration described in Boot Properties section below.
+BlessOverride
+Add custom scanning paths through bless model. Designed to be filled with plist string entries containing absolute UEFI paths to customised bootloaders, for example, \EFI\Microsoft\Boot\bootmgfw.efi for Microsoft bootloader. This allows unusual boot paths to be automaticlly discovered by the boot picker. Designwise they are equivalent to predefined blessed path, such as \System\Library\CoreServices\boot.efi, but unlike predefined bless paths they have highest priority.
+Debug
+Apply debug configuration described in Debug Properties section below.
+Entries
+Add boot entries to boot picker. Designed to be filled with plist dict values, describing each load entry. See Entry Properties section below.
+Security
+Apply security configuration described in Security Properties section below.
+Tools
+Add tool entries to boot picker. Designed to be filled with plist dict values, describing each load entry. See Entry Properties section below. Note : Select tools, for example, UEFI Shell, are very dangerous and MUST NOT appear in production configurations, especially in vaulted ones and protected with secure boot, as they may be used to easily bypass secure boot chain.
 ConsoleAttributes
 Sets specific attributes for console. Text renderer supports colour arguments as a sum of foreground and background colors according to UEFI specification. The value of black background and black foreground (0) is reserved. List of colour names: · · · · · · · · · · · · · · · · · · · · · · · · 0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D 0x0E 0x0F 0x00 0x10 0x20 0x30 0x40 0x50 0x60 0x70 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- EFI_BLACK EFI_BLUE EFI_GREEN EFI_CYAN EFI_RED EFI_MAGENTA EFI_BROWN EFI_LIGHTGRAY EFI_DARKGRAY EFI_LIGHTBLUE EFI_LIGHTGREEN EFI_LIGHTCYAN EFI_LIGHTRED EFI_LIGHTMAGENTA EFI_YELLOW EFI_WHITE EFI_BACKGROUND_BLACK EFI_BACKGROUND_BLUE EFI_BACKGROUND_GREEN EFI_BACKGROUND_CYAN EFI_BACKGROUND_RED EFI_BACKGROUND_MAGENTA EFI_BACKGROUND_BROWN EFI_BACKGROUND_LIGHTGRAY Note : This option may not work well with System text renderer. Setting a background different from black could help testing proper GOP functioning.
 HibernateMode
