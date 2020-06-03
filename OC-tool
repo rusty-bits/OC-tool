@@ -2886,6 +2886,13 @@ else
 	cp "${inputFilePath}" "$CONFIG_PLIST.tmp"
 fi
 process_plist
+if [ -e "$INPUT/parse_error.txt" ]; then
+  msg "\n${RED}ERROR:${NC} found problem in $CONFIG_PLIST \n"
+  msg "$(cat "$INPUT"/parse_error.txt)\n"
+  msg "\n"
+  exit 1
+fi
+
 load_edit_text
 msg "Using ${inputFilePath}\n"
 MODI=""
