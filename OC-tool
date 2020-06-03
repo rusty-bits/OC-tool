@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(010620) last checked with OpenCore version REL-060-2020-06-01\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(020620) last checked with OpenCore version REL-060-2020-06-01\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
