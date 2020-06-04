@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(020620) last checked with OpenCore version REL-060-2020-06-01\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(040620) last checked with OpenCore version REL-060-2020-06-04\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -113,6 +113,7 @@ clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
 #		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
 		pkg_name="$1"
+    if [ "${pkg_name##*.}" = "git" ]; then curl_unable; fi
 		pkg_name="${pkg_name##*/}"
 	else
 		pkg_name="$2"
@@ -219,6 +220,14 @@ curl_failed() { # is this needed?
 	exit 1
 }
 
+curl_unable() {
+  msg "\n${RED}ERROR:${NC}\tOC-tool can not extract $res_name automatically at this time\n"
+  msg "\tYou can run ${YEL}git clone $git_url${NC}\n"
+  msg "\tand copy $res_name from it into $BASE_DIR/extras and run OC-tool again\n"
+  msg "\tI hope to have this automated some time in the future\n"
+  exit 1
+}
+
 unzip_failed() {
 	msg "\n${RED}ERROR:$NC\tfailed to unzip $zip_name\n"
 	msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
@@ -282,6 +291,7 @@ curl_parent() {
 curl_child() { # need parent first, then zip source
 	path="$git_url"
 	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+  if [ "${git_url##*.}" = "git" ]; then return 1; fi
 	temp="$res_name" # hold self
 	res_name="$parent"
 	curl_parent # temp use parent resources
@@ -478,7 +488,7 @@ prepare_resources() {
 								;;
 							"efi"|"kext"|"aml")
 								if [ -n "$parent" ]; then
-									curl_child
+									curl_child||curl_unable
 								else
 									curl_parent
 								fi;;
