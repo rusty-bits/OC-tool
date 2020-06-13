@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(040620) last checked with OpenCore version REL-060-2020-06-04\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(130620) last checked with OpenCore version REL-060-2020-06-11\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -716,10 +716,14 @@ find_srce_url() {
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	temp=""
+  tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
-		find_srce_url
-		res_name="$temp$res_name"
-		temp=""
+  if [ "${res_name##*/}" != "$res_name" ]; then tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
+  find_srce_url
+  res_name="$temp$res_name"
+  dest=$dest$tempDest
+  temp=""
+  tempDest=""
 #		if [ "$dest" != "OC/ACPI" ];then
 #			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 #				srce=""
@@ -731,20 +735,20 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #				res_not_found "$res_name"
 #			fi
 #		else # check extras folder first for ACPI files
-			if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-				srce="$BASE_DIR/extras"
-			elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-				srce=""
-			elif [ "${key##* }" = "-" ];then
-				srce="unknown"
-			else
-				if [ "$TUI_MODE" = " plist " ]; then
-					srce="unknown"; parent=""
-					DISABLE_RES="true"
-				else
-					res_not_found "$res_name"
-				fi
-			fi
+    if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+      srce="$BASE_DIR/extras"
+    elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
+      srce=""
+    elif [ "${key##* }" = "-" ];then
+      srce="unknown"
+    else
+      if [ "$TUI_MODE" = " plist " ]; then
+        srce="unknown"; parent=""
+        DISABLE_RES="true"
+      else
+        res_not_found "$res_name"
+      fi
+    fi
 #		fi
 #	else
 #		srce="unknown"; dest=""; parent=""
