@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(130620) last checked with OpenCore version REL-060-2020-06-11\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(130620) last checked with OpenCore version REL-060-2020-06-13\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -718,7 +718,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	temp=""
   tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
-  if [ "${res_name##*/}" != "$res_name" ]; then tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
+  if [ "${res_name##*/}" != "$res_name" ]; then msg "$res_name\n"; tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
   find_srce_url
   res_name="$temp$res_name"
   dest=$dest$tempDest

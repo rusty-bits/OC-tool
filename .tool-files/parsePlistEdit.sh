@@ -46,7 +46,8 @@ get_next() {
 				if [ -z "$next" ]; then next="error"; fi
 				if [ -z "$ar" ]; then ar="D"; fi
 				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val}" >> edit_subs.txt; fi
+#				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then printf "%s\n" "Found invalid ACPI > Block section, should be changed to ACPI > Delete for OpenCore 0.5.9 and later" >> parse_error.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIDelete" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
 				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
