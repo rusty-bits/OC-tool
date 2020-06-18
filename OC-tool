@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(130620) last checked with OpenCore version REL-060-2020-06-13\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(180620) last checked with OpenCore version REL-060-2020-06-18\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -121,7 +121,11 @@ clone() { # will only clone if pkg is not local
 	if [ ! -d "$pkg_name" ]; then
 		if [ -z "$UPDATE" ]; then
 			msg "Cloning $1 into $pkg_name ... "
-			eval git clone "$1" "$pkg_name"
+      if [ "$pkg_name" = "UDK" ]; then
+        git clone --recursive "$1" -b master --depth=1 "$2"
+      else
+        git clone "$1" "$pkg_name"
+      fi
 			fin
 			cd "$pkg_name"
 			update_log "Cloned" "$pkg_name"
@@ -306,7 +310,7 @@ make_base_tools() {
 	unset CONF_PATH
 # shellcheck disable=SC1091
 	. edksetup.sh
-	make -C BaseTools
+	make -C BaseTools -j
 }
 
 build_failed() { # failed build even after backing up 5 commits
