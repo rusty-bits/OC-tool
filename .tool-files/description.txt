@@ -538,3 +538,7 @@ Address
 Start address of the reserved memory region, which should be allocated as reserved effectively marking the memory of this type inaccessible to the operating system. The addresses written here must be part of the memory map, have EfiConventionalMemory type, and page-aligned (4 KBs).
 Size
 Size of the reserved memory region, must be page-aligned (4 KBs).
+ProvideMaxSlide
+Provide maximum KASLR slide when higher ones are unavailable. This option overrides the maximum slide of 255 by a user specified value between 1 and 254 inclusive when ProvideCustomSlide is enabled. It is believed that modern firmwares allocate pool memory from top to bottom, effectively resulting in free memory at the time of slide scanning being later used as temporary memory during kernel loading. In case those memory are unavailable, this option can stop evaluating higher slides.
+GlobalConnect
+Perform full device connection during APFS loading. Instead of partition handle connection normally used for APFS driver loading every handle is connected recursively. This may take more time than usual but can be the only way to access APFS partitions on some firmwares like those found on older HP laptops.
