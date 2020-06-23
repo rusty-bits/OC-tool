@@ -113,7 +113,6 @@ clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
 #		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
 		pkg_name="$1"
-    if [ "${pkg_name##*.}" = "git" ]; then curl_unable; fi
 		pkg_name="${pkg_name##*/}"
 	else
 		pkg_name="$2"
@@ -298,7 +297,7 @@ curl_child() { # need parent first, then zip source
   if [ "${git_url##*.}" = "git" ]; then return 1; fi
 	temp="$res_name" # hold self
 	res_name="$parent"
-	curl_parent # temp use parent resources
+  curl_parent # temp use parent resources
 	git_url="$path"
 	res_name="$temp"
 	if [ -n "$path" ]; then srce="$srce/$path"; fi
@@ -323,7 +322,12 @@ build_failed() { # failed build even after backing up 5 commits
 build_driver() {
 	cd "$RES_DIR/UDK"
 	clone "$git_url"
-	srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+  if [ "${pkg_name##*.}" = "git" ]; then
+    curl_unable
+    srce="$(pwd)/$pkg_name/Drivers"
+  else
+    srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+  fi
 	cd "$pkg_name"
 	if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
@@ -563,7 +567,7 @@ copy_resources() {
 						res_not_found "$res_name"
 					else
 						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
-						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
+#						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" == "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
 						if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
@@ -661,10 +665,10 @@ build_vault() {
 	msg "\nBuilding vault files for $BUILD_DIR ... "
 	case $MODE in
 		prebuiltRelease)
-			if [ ! -e "$RES_DIR/UDK/OcSupportPkg" ]; then
-				mkdir -p "$RES_DIR/UDK/OcSupportPkg"
-				cd "$RES_DIR/UDK/OcSupportPkg"
-				ocsupporturl=$(grep "/OcSupportPkg/$MODE/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+			if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
+				mkdir -p "$RES_DIR/UDK/OpenCorePkg"
+				cd "$RES_DIR/UDK/OpenCorePkg"
+				ocsupporturl=$(grep "/OpenCorePkg/$MODE/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 				curl -L -O "$ocsupporturl"
 				ocsupportzip=${ocsupporturl##*/}
 				tar xvf "$ocsupportzip"
@@ -674,7 +678,7 @@ build_vault() {
 	ls vault* 1> /dev/null 2>&1 && rm vault.*
 	case $MODE in
 		prebuiltRelease)
-			"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/create_vault.sh .||return 1
+			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
 			;;
 		latestSource)
 			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
@@ -686,7 +690,7 @@ build_vault() {
 	if [ "$USE_VAULT" != "Basic" ]; then
 		case $MODE in
 			prebuiltRelease)
-				"$RES_DIR"/UDK/OcSupportPkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
 				;;
 			latestSource)
 				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
