@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(050720) last checked with OpenCore version REL-060-2020-07-05\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(110720) last checked with OpenCore version REL-060-2020-07-11\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -228,6 +228,12 @@ curl_unable() {
   msg "\tYou can run ${YEL}git clone $git_url${NC}\n"
   msg "\tand copy $res_name from it into $BASE_DIR/extras and run OC-tool again\n"
   msg "\tI hope to have this automated some time in the future\n"
+	msg "<git_url> $git_url\n"
+	msg "<res_name> $res_name\n"
+	msg "<parent> $parent\n"
+	msg "<path> $path\n"
+	msg "<temp> $temp\n"
+  msg "<srce> $srce\n"
   exit 1
 }
 
@@ -294,12 +300,17 @@ curl_parent() {
 curl_child() { # need parent first, then zip source
 	path="$git_url"
 	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-  if [ "${git_url##*.}" = "git" ]; then return 1; fi
-	temp="$res_name" # hold self
-	res_name="$parent"
-  curl_parent # temp use parent resources
-	git_url="$path"
-	res_name="$temp"
+  if [ "${git_url##*.}" = "git" ]; then
+    cd $RES_DIR
+    clone "$git_url"
+    srce="$(pwd)/$pkg_name"
+  else
+    temp="$res_name" # hold self
+    res_name="$parent"
+    curl_parent # temp use parent resources
+    git_url="$path"
+    res_name="$temp"
+  fi
 	if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
@@ -323,40 +334,41 @@ build_driver() {
 	cd "$RES_DIR/UDK"
 	clone "$git_url"
   if [ "${pkg_name##*.}" = "git" ]; then
-    curl_unable
     srce="$(pwd)/$pkg_name/Drivers"
+#    curl_unable
   else
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-  fi
-	cd "$pkg_name"
-	if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
-	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		{ [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
-		rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
-		if [ -f "$pkg_name.dsc" ]; then
-			if [ -z "$BASE_TOOLS" ]; then #tools not built yet
-				msg "Making base tools ... "
-				cd ..
-				make_base_tools; fin
-				cd "$pkg_name"
-				BASE_TOOLS="built"
-			fi
-			a=1
-			while :
-			do
-				msg "Building $AUDK_CONFIG $pkg_name ... "
-				build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
-				if [ "$a" -eq "5" ]; then return 1; fi
-				git_sha=$(git rev-parse @|cut -c -7)
-				msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
-				git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
-				a=$((a+1))
-			done
-			if [ "$a" -ne "1" ];then git checkout master; fi
-			fin
-		fi
-		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-	fi
+#  fi
+    cd "$pkg_name"
+    if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
+    if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
+      { [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
+      rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
+      if [ -f "$pkg_name.dsc" ]; then
+        if [ -z "$BASE_TOOLS" ]; then #tools not built yet
+          msg "Making base tools ... "
+          cd ..
+          make_base_tools; fin
+          cd "$pkg_name"
+          BASE_TOOLS="built"
+        fi
+        a=1
+        while :
+        do
+          msg "Building $AUDK_CONFIG $pkg_name ... "
+          build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
+          if [ "$a" -eq "5" ]; then return 1; fi
+          git_sha=$(git rev-parse @|cut -c -7)
+          msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
+          git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+          a=$((a+1))
+        done
+        if [ "$a" -ne "1" ];then git checkout master; fi
+        fin
+      fi
+      git rev-parse HEAD > git"$AUDK_CONFIG"sha
+    fi
+    fi
 }
 
 build_kext() {
