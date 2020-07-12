@@ -10,7 +10,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dfhinoqrstvDIFNTVX"
+OPTSPEC="dfhinoqrstvDILNTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -32,7 +32,7 @@ MODE="prebuiltRelease"; TYPE="release"  # set default to release version of preb
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""; BOOT_PROTECT_NUM=""
-USE_FULL=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
+USE_LEGACY=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 ADD_RES_NUM="-1"; LA="1"
 
@@ -661,7 +661,7 @@ check_if_Sample_plist_updated() {
 	else
 		cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	fi
-	cp "$DOC_DIR/SampleFull.plist" "$BASE_DIR/Docs/."
+	cp "$DOC_DIR/SampleLegacy.plist" "$BASE_DIR/Docs/."
 	cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
 	cp "$DOC_DIR/Differences/Differences.pdf" "$BASE_DIR/Docs/."
 }
@@ -2661,7 +2661,7 @@ process_plist() {
 
 	cd "$INPUT"
 	if [ "$IGNORE_SAMPLE" != "true" ]; then
-		if [ -z "$USE_FULL" ]; then
+		if [ -z "$USE_LEGACY" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
 				cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
 			else
@@ -2669,9 +2669,9 @@ process_plist() {
 			fi
 		else
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleFull$REL_VER.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleLegacy$REL_VER.plist" sample.plist.tmp
 			else
-				cp "$BASE_DIR/Docs/SampleFull.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleLegacy.plist" sample.plist.tmp
 			fi
 		fi
 		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
@@ -2685,7 +2685,7 @@ process_plist() {
 
 	if [ "$IGNORE_SAMPLE" != "true" ]; then
 		if [ "$IGNORE_SAMPLE" = "full" ]; then
-			tr -d '\r' < "$TOOL_FILES/miss_extra_full" > miss_extra.txt # strip CRLF ?
+			tr -d '\r' < "$TOOL_FILES/miss_extra_legacy" > miss_extra.txt # strip CRLF ?
 		else
 			tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
 		fi
@@ -2857,8 +2857,8 @@ case "${optchar}" in
 			EX_COM="${EX_COM}t";;
 		D) # default type is now release
 			TYPE="debug";;
-		F)
-			USE_FULL="true";;
+		L)
+			USE_LEGACY="true";;
 		I)
 			IGNORE="TRUE";;
 		N)
