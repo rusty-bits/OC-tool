@@ -2,6 +2,8 @@
 
 VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-11\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
+
+
 INI=$(pwd)
 cd -- "$(dirname "$0")"
 
