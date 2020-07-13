@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-11\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-12\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 
@@ -159,7 +159,8 @@ check_tool_for_updates() {
 	msg "\n${GRN}Checking OC-tool for updates${NC} ... "
 	git fetch --all -q||git_failed "OC-tool"
 	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
-		git pull $VERBOSE -q||git_failed "OC-tool"
+    git reset --hard
+    git pull $VERBOSE -q||git_failed "OC-tool (git pull)"
 		msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
 		update_log "Updated" "OC-tool"
 		exit 2
