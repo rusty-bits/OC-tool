@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-12\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-23\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 INI=$(pwd)
@@ -230,12 +230,6 @@ curl_unable() {
   msg "\tYou can run ${YEL}git clone $git_url${NC}\n"
   msg "\tand copy $res_name from it into $BASE_DIR/extras and run OC-tool again\n"
   msg "\tI hope to have this automated some time in the future\n"
-	msg "<git_url> $git_url\n"
-	msg "<res_name> $res_name\n"
-	msg "<parent> $parent\n"
-	msg "<path> $path\n"
-	msg "<temp> $temp\n"
-  msg "<srce> $srce\n"
   exit 1
 }
 
@@ -383,10 +377,10 @@ build_kext() {
 		rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
 		fin
 	fi
-	srce="$(pwd)/build/$XCODE_CONFIG"
+	srce="$(pwd)/build/$XCODE_CONFIG$temp"
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		[ ! -e "$srce/$res_name" ]; then
-		msg "Building $AUDK_CONFIG $pkg_name ... "
+      msg "Building $AUDK_CONFIG $pkg_name ... ($res_name) "
 		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
 		if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
@@ -487,7 +481,10 @@ prepare_resources() {
 			get_res "$G$S"
 			get_edit_res "$enabled"
 			if [ "$en" != "-" ]; then
-				if [ -z "$srce" ]; then
+        if [ "-${srce#?}" = "$srce" ]; then
+         temp="${srce#?}"
+         srce=""
+#				if [ -z "$srce" ]; then
 					case "$MODE" in
 						"latestSource")
 							case ${res_name##*.} in
@@ -740,12 +737,12 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	temp=""
   tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
-  if [ "${res_name##*/}" != "$res_name" ]; then msg "$res_name\n"; tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
+  if [ "${res_name##*/}" != "$res_name" ]; then tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
   find_srce_url
   res_name="$temp$res_name"
-  dest=$dest$tempDest
+  dest="$dest$tempDest"
   temp=""
-  tempDest=""
+#  tempDest=""
 #		if [ "$dest" != "OC/ACPI" ];then
 #			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
 #				srce=""
@@ -760,7 +757,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
     if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
       srce="$BASE_DIR/extras"
     elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-      srce=""
+      srce="-$tempDest" #save path for Plugins
     elif [ "${key##* }" = "-" ];then
       srce="unknown"
     else
