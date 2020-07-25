@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(130720) last checked with OpenCore version REL-060-2020-07-23\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(250720)\nlast checked with OpenCore version REL-060-2020-07-25 (602e540)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 INI=$(pwd)
@@ -11,7 +11,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dfhinoqrstvDILNTVX"
+OPTSPEC="dfhinoqstvDILNTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -112,7 +112,6 @@ update_log() {
 
 clone() { # will only clone if pkg is not local
 	if [ -z "$2" ]; then
-#		pkg_name=$(echo "$1"|rev|cut -f 1 -d /|rev)
 		pkg_name="$1"
 		pkg_name="${pkg_name##*/}"
 	else
@@ -192,7 +191,6 @@ check_resources_for_updates() {
 	res_updated=""
 	msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
 	if [ -d "$RES_DIR" ]; then
-#		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d|rev|cut -c 6-|rev)
 		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d)
 		do
 			git_dir="${git_dir%/*}"
@@ -331,10 +329,8 @@ build_driver() {
 	clone "$git_url"
   if [ "${pkg_name##*.}" = "git" ]; then
     srce="$(pwd)/$pkg_name/Drivers"
-#    curl_unable
   else
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-#  fi
     cd "$pkg_name"
     if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
     if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
@@ -380,7 +376,7 @@ build_kext() {
 	srce="$(pwd)/build/$XCODE_CONFIG$temp"
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
 		[ ! -e "$srce/$res_name" ]; then
-      msg "Building $AUDK_CONFIG $pkg_name ... ($res_name) "
+      msg "Building $AUDK_CONFIG $pkg_name ... "
 		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
 		if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
@@ -423,7 +419,6 @@ missing_iasl() {
 build_acpi() { # compile .dsl into .aml if user hasn't already
 	pkg_name=${res_name%%.*}
 
-#	srce=$RES_DIR/$(echo "$git_url"|rev|cut -f2- -d/|rev)
 	srce="${git_url%/*}"
 	srce="${srce##*/}"
 	if [ -e "$srce/$res_name" ];then
@@ -478,13 +473,13 @@ prepare_resources() {
 	do
 		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
 		do
+      if [ "$S" -ge "0" ]; then
 			get_res "$G$S"
 			get_edit_res "$enabled"
 			if [ "$en" != "-" ]; then
         if [ "-${srce#?}" = "$srce" ]; then
          temp="${srce#?}"
          srce=""
-#				if [ -z "$srce" ]; then
 					case "$MODE" in
 						"latestSource")
 							case ${res_name##*.} in
@@ -525,6 +520,7 @@ prepare_resources() {
 					set_res "$G$S"
 				fi
 			fi
+      fi
 		done
 	done
 	msg "\n"
@@ -577,8 +573,7 @@ copy_resources() {
 					if [ "$srce" = "unknown" ];then # catch additions from TUI
 						res_not_found "$res_name"
 					else
-						dest_name="$res_name" # workaround for HFSPlus and HfsPlus
-#						if [ "$dest_name" = "HfsPlus.efi" ]; then res_name="HFSPlus.efi"; fi
+						dest_name="$res_name"
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" == "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
 						if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
@@ -742,18 +737,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
   res_name="$temp$res_name"
   dest="$dest$tempDest"
   temp=""
-#  tempDest=""
-#		if [ "$dest" != "OC/ACPI" ];then
-#			if [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-#				srce=""
-#			elif [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-#				srce="$BASE_DIR/extras"
-#			elif [ "${key##* }" = "-" ]; then
-#				srce="unknown"
-#			else
-#				res_not_found "$res_name"
-#			fi
-#		else # check extras folder first for ACPI files
     if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
       srce="$BASE_DIR/extras"
     elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
@@ -768,10 +751,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
         res_not_found "$res_name"
       fi
     fi
-#		fi
-#	else
-#		srce="unknown"; dest=""; parent=""
-#	fi
 	if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
 		IGNORE="true"
@@ -787,15 +766,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 		DISABLE_RES=""
 	fi
 }
-
-#missing_plist_sec() {
-#	msg "\n${YEL}WARNING:${NC} Missing $1 > $2 section in $inputFilePath\n"
-#	msg "\tWill continue build, but please note this warning from the Configuration.pdf\n"
-#	msg "\t${U}Note: Currently most properties try to have defined values even if not specified\n"
-#	msg "\tin the configuration for safety reasons. This behaviour should not be relied upon, and\n"
-#	msg "\tall fields must be properly specified in the configuration.${NC}\n"
-#	num=1
-#}
 
 init_add_array() {
 	ADD_FILE="${2##* }"
@@ -814,18 +784,6 @@ init_add_array() {
 
 init_res_array() { # base-resources moved into .tool-files for portability
 	G=0; S="-1"
-#	while read -r line
-#	do
-#		S=$((S+1))
-#		eval "res0$S=\$line\|true"
-#		if [ "$MODE" = "latestSource" ]; then
-#				get_res "0$S"
-#				if [ "$res_name" = "base" ]; then res_name="$git_url"; fi
-#				add_res_array "$G$S"
-#				res_name="base"
-#				set_res "0$S"
-#		fi
-#	done < "$TOOL_FILES/no-pre-base-resources"
 	while read -r line
 	do
 		S=$((S+1))
@@ -917,9 +875,7 @@ output_element() {
 		if [ "$en" = "$key" ]; then # no + or -
 			printf "%s\n" "<$type>$val</$type>" >> "$OUT"
 		else
-#			if [ "$en" = "+" ]; then
-				printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
-#			fi
+			printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
 		fi
 	fi
 }
@@ -1019,31 +975,10 @@ write_new_conf() {
 					fi
 				else
 					clearAD2
-#					while [ -n "$ad2stk" ]
-#					do
-#						popAD
-#						case "$ad2" in
-#							"A")
-#								printf "%s\n" "</array>" >> "$OUT";;
-#							"D")
-#								printf "%s\n" "</dict>" >> "$OUT";;
-#						esac
-#					done
 					output_element
 				fi
 			else
 				if [ -z "$AD" ]; then clearAD2; fi
-#					while [ -n "$ad2stk" ]
-#					do
-#						popAD
-#						case "$ad2" in
-#							"A")
-#								printf "%s\n" "</array>" >> "$OUT";;
-#							"D")
-#								printf "%s\n" "</dict>" >> "$OUT";;
-#						esac
-#					done
-#				fi
 				output_element
 			fi
 		fi
@@ -1212,20 +1147,16 @@ compute_data_vals() {
 		0|1)
 			val="$e_val"
 			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-#			hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
 			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-#			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		2)
 			hex_val="$e_val"
 			val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
 			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-#			asc_val=$(printf "%s" "$hex_val"|xxd -p -r);;
 		3)
 			if [ -z "$asc_touched" ]; then
 				asc_val="$e_val"
 				val=$(printf "%s" "$asc_val"|base64)
 				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-#				hex_val=$(printf "%s" "$val"|base64 --decode|xxd -p)
 			fi;;
 		esac
 }
@@ -1312,7 +1243,6 @@ draw_edit_val() {
 				case $data_field in
 					0|1)
 						val="$e_val"
-#						hex_val=$(echo "obase=16; $val"|bc) # avoid octal
 						hex_val=$(echo "$e_val"|sed 's/^0*//')
 						if [ -z "$hex_val" ]; then hex_val=0; fi
 						if [ "$hex_val" = "-" ]; then hex_val=0; fi
@@ -1453,8 +1383,6 @@ load_edit_text() {
 				val=$(printf "%d" "$val") # if hex, make decimal
 				set_edit_res "$num"
 			fi
-#			if [ "$key" = "RequireVault" ]; then USE_VAULT_NUM="$num"; fi # deprecated
-#			if [ "$key" = "RequireSignature" ]; then USE_SIG_NUM="$num"; fi # deprecated
 			if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
 			if [ "$key" = "BootProtect" ]; then BOOT_PROTECT_NUM="$num"; fi # OC\Bootstrap\Bootstrap.efi
 			if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
@@ -1486,15 +1414,11 @@ load_edit_text() {
 					enabled="$num"; S="$((L2-1))"
 					add_res_array "$G$S"
 					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
-						#if [ "#${val#?}" = "$val" ]; then
-						#	key="$key i"; val="$val i"
-						#else
 						if [ "#${key#?}" = "$key" ]; then
 							key="$key -"; val="$val -"
 						else
 							key="$key +"; val="$val +"
 						fi
-						#fi
 						set_edit_res "$num"
 					fi
 				fi
@@ -1621,7 +1545,6 @@ draw_bit_editor() {
 		while [ "$test_value" -ne "$bit_value" ]
 		do
 			if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
-#			test_value=$(echo "2^$test_bit"|bc)
 			test_value=$((2 ** test_bit))
 			test_bit=$((test_bit-1))
 		done
@@ -1630,7 +1553,6 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${RED}"
 				e_val=$((val - bit_value))
-#				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
 				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
 				e_split=${#e_val}
 			else
@@ -1642,7 +1564,6 @@ draw_bit_editor() {
 				BIT_TOGGLE="-1"
 				msg "${GRN}"
 				e_val=$((val + bit_value))
-#				if [ "$data_field" -eq "2" ]; then e_val=$(echo "obase=16; $e_val"|bc); fi
 				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
 				e_split=${#e_val}
 			else
@@ -1750,7 +1671,6 @@ edit_val() {
 							data_field="2";;
 						2)
 							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
-#							hex_val=$(printf "%s" "$e_val"|xxd -p -r|xxd -p)
 							e_val="$asc_val"
 							data_field="3";;
 						3)
@@ -2327,7 +2247,6 @@ text_user_interface() {
 							i)
 								show_description
 								moved="true";;
-#								draw_edit_text;;
 							n)
 								get_edit_res "$res_num"
 								if [ "$key" = "$en" ]; then
@@ -2517,40 +2436,19 @@ remove_resource_msg() {
 }
 
 set_up_vault() {
-#	if [ -n "$USE_VAULT_NUM" ]; then
-#		get_edit_res "$USE_VAULT_NUM"
-#		USE_VAULT="$val"
-#	fi
-#	if [ "$USE_VAULT" = "false" ] && [ -n "$USE_SIG" ]; then
-#		get_edit_res "$USE_SIG_NUM"
-#		USE_VAULT="$val"
-#	fi
 	if [ -n "$USE_VAULT_STR" ]; then
 		get_edit_res "$USE_VAULT_STR"
 		USE_VAULT="$val"
 	fi
 
-#	if [ "$USE_VAULT" = "false" ] || [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
 	if [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
 
 	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
 		if [ -n "$USE_VAULT" ] && [ "$USE_VAULT" != "Optional" ]; then
 			CONFIG_CHANGED="temp vault disable"
-#			if [ -n "$USE_VAULT_NUM" ]; then
-#				get_edit_res "$USE_VAULT_NUM"
-#				val="false"
-#				set_edit_res "$USE_VAULT_NUM"
-#			fi
-#			if [ -n "$USE_SIG_NUM" ]; then
-#				get_edit_res "$USE_SIG_NUM"
-#				val="false"
-#				set_edit_res "$USE_SIG_NUM"
-#			fi
-#			if [ -n "$USE_VAULT_STR" ]; then
 				get_edit_res "$USE_VAULT_STR"
 				val="Optional"
 				set_edit_res "$USE_VAULT_STR"
-#			fi
 			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
 			msg "\tvault disabled for prebuilts not made on macOS\n"
 			USE_VAULT=""
@@ -2827,10 +2725,6 @@ case "${optchar}" in
 		q)
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
-		r)
-			msg "\n${YEL}INFO:${NC} -r option no longer needed for release.  Release is now default.\n\n"
-			TYPE="release";; # no longer needed, release is now default
-#			EX_COM="${EX_COM}r";;
 		s)
 			MODE="latestSource"
 			EX_COM="${EX_COM}s";;
