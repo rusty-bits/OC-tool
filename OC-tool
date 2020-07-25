@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(250720)\nlast checked with OpenCore version REL-060-2020-07-25 (602e540)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(250720)\nlast checked with OpenCore version REL-060-2020-07-25 (62a88dd)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 INI=$(pwd)
