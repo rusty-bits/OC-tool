@@ -1,1 +1,1 @@
-\nUsage: ./OC-tool [-dhinoqstvDLNVX] [\033[4moptional path to an existing config.plist\033[0m]\n\nFor help use '\033[1m./OC-tool -h\033[0m'\n
+\nUsage: ./OC-tool [-dhinoqstvCDNVX] [\033[4moptional path to an existing config.plist\033[0m]\n\nFor help use '\033[1m./OC-tool -h\033[0m'\n

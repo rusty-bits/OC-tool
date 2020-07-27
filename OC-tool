@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(250720)\nlast checked with OpenCore version REL-060-2020-07-25 (62a88dd)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(270720)\nlast checked with OpenCore version REL-060-2020-07-25 (62a88dd)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 INI=$(pwd)
@@ -11,7 +11,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dfhinoqstvDILNTVX"
+OPTSPEC="dfhinoqstvCDINTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON="$TOOL_FILES/git_repo.json"
@@ -33,7 +33,7 @@ MODE="prebuiltRelease"; TYPE="release"  # set default to release version of preb
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""; BOOT_PROTECT_NUM=""
-USE_LEGACY=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
+USE_CUSTOM=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 ADD_RES_NUM="-1"; LA="1"
 
@@ -655,7 +655,7 @@ check_if_Sample_plist_updated() {
 	else
 		cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
 	fi
-	cp "$DOC_DIR/SampleLegacy.plist" "$BASE_DIR/Docs/."
+	cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/."
 	cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
 	cp "$DOC_DIR/Differences/Differences.pdf" "$BASE_DIR/Docs/."
 }
@@ -2558,7 +2558,7 @@ process_plist() {
 
 	cd "$INPUT"
 	if [ "$IGNORE_SAMPLE" != "true" ]; then
-		if [ -z "$USE_LEGACY" ]; then
+		if [ -z "$USE_CUSTOM" ]; then
 			if [ "$MODE" = "prebuiltRelease" ]; then
 				cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
 			else
@@ -2566,9 +2566,9 @@ process_plist() {
 			fi
 		else
 			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleLegacy$REL_VER.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleCustom$REL_VER.plist" sample.plist.tmp
 			else
-				cp "$BASE_DIR/Docs/SampleLegacy.plist" sample.plist.tmp
+				cp "$BASE_DIR/Docs/SampleCustom.plist" sample.plist.tmp
 			fi
 		fi
 		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
@@ -2748,10 +2748,10 @@ case "${optchar}" in
 				TUI_MODE="summary"
 			fi
 			EX_COM="${EX_COM}t";;
+		C)
+			USE_CUSTOM="true";;
 		D) # default type is now release
 			TYPE="debug";;
-		L)
-			USE_LEGACY="true";;
 		I)
 			IGNORE="TRUE";;
 		N)
