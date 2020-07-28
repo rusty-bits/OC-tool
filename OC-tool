@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(270720)\nlast checked with OpenCore version REL-060-2020-07-25 (62a88dd)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(280720)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
 REL_VER="059"
 
 INI=$(pwd)
@@ -248,12 +248,12 @@ clone_parent() {
 
 clone_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-	temp="$res_name" # hold self
+	git_url=$(grep "|$parent|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	tempRes="$res_name" # hold self
 	res_name="$parent"
 	clone_parent # temp use parent resources
 	git_url="$path"
-	res_name="$temp"
+	res_name="$tempRes"
 }
 
 curl_parent() {
@@ -262,7 +262,7 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "/$res_name/$MODE/@0/$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	sha=$(grep "|$res_name|$MODE|@0|$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
 			msg "Downloading $zip_name ... "
@@ -288,13 +288,13 @@ curl_parent() {
 		fi
 	fi
 	srce="$(pwd)"
-	p=$(grep "/$res_name/$MODE/@0/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"') || p=""
+	p=$(grep "|$res_name|$MODE|@0|path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"') || p=""
 	if [ -n "$p" ]; then srce="$srce/$p"; fi
 }
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "/$parent/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	git_url=$(grep "|$parent|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
   if [ "${git_url##*.}" = "git" ]; then
     cd "$RES_DIR"
     clone "$git_url"
@@ -383,12 +383,12 @@ build_kext() {
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
 			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
 		fi
-		requiresRes=$(grep "/$res_name/requiresRes " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		requiresRes=$(grep "|$res_name|requiresRes " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		if [ -n "$requiresRes" ]; then
 			rm -rf "$requiresRes"
 			ln -s "$RES_DIR/Kext_builds/$requiresRes" .
 		fi
-		buildScheme=$(grep "/$res_name/buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		buildScheme=$(grep "|$res_name|buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		a=1
 		while :
 		do
@@ -507,7 +507,8 @@ prepare_resources() {
 								else
 									curl_parent
 								fi;;
-							esac;;
+							esac
+              ;;
 						"prebuiltDaily")
 							case ${res_name##*.} in
 								"efi"|"kext"|"aml")
@@ -515,8 +516,11 @@ prepare_resources() {
 										clone_child
 									else
 										clone_parent
-									fi;;
-							esac;;
+									fi
+                  srce="$srce$temp"
+                  ;;
+							esac
+              ;;
 					esac
 					set_res "$G$S"
 				fi
@@ -692,7 +696,7 @@ build_vault() {
 			if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
 				mkdir -p "$RES_DIR/UDK/OpenCorePkg"
 				cd "$RES_DIR/UDK/OpenCorePkg"
-				ocsupporturl=$(grep "/OpenCorePkg/$MODE/@0/debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+				ocsupporturl=$(grep "|OpenCorePkg|$MODE|@0|debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 				curl -L -O "$ocsupporturl"
 				ocsupportzip=${ocsupporturl##*/}
 				tar xvf "$ocsupportzip"
@@ -733,15 +737,15 @@ build_vault() {
 }
 
 find_srce_url() {
-	parent=$(grep "/$res_name/parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	parent=$(grep "|$res_name|parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(grep "/$res_name/$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		if [ -z "$git_url" ]; then git_url=$(grep "/$parent/latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"'); fi
+		git_url=$(grep "|$res_name|$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"'); fi
 	else
 		if [ -z "$parent" ]; then
-			git_url=$(grep "/$res_name/$MODE/@0/$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+			git_url=$(grep "|$res_name|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		else
-			git_url=$(grep "/$res_name/path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+			git_url=$(grep "|$res_name|path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		fi
 	fi
 }
@@ -750,26 +754,30 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	temp=""
   tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
-  if [ "${res_name##*/}" != "$res_name" ]; then tempDest="/${res_name%/*}"; res_name="${res_name##*/}"; fi # strip off path
+  if [ "${res_name##*/}" != "$res_name" ]; then # strip off path
+    tempDest="${res_name%/*/*}/"
+    res_name="${res_name#$tempDest}"
+    tempDest="/$tempDest${res_name%/*}"
+  fi
   find_srce_url
-  res_name="$temp$res_name"
+  res_name="$temp${res_name#*/}"
   dest="$dest$tempDest"
   temp=""
-    if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
-      srce="$BASE_DIR/extras"
-    elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
-      srce="-$tempDest" #save path for Plugins
-    elif [ "${key##* }" = "-" ];then
-      srce="unknown"
+  if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+    srce="$BASE_DIR/extras"
+  elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
+    srce="-$tempDest" #save path for Plugins
+  elif [ "${key##* }" = "-" ];then
+    srce="unknown"
+  else
+    if [ "$TUI_MODE" = " plist " ]; then
+      srce="unknown"; parent=""
+      DISABLE_RES="true"
     else
-      if [ "$TUI_MODE" = " plist " ]; then
-        srce="unknown"; parent=""
-        DISABLE_RES="true"
-      else
-        res_not_found "$res_name"
-      fi
+      res_not_found "$res_name"
     fi
-	if [ "$IGNORE" = "yes" ]; then
+  fi
+  if [ "$IGNORE" = "yes" ]; then
 		srce="unknown"
 		IGNORE="true"
 		IGNORE_BOOL="yes"
@@ -803,7 +811,7 @@ init_add_array() {
 init_res_array() { # base-resources moved into .tool-files for portability
 	G=0; S="-1"
 	while read -r line
-	do
+  do
 		S=$((S+1))
 		eval "res0$S=\$line\|true"
 		get_res "0$S"
