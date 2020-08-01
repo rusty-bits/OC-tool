@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.5.9(280720)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0"
+VER="3.5.9(010820)\n\nprebuilt release -> 0.5.9\nprebuilt daily/latest source -> 0.6.0\n\ntested with REL-060-2020-08-01\ntested with Xcode 12 beta 3"
 REL_VER="059"
 
 INI=$(pwd)
@@ -393,9 +393,9 @@ build_kext() {
 		while :
 		do
 			if [ -z "$buildScheme" ]; then
-				xcodebuild -config "$XCODE_CONFIG" build && break
+				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" build && break
 			else
-				xcodebuild -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
+				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
 			fi
 			if [ "$a" -eq "5" ]; then return 1; fi
 			git_sha=$(git rev-parse @|cut -c -7)
