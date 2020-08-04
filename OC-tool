@@ -609,7 +609,8 @@ copy_resources() {
 		done
 	done
   if [ -n "$COPY_RESOURCES" ]; then
-    rd="$BASE_DIR/INPUT/Resources/Font"
+    rd="$BASE_DIR/extras/Resources/Font"
+    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Font"; fi
     n="$(ls "$rd" 2>/dev/null|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
@@ -617,9 +618,11 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Font resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Fonts found in INPUT/Resources/Font folder\n"
+      msg "${YEL}WARNING:${NC} No Fonts found in ${YEL}INPUT/Resources/Font${NC} folder\n"
+      msg "         or ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
-    rd="$BASE_DIR/INPUT/Resources/Image"
+    rd="$BASE_DIR/extras/Resources/Image"
+    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Image"; fi
     n="$(ls "$rd" 2>/dev/null|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
@@ -627,9 +630,11 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Image resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Images found in INPUT/Resources/Image folder\n"
+      msg "${YEL}WARNING:${NC}\tNo Images found in ${YEL}INPUT/Resources/Image${NC} folder\n"
+      msg "         or ${YEL}extras/Resources/Image${NC} folder\n\n"
     fi
-    rd="$BASE_DIR/INPUT/Resources/Label"
+    rd="$BASE_DIR/extras/Resources/Label"
+    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Label"; fi
     n="$(ls "$rd" 2>/dev/null|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
@@ -637,7 +642,8 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Label resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Labels found in INPUT/Resources/Label folder\n"
+      msg "${YEL}WARNING:${NC}\tNo Labels found in ${YEL}INPUT/Resources/Label${NC} folder\n"
+      msg "         or ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
   fi
   if [ -n "$PLAY_CHIME" ]; then
@@ -645,7 +651,8 @@ copy_resources() {
     if [ "$val" = "true" ]; then COPY_RESOURCES="true"; fi
   fi
   if [ -n "$COPY_RESOURCES" ]; then
-    rd="$BASE_DIR/INPUT/Resources/Audio"
+    rd="$BASE_DIR/extras/Resources/Audio"
+    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Audio"; fi
     n="$(ls "$rd" 2>/dev/null|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
@@ -653,7 +660,8 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Audio resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Audio found in INPUT/Resources/Audio folder\n"
+      msg "${YEL}WARNING:${NC} No Audio found in ${YEL}INPUT/Resources/Audio${NC} folder\n"
+      msg "         or ${YEL}extras/Resources/Audio${NC} folder\n\n"
     fi
   fi
 	msg "Copied $num resources to $BUILD_DIR\n"
