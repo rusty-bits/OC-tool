@@ -630,7 +630,7 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Image resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC}\tNo Images found in ${YEL}INPUT/Resources/Image${NC} folder\n"
+      msg "${YEL}WARNING:${NC} No Images found in ${YEL}INPUT/Resources/Image${NC} folder\n"
       msg "         or ${YEL}extras/Resources/Image${NC} folder\n\n"
     fi
     rd="$BASE_DIR/extras/Resources/Label"
@@ -642,7 +642,7 @@ copy_resources() {
       num=$((num+n))
       msg "Copied $n Label resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC}\tNo Labels found in ${YEL}INPUT/Resources/Label${NC} folder\n"
+      msg "${YEL}WARNING:${NC} No Labels found in ${YEL}INPUT/Resources/Label${NC} folder\n"
       msg "         or ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
   fi

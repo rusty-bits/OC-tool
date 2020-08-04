@@ -1,28 +1,28 @@
 ## VER 3.6.0(040820)  
 I haven't been keeping up on the changelog, sorry.  Hopefully I remember all the relevant changes.  
-- **release build updated to OpenCore 0.6.0  
+- **release build updated to OpenCore 0.6.0**  
 
-- **source/daily version is now OpenCore 0.6.1  
+- **source/daily version is now OpenCore 0.6.1**  
 
-- **`ConfigFull.plist` changed to `ConfigCustom.plist`  
+- **`ConfigFull.plist` changed to `ConfigCustom.plist`**  
 
-- **`OpenCanopy` resources will now be looked for in either `INPUT` or `extras` folders  
+- **`OpenCanopy` resources will now be looked for in either `INPUT` or `extras` folders**  
 
-- **will now ignore blank sections (e.g. empty `Misc > Tools` section)  
+- **will now ignore blank sections (e.g. empty `Misc > Tools` section)**  
 
-- **now build without error with Xcode 12 beta 3  
+- **now build without error with Xcode 12 beta 3**  
 
-- **VoodooPS2 now handled correctly  
+- **VoodooPS2 now handled correctly**  
 PlugIns now copied into parent kext `PlugIns` folder  
 `VoodooInput.kext` all alone will be distinguished from `PlugIns/VoodooInput.kext`  
 
-- **OC-tool will now update itself properly if interim changes have been made on the users end  
+- **OC-tool will now update itself properly if interim changes have been made on the users end**  
 
-- **`OpenCanopy` Resources will only be copied if `OpenCanopy` is enabled  
+- **`OpenCanopy` Resources will only be copied if `OpenCanopy` is enabled**  
 
-- **`HfsPlus.efi` will now be automatically extracted from the `OcBinaryData` repo  
+- **`HfsPlus.efi` will now be automatically extracted from the `OcBinaryData` repo**  
 
-- **`.tool-files/get-deps` command updated to get current `nasm` + `mtoc`  
+- **`.tool-files/get-deps` command updated to get current `nasm` + `mtoc`**  
 
 ## VER 3.5.7(270420)  
 - **auto create EFI\OC\Bootstrap if needed**  
