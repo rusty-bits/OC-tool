@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(040820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-03\ntested with Xcode 12 beta 3"
+VER="3.6.0(050820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-05\ntested with Xcode 12 beta 3"
 REL_VER="060"
 
 INI=$(pwd)
