@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(050820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-05\ntested with Xcode 12 beta 3"
+VER="3.6.0(080820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-07\ntested with Xcode 12 beta 4"
 REL_VER="060"
 
 INI=$(pwd)
@@ -1567,6 +1567,14 @@ init_bit_editor() {
 	done < "$TOOL_FILES/bit_maps/$res_name"
 }
 
+pow () {
+    set $1 $2 1
+    while [ $2 -gt 0 ]; do
+      set $1 $(($2-1)) $(($1*$3))
+    done
+    echo $3
+}
+
 draw_bit_editor() {
 	msg "\033[$((S + BIT_NUM + 2))H\033[K"
 	bit="$((BIT_NUM - 2))"; bit_total=$(echo "$val"|sed 's/^0*//')
@@ -1580,7 +1588,8 @@ draw_bit_editor() {
 		while [ "$test_value" -ne "$bit_value" ]
 		do
 			if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
-			test_value=$((2 ** test_bit))
+#			test_value=$((2 ** test_bit))
+      test_value=$(pow "2" "$test_bit")
 			test_bit=$((test_bit-1))
 		done
 		if [ "$bit_value" -le "$bit_total" ]; then
