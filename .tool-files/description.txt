@@ -550,3 +550,11 @@ SerialInit
 Perform serial port initialisation. This option will perform serial port initialisation within OpenCore prior to enabling (any) debug logging. Serial port configuration is defined via PCDs at compile time in GUID. Default values as found in MdeModulePkg.dec are as follows: PcdSerialBaudRate} --- Baud rate: 115200 PcdSerialLineControl --- Line control: no parity, 8 data bits, 1 stop bit.
 DmgLoading
 Attempt to provide bootloader persistence. Valid values: Disabled --- loading DMG images will fail. Signed --- only Apple-signed DMG images will load. Any --- any DMG images will mount as normal filesystems.
+ApECID
+Apple Enclave Identifier. Setting this value to any (random) non-zero 64-bit integer will allow using personalised Apple Secure Boot identifiers. This value set and SecureBootModel valid and not Disabled is equivalent to achieve Full Security of Apple Secure Boot. Note: You will have to reinstall the operating system or use the recovery after setting this value to non-zero.
+SecureBootModel
+Apple Secure Boot hardware model. Defines Apple Secure Boot hardware model and policy. Specifying this value defines which operating systems will be bootable. Operating systems shipped before the specified model was released will not boot. Valid values: Default --- Recent available model, currently set to j215 Disabled --- No model, Secure Boot will be disabled. j137 --- iMacPro1,1 (December 2017) j680 --- MacBookPro15,1 (July 2018) j132 --- MacBookPro15,2 (July 2018) j174 --- Macmini8,1 (October 2018) j140k --- MacBookAir8,1 (October 2018) j780 --- MacBookPro15,3 (May 2019) j213 --- MacBookPro15,4 (July 2019) j140a --- MacBookAir8,2 (July 2019) j152f --- MacBookPro16,1 (November 2019) j160 --- MacPro7,1 (December 2019) j230k --- MacBookAir9,1 (March 2020) j214k --- MacBookPro16,2 (May 2020) j223 --- MacBookPro16,3 (May 2020) j215 --- MacBookPro16,4 (June 2020) j185 --- iMac20,1 (August 2020) j185f --- iMac20,2 (August 2020)
+AppleImg4Verification
+Reinstalls Apple IMG4 Verification protocol with a builtin version. This protocol is used to verify \texttt{im4m} manifest files used by Apple Secure Boot.
+AppleSecureBoot
+Reinstalls Apple Secure Boot protocol with a builtin version.
