@@ -1,0 +1,3 @@
+Disabled --- loading DMG images will fail.
+Signed --- only Apple-signed DMG images will load.
+Any --- any DMG images will mount as normal filesystems.
