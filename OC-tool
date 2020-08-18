@@ -605,10 +605,10 @@ copy_resources() {
                 fi
               fi
             else # deferred
-              echo $srce >> $INPUT/deferred
-              echo $res_name >> $INPUT/deferred
-              echo ${dest#?} >> $INPUT/deferred
-              echo $dest_name >> $INPUT/deferred
+              echo "$srce" >> $INPUT/deferred
+              echo "${res_name##*/}" >> $INPUT/deferred # res name without path
+              echo "${dest#?}" >> $INPUT/deferred # strip leading -
+              echo "${dest_name##*/}" >> $INPUT/deferred # dest res without path
             fi
 					fi
 				fi
@@ -795,7 +795,6 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #    tempDest="${res_name%/*/*}/"
     tempDest="${res_name%/*}/"
 #    res_name="${res_name#$tempDest}"
-    res_name="${res_name#$tempDest}"
 #    tempDest="/$tempDest${res_name%/*}"
     tempDest="/$tempDest"
     dest="-$dest" # mark dest as deferred
@@ -804,7 +803,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 #  res_name="$temp${res_name#*/}"
   dest="$dest$tempDest"
   temp=""
-  if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver) at root level
+  if [ -e "$BASE_DIR/extras/${res_name##*/}" ]; then #found directory (kext) or file (driver) at root level
     srce="$BASE_DIR/extras"
   elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) at child level
     srce="$BASE_DIR/extras$tempDest"
