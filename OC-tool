@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(130820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-13\ntested with Xcode 12 beta 4"
+VER="3.6.0(180820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-18\ntested with Xcode 12 beta 4"
 REL_VER="060"
 
 INI=$(pwd)
@@ -582,33 +582,62 @@ copy_resources() {
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
-						if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
-							msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
-						else
-							msg "Copying $dest_name to $dest ... "
-						fi
-						mkdir -p "$BUILD_DIR/$dest"
-						cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
-						if [ -z "$QUIET" ]; then
-							echo "copied $dest_name to $dest"
-						fi
-						num=$((num+1))
-						fin
-						if [ "$dest_name" = "BOOTx64.efi" ] && [ -n "$BOOT_PROTECT_NUM" ]; then # BootProtect
-							get_edit_res "$BOOT_PROTECT_NUM"
-							if [ "$val" = "Bootstrap" ]; then
-								msg "Copying $dest_name to OC/Bootstrap/Bootstrap.efi ... "
-								mkdir -p "$BUILD_DIR/OC/Bootstrap"
-								cp -r "$srce/$res_name" "$BUILD_DIR/OC/Bootstrap/Bootstrap.efi"||copy_failed
-								fin
-							fi
-						fi
+            if [ "$dest" != "-${dest#?}" ]; then # not deferred
+              if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
+                msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
+              else
+                msg "Copying $dest_name to $dest ... "
+              fi
+              mkdir -p "$BUILD_DIR/$dest"
+              cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
+              if [ -z "$QUIET" ]; then
+                echo "copied $dest_name to $dest"
+              fi
+              num=$((num+1))
+              fin
+              if [ "$dest_name" = "BOOTx64.efi" ] && [ -n "$BOOT_PROTECT_NUM" ]; then # BootProtect
+                get_edit_res "$BOOT_PROTECT_NUM"
+                if [ "$val" = "Bootstrap" ]; then
+                  msg "Copying $dest_name to OC/Bootstrap/Bootstrap.efi ... "
+                  mkdir -p "$BUILD_DIR/OC/Bootstrap"
+                  cp -r "$srce/$res_name" "$BUILD_DIR/OC/Bootstrap/Bootstrap.efi"||copy_failed
+                  fin
+                fi
+              fi
+            else # deferred
+              echo $srce >> $INPUT/deferred
+              echo $res_name >> $INPUT/deferred
+              echo ${dest#?} >> $INPUT/deferred
+              echo $dest_name >> $INPUT/deferred
+            fi
 					fi
 				fi
 			fi
 		done
 	done
+  if [ -e "$INPUT/deferred" ]; then # 
+    msg "\n${GRN}Moving ${YEL}deferred child${GRN} resources into place${NC}\n"
+    while read -r srce
+    do
+      read -r res_name
+      read -r dest
+      read -r dest_name
+      if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
+        msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
+      else
+        msg "Copying $dest_name to $dest ... "
+      fi
+      mkdir -p "$BUILD_DIR/$dest"
+      cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
+      if [ -z "$QUIET" ]; then
+        echo "copied $dest_name to $dest"
+      fi
+      num=$((num+1))
+      fin
+    done < "$INPUT/deferred"
+  fi
   if [ -n "$COPY_RESOURCES" ]; then
+    msg "\n${GRN}Moving ${YEL}OpenCanopy${GRN} resources into place${NC}\n"
     rd="$BASE_DIR/extras/Resources/Font"
     if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Font"; fi
     n="$(ls "$rd" 2>/dev/null|wc -l)"
@@ -664,7 +693,7 @@ copy_resources() {
       msg "         or ${YEL}extras/Resources/Audio${NC} folder\n\n"
     fi
   fi
-	msg "Copied $num resources to $BUILD_DIR\n"
+	msg "\n${GRN}Copied $num resources to $BUILD_DIR${NC}\n"
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
@@ -763,16 +792,22 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
   tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
   if [ "${res_name##*/}" != "$res_name" ]; then # strip off path
-    tempDest="${res_name%/*/*}/"
+#    tempDest="${res_name%/*/*}/"
+    tempDest="${res_name%/*}/"
+#    res_name="${res_name#$tempDest}"
     res_name="${res_name#$tempDest}"
-    tempDest="/$tempDest${res_name%/*}"
+#    tempDest="/$tempDest${res_name%/*}"
+    tempDest="/$tempDest"
+    dest="-$dest" # mark dest as deferred
   fi
   find_srce_url
-  res_name="$temp${res_name#*/}"
+#  res_name="$temp${res_name#*/}"
   dest="$dest$tempDest"
   temp=""
-  if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver)
+  if [ -e "$BASE_DIR/extras/$res_name" ]; then #found directory (kext) or file (driver) at root level
     srce="$BASE_DIR/extras"
+  elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) at child level
+    srce="$BASE_DIR/extras$tempDest"
   elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
     srce="-$tempDest" #save path for Plugins
   elif [ "${key##* }" = "-" ];then
