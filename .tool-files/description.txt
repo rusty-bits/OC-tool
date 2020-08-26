@@ -558,3 +558,13 @@ AppleImg4Verification
 Reinstalls Apple IMG4 Verification protocol with a builtin version. This protocol is used to verify \texttt{im4m} manifest files used by Apple Secure Boot.
 AppleSecureBoot
 Reinstalls Apple Secure Boot protocol with a builtin version.
+Arch
+Kext architecture (Any, i386, x86_64)
+Scheme
+Define kernelspace operation mode via parameters
+FuzzyMatch
+Use kernelcache with different checksums when available. On macOS 10.6 and earlier kernelcache filename has a checksum, which essentially is adler32 from SMBIOS product name and EfiBoot device path. On certain firmwares EfiBoot device path differs between UEFI and macOS due to ACPI or hardware specifics, rendering kernelcache checksum as always different. This setting allows matching the latest kernelcache with a suitable architecture when the kernelcache without suffix is unavailable, improving macOS 10.6 boot performance on several platforms.
+KernelArch
+Prefer specified kernel architecture (Auto, i386, x86_64) when available. On macOS 10.7 and earlier XNU kernel may not boot with the usual x86_64 architecture, and the exact choice depends on many factors including boot arguments, SMBIOS, and operating system type. This setting will use the specified architecture to boot macOS when it is supported by the macOS and the configuration. Below is the algorithm determining the kernel architecture. See Configuration.pdf for more
+KernelCache
+Prefer specified kernel cache type (Auto, Cacheless, Mkext, Prelinked) when available. Different variants of macOS support different kernel caching variants designed to improve boot performance. This setting allows to prevent using faster kernel caching variants if slower variants are available for debugging and stability reasons. I.e. by specifying Mkext one will disable Prelinked for e.g. 10.6 but not 10.7 See Configuration.pdf
