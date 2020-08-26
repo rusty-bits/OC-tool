@@ -1,5 +1,6 @@
-8
+9
 ||${res_name} +
+string|x86_64|Arch
 string|${res_name}|BundlePath
 string||Comment
 bool|true|Enabled
