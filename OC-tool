@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(290820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
+VER="3.6.0(310820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
 REL_VER="060"
 
 INI=$(pwd)
@@ -334,6 +334,7 @@ build_driver() {
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
     cd "$pkg_name"
     if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
+    if [ "$res_name" = "BOOTx64.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Bootstrap.efi"; fi
     if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
       { [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
       rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
@@ -579,14 +580,15 @@ copy_resources() {
 						res_not_found "$res_name"
 					else
 						dest_name="$res_name"
+            if [ "$dest_name" = "Bootstrap.efi" ]; then dest_name="BOOTx64.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
 						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
             if [ "$dest" != "-${dest#?}" ]; then # not deferred
               if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
-                msg "Copying $dest_name ${YEL}from extras${NC} to $dest ... "
+                msg "Copying $res_name ${YEL}from extras${NC} to $dest/$dest_name ... "
               else
-                msg "Copying $dest_name to $dest ... "
+                msg "Copying $res_name to $dest/$dest_name ... "
               fi
               mkdir -p "$BUILD_DIR/$dest"
               cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
@@ -596,6 +598,7 @@ copy_resources() {
               num=$((num+1))
               fin
               if [ "$dest_name" = "BOOTx64.efi" ] && [ -n "$BOOT_PROTECT_NUM" ]; then # BootProtect
+                if [ "$MODE" = "latestSource" ]; then dest_name="Bootstrap.efi"; fi
                 get_edit_res "$BOOT_PROTECT_NUM"
                 if [ "$val" = "Bootstrap" ]; then
                   msg "Copying $dest_name to OC/Bootstrap/Bootstrap.efi ... "
