@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(310820)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
+VER="3.6.0(030920)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
 REL_VER="060"
 
 INI=$(pwd)
@@ -2804,6 +2804,10 @@ case "${optchar}" in
 			FINDER="open"
 			EX_COM="${EX_COM}o";;
 		q)
+      if [ -n "$TUI_MODE" ]; then
+        msg "\n${YEL}NOTICE:${NC} Quiet mode not allowed with TUI\n"
+        exit 1
+      fi
 			QUIET="-q"
 			EX_COM="${EX_COM}q";;
 		s)
@@ -2813,6 +2817,11 @@ case "${optchar}" in
 			VERBOSE="-v"
 			EX_COM="${EX_COM}v";;
 		t)
+      if [ -n "$QUIET" ]; then
+        QUIET=""
+        msg "\n${YEL}NOTICE:${NC} TUI not allowed in quiet mode.\n"
+        exit 1
+      fi
 			if [ "$inputFilePath" = "stdin" ]; then
 				msg "TUI mode unavailable when plist is piped to stdin\n"
 			else

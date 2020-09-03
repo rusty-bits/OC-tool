@@ -568,3 +568,9 @@ KernelArch
 Prefer specified kernel architecture (Auto, i386, x86_64) when available. On macOS 10.7 and earlier XNU kernel may not boot with the usual x86_64 architecture, and the exact choice depends on many factors including boot arguments, SMBIOS, and operating system type. This setting will use the specified architecture to boot macOS when it is supported by the macOS and the configuration. Below is the algorithm determining the kernel architecture. See Configuration.pdf for more
 KernelCache
 Prefer specified kernel cache type (Auto, Cacheless, Mkext, Prelinked) when available. Different variants of macOS support different kernel caching variants designed to improve boot performance. This setting allows to prevent using faster kernel caching variants if slower variants are available for debugging and stability reasons. I.e. by specifying Mkext one will disable Prelinked for e.g. 10.6 but not 10.7 See Configuration.pdf
+EnablePassword
+Enable password protection to allow sensitive operations. Password protection ensures that sensitive operations like booting a non-default operating system (e.g. macOS recovery or a tool), resetting NVRAM storage, trying to boot into a non-default mode (e.g. verbose mode or safe mode) are not allowed without explicit user authentication by a custom password. Currently password and salt are hashed with 5000000 iterations of SHA-512. Note: This functionality is currently in development and is not ready for daily usage.
+PasswordHash
+Password hash used when EnabledPassword is set
+PasswordSalt
+Password salt used when EnablePassword is set
