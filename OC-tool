@@ -61,6 +61,7 @@ fin() {
 }
 
 missing() {
+  QUIET=""
 	msg "\n${RED}ERROR:${NC}\t${B}$1${NC} must be installed to continue\n\t$2\n\t$3\n"
 	msg "\tor run '${B}.tool-files/get-deps.sh${NC}' which will get dependencies for you\n"
 	exit 1
@@ -87,6 +88,7 @@ check_requirements() { #required commands moved to .tool-files/requirements for 
 
 check_config() { #config.plist must exist, even with -i option
 	if [ ! -f "$BASE_DIR/INPUT/config.plist" ]; then
+    QUIET=""
 		msg "\n${RED}ERROR:${NC}\t$BASE_DIR/INPUT/config.plist does not exist\n"
 		msg "\tEither - copy a config.plist to the INPUT folder,\n"
 		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
@@ -131,13 +133,15 @@ clone() { # will only clone if pkg is not local
 			update_log "Cloned" "$pkg_name"
 			cd ..
 		else
+      QUIET=""
 			msg "\nCan't clone $pkg_name while using -n option.\n"
-			exit 0
+			exit 1
 		fi
 	fi
 }
 
 git_failed() {
+  QUIET=""
 	msg "\n${RED}ERROR:${NC}\tfailed to retrieve ${YEL}$1${NC} info from git.\n"
 	if [ "$1" = "OC-tool" ]; then
 		msg "\tThis can be caused by using the Download button on github.com\n"
@@ -218,6 +222,7 @@ check_resources_for_updates() {
 }
 
 curl_failed() { # is this needed?
+  QUIET=""
 	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
 	msg "\tpossible shasum mismatch\n"
 	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
@@ -225,6 +230,7 @@ curl_failed() { # is this needed?
 }
 
 curl_unable() {
+  QUIET=""
   msg "\n${RED}ERROR:${NC}\tOC-tool can not extract $res_name automatically at this time\n"
   msg "\tYou can run ${YEL}git clone $git_url${NC}\n"
   msg "\tand copy $res_name from it into $BASE_DIR/extras and run OC-tool again\n"
@@ -233,6 +239,7 @@ curl_unable() {
 }
 
 unzip_failed() {
+  QUIET=""
 	msg "\n${RED}ERROR:$NC\tfailed to unzip $zip_name\n"
 	msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
 	msg "\twhich is able to unzip on some systems, but apparently not this one\n"
@@ -283,8 +290,9 @@ curl_parent() {
 			fin
 			echo "$(date) Downloaded $zip_name - $(printf "%s" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
 		else
+      QUIET=""
 			msg "\nCan't download $zip_name while using -n option.\n"
-			exit 0
+			exit 1
 		fi
 	fi
 	srce="$(pwd)"
@@ -320,6 +328,7 @@ make_base_tools() {
 
 build_failed() { # failed build even after backing up 5 commits
 	git checkout master
+  QUIET=""
 	msg "\n${RED}ERROR:${NC}\tbuild failed for $pkg_name\n"
 	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
 	exit 1
@@ -413,6 +422,7 @@ build_kext() {
 }
 
 missing_iasl() {
+  QUIET=""
 	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
 	msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
 	exit 1
@@ -534,6 +544,7 @@ prepare_resources() {
 
 res_not_found() {
 	if [ -z "$IGNORE" ]; then
+    QUIET=""
 		if [ "$MODE" = "latestSource" ]; then
 			msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON\n"
 		else
@@ -556,6 +567,7 @@ res_not_found() {
 }
 
 copy_failed() {
+  QUIET=""
 	msg "\n\n${RED}ERROR:${NC} Copying $res_name to $dest failed, see $LOGFILE for details.\n"
 	exit 1
 }
@@ -723,6 +735,7 @@ check_if_Sample_plist_updated() {
 }
 
 vault_failed() {
+  QUIET=""
 	msg "\n\n${RED}ERROR:${NC}\tvault build failed, see $LOGFILE for details\n"
 	msg "\tIf the log has a message about missing ${YEL}libcrypto.1.0.0.dylib${NC}\n"
 	msg "\tplease see the README.md Requirements section for possible solutions.\n"
@@ -873,6 +886,7 @@ set_build_type() {
 		r|release)
 			TYPE="release"; XCODE_CONFIG="Release";;
 		*)
+      QUIET=""
 			msg "Invalid build type selected in set_build_type()\n"
 			exit 1;;
 	esac
@@ -2539,6 +2553,7 @@ set_up_vault() {
 
 bad_config() {
 	if [ -z "$IGNORE" ]; then
+    QUIET=""
 		msg "\n${RED}ERROR:${NC}\tproblem found in config.plist file\n"
 		msg "\tSee $LOGFILE for details\n\n"
 		msg "\tIf you want to try fixing the error with OC-tool, you can use the -it options\n"
@@ -2759,15 +2774,16 @@ process_plist() {
 	"$TOOL_FILES/parsePlistEdit.sh"
 
 	if [ ! -e "edit_subs.txt" ]; then
-		msg "\n${RED}ERROR:${NC}\t${inputFilePath} does not appear to be an OpenCore plist\n"
-		msg "\tor it may just be missing sections that are present in the Sample.plist\n"
 		if [ -z "$IGNORE" ]; then
+      QUIET=""
+      msg "\n${RED}ERROR:${NC}\t${inputFilePath} does not appear to be an OpenCore plist\n"
+      msg "\tor it may just be missing sections that are present in the Sample.plist\n"
 			msg "\t${YEL}You may continue${NC} if you wish by using the -i option to bypass\n"
 			msg "\tthis warning.\n\n"
 			msg "\te.g. './OC-tool -i$EX_COM'\n\n"
 			exit 1
 		else
-			msg "\t${YEL}************* IGNORING *******************${NC}\n\n"
+			msg "\t${YEL}************* IGNORING ${inputFilePath} format *******************${NC}\n\n"
 		fi
 	fi
 	if [ -e "errors.txt" ]; then CONFIG_CHANGED="input scan"; fi
@@ -2794,6 +2810,7 @@ case "${optchar}" in
 		f)
 			IGNORE_SAMPLE="full";;
 		h) # help
+      QUIET=""
 			msg "$(cat "$TOOL_FILES"/help.msg)\n"
 			exit 0;;
 		i)
@@ -2855,6 +2872,7 @@ case "${optchar}" in
 			fi
 			EX_COM="${EX_COM}T";;
 		V)
+      QUIET=""
 			msg "OC-tool version $VER\n"
 			HAS_NVRAM=""
 			command -v nvram 1>/dev/null||HAS_NVRAM="false"
@@ -2870,6 +2888,7 @@ case "${optchar}" in
 		X)
 			REMOVE_RES="true";;
 		*)
+      QUIET=""
 			msg "$(cat "$TOOL_FILES/usage.msg")\n"
 			exit 1;;
 	esac
@@ -2892,6 +2911,7 @@ else
 		EX_COM="${EX_COM} ${inputFilePath}"
 	else
 		if [ -n "${inputFilePath}" ]; then
+      QUIET=""
 			msg "config.plist file '${inputFilePath}' not found\n"
 			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
 			exit 1
@@ -2905,6 +2925,7 @@ else
 fi
 process_plist
 if [ -e "$INPUT/parse_error.txt" ]; then
+  QUIET=""
   msg "\n${RED}ERROR:${NC} found problem in $CONFIG_PLIST \n"
   msg "$(cat "$INPUT"/parse_error.txt)\n"
   msg "\n"
