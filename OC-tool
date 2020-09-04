@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.0(030920)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
+VER="3.6.0(040920)\n\nprebuilt release -> 0.6.0\nprebuilt daily/latest source -> 0.6.1\n\ntested with REL-061-2020-08-29\ntested with Xcode 12 beta 4"
 REL_VER="060"
 
 INI=$(pwd)
@@ -225,7 +225,7 @@ curl_failed() { # is this needed?
   QUIET=""
 	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
 	msg "\tpossible shasum mismatch\n"
-	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
+	msg "\tsee $LOGFILE for details\n"
 	exit 1
 }
 
@@ -330,7 +330,7 @@ build_failed() { # failed build even after backing up 5 commits
 	git checkout master
   QUIET=""
 	msg "\n${RED}ERROR:${NC}\tbuild failed for $pkg_name\n"
-	if [ -z "$VERBOSE" ]; then msg "\tsee $LOGFILE for details\n"; fi
+	msg "\tsee $LOGFILE for details\n"
 	exit 1
 }
 
@@ -2508,17 +2508,18 @@ text_user_interface() {
 	msg "${NC}"
 }
 
-start_logging() {
-	if [ -z "$VERBOSE" ]; then
-		exec 6>&1 #start logging
-		exec > "$LOGFILE"
-		exec 2>&1
-	fi
-}
+#start_logging() {
+#	if [ -z "$VERBOSE" ]; then
+#		exec 6>&1 #start logging
+#		exec > "$LOGFILE"
+ #   exec &> >(tee -a "$LOGFILE")
+#		exec 2>&1
+#	fi
+#}
 
-stop_logging() {
-	if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
-}
+#stop_logging() {
+#	if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
+#}
 
 remove_resource_msg() {
 	msg "\n ${RED}***${NC} WARNING: -X option used ${RED}****************************************\n"
@@ -2800,7 +2801,10 @@ fi
 
 if [ -e "last_run_issues.txt" ]; then rm last_run_issues.txt; fi
 
-start_logging
+#start_logging
+exec > "$LOGFILE"
+ #   exec &> >(tee -a "$LOGFILE")   #process redirection not valid in POSIX
+exec 2>&1
 
 while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
@@ -3008,6 +3012,6 @@ if [ -e "$INPUT/errors.txt" ]; then
 	msg "\t'cat last_run_issues.txt'\n\n"
 	cp "$INPUT/errors.txt" "$BASE_DIR/last_run_issues.txt"
 fi
-stop_logging
+#stop_logging
 
 if [ -n "$FINDER" ] && [ "$UNAME" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click
