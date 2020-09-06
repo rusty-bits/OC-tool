@@ -574,3 +574,5 @@ PasswordHash
 Password hash used when EnabledPassword is set
 PasswordSalt
 Password salt used when EnablePassword is set
+DisabledLinkeditJettisn
+Disables LINKEDIT jettison code. This option lets \texttt{Lilu.kext} and possibly some others function in macOS Big Sur with best performance without keepsyms=1 boot argument
