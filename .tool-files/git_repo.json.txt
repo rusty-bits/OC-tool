@@ -693,7 +693,6 @@
 |VirtualSmc.efi|prebuiltRelease|@0|debug-sha256 "df9c36dd5654de1ba63da186cb5dd1295bda1963c0a69c2ff75e3bb74c897681"
 |VirtualSmc.efi|prebuiltRelease|@0|release "https://github.com/acidanthera/VirtualSMC/releases/download/1.0.8/VirtualSMC-1.0.8-RELEASE.zip"
 |VirtualSmc.efi|prebuiltRelease|@0|release-sha256 "47efa6d28d63968e585b485ec8a46b640117a8caee5d8edb3bf360d4f8551ef9"
-|LiluFriend.kext|latestSource "https://github.com/PMheart/LiluFriend"
 |LiluFriend.kext|prebuiltRelease|@0|version "1.1.0"
 |LiluFriend.kext|prebuiltRelease|@0|debug "https://github.com/PMheart/LiluFriend/releases/download/1.1.0/1.1.0.RELEASE.zip"
 |LiluFriend.kext|prebuiltRelease|@0|debug-sha256 "166195d8bb144b56b3d579488365e7b65f8006b386fc882a80dce6a7dde11d52"

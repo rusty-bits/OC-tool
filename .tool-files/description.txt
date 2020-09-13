@@ -575,4 +575,6 @@ Password hash used when EnabledPassword is set
 PasswordSalt
 Password salt used when EnablePassword is set
 DisableLinkeditJettison
-  Disables LINKEDIT jettison code. This option lets Lilu.kext and possibly some others function in macOS Big Sur with best performance without keepsyms=1 boot argument
+Disables LINKEDIT jettison code. This option lets Lilu.kext and possibly some others function in macOS Big Sur with best performance without keepsyms=1 boot argument
+ProcessorType
+Refer to SMBIOS - ProcessorType - Combined of Processor Major and Minor types
