@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.1(200920)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-09-19\ntested with Xcode 12 beta 4"
+VER="3.6.1(210920)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-09-21\ntested with Xcode 12 beta 4"
 REL_VER="061"
 
 INI=$(pwd)
@@ -378,8 +378,14 @@ build_driver() {
 build_kext() {
 	mkdir -p "$RES_DIR"/Kext_builds
 	cd "$RES_DIR"/Kext_builds
+  if [ ! -d "MacKernelSDK" ]; then
+    msg "Cloning https://github.com/acidanthera/MacKernelSDK into MacKernelSDK ... "
+    git clone https://github.com/acidanthera/MacKernelSDK
+    fin
+  fi
 	clone "$git_url"
 	cd "$pkg_name"
+	if [ ! -L "MacKernelSDK" ]; then ln -s "$RES_DIR"/Kext_builds/MacKernelSDK .; fi
 	if [ -n "$REMOVE_RES" ];then
 		msg "Removing Xcode DerivedData for $pkg_name ... "
 		rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
