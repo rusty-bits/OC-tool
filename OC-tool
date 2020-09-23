@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.1(210920)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-09-21\ntested with Xcode 12 beta 4"
+VER="3.6.1(230920)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-09-23\ntested with Xcode 12 beta 4"
 REL_VER="061"
 
 INI=$(pwd)
@@ -371,6 +371,11 @@ build_driver() {
         fin
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
+      if [ "$res_name" = "Bootstrap.efi" ]; then
+        msg "Placing Acidanthera Research (C) into Bootstrap.efi ... "
+        dd if="$TOOL_FILES"/ARC of="$srce"/Bootstrap.efi bs=64 seek=1 count=1 conv=notrunc
+        fin
+      fi
     fi
     fi
 }
