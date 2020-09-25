@@ -258,7 +258,11 @@ clone_child() { # need parent first, then zip source
 	git_url=$(grep "|$parent|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	tempRes="$res_name" # hold self
 	res_name="$parent"
-	clone_parent # temp use parent resources
+  if [ -z "$git_url" ]; then
+    res_not_found "$tempRes"
+  else
+    clone_parent # temp use parent resources
+  fi
 	git_url="$path"
 	res_name="$tempRes"
 }
@@ -342,11 +346,10 @@ build_driver() {
   else
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
     cd "$pkg_name"
-    if [ "$res_name" = "OpenShell.efi" ]; then res_name="Shell.efi"; fi # use Shell.efi for source build
-    if [ "$res_name" = "BOOTx64.efi" ]; then res_name="Bootstrap.efi"; fi # should not need, should never see BOOTx64.efi
-#    if [ "$res_name" = "BOOTx64.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Bootstrap.efi"; fi
+    tempRes="$res_name"
+    if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
     if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-      { [ ! -e "$srce/$res_name" ] && [ "$res_name" != "base" ]; }; then
+      { [ ! -e "$srce/$tempRes" ] && [ "$res_name" != "base" ]; }; then
       rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
       if [ -f "$pkg_name.dsc" ]; then
         if [ -z "$BASE_TOOLS" ]; then #tools not built yet
@@ -359,6 +362,7 @@ build_driver() {
         a=1
         while :
         do
+#          msg "Building $AUDK_CONFIG $pkg_name for ${res_name##*/} ... "
           msg "Building $AUDK_CONFIG $pkg_name ... "
           build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
           if [ "$a" -eq "5" ]; then return 1; fi
@@ -398,8 +402,9 @@ build_kext() {
 	fi
 	srce="$(pwd)/build/$XCODE_CONFIG$temp"
 	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		[ ! -e "$srce/$res_name" ]; then
+		[ ! -e "$srce/${res_name##*/}" ]; then
       msg "Building $AUDK_CONFIG $pkg_name ... "
+#      msg "Building $AUDK_CONFIG $pkg_name for ${res_name##*/} ... "
 		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
 		if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
@@ -423,7 +428,8 @@ build_kext() {
 			git_sha=$(git rev-parse @|cut -c -7)
 			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
 			git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
-			msg "Building $pkg_name ... "
+      msg "Building $pkg_name ... "
+#      msg "Building $pkg_name for ${res_name##*/} ... "
 			a=$((a+1))
 		done
 		if [ "$a" -ne "1" ]; then git checkout master; fi
@@ -604,6 +610,8 @@ copy_resources() {
 						res_not_found "$res_name"
 					else
 						dest_name="$res_name"
+            if [ "$dest_name" = "OpenShell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Shell.efi"; fi
+            if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "prebuiltRelease" ]; then res_name="OpenShell.efi"; fi
             if [ "$dest_name" = "Bootstrap.efi" ]; then dest_name="BOOTx64.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
@@ -807,11 +815,15 @@ find_srce_url() {
 	if [ "$MODE" = "latestSource" ]; then
 		git_url=$(grep "|$res_name|$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 		if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"'); fi
+    if [ -z "$git_url" ]; then parent=""; fi # ignore parent with no source files
 	else
-		if [ -z "$parent" ]; then
+		if [ -z "$parent" ]; then # is parent
 			git_url=$(grep "|$res_name|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		else
+		else # is child
 			git_url=$(grep "|$res_name|path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+      if [ "$MODE" = "prebuiltDaily" ]; then
+        checkDaily=$(grep "|$parent|prebuiltDaily" "$TOOL_FILES/git_repo.json.txt")||parent=""
+      fi
 		fi
 	fi
 }
@@ -820,7 +832,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
 	temp=""
   tempDest=""
 	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
-  if [ "${res_name##*/}" != "$res_name" ]; then # strip off path
+  if [ "${res_name##*/}" != "$res_name" ]; then # strip off path from plugin
 #    tempDest="${res_name%/*/*}/"
     tempDest="${res_name%/*}/"
 #    res_name="${res_name#$tempDest}"
@@ -834,8 +846,9 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
   temp=""
   if [ -e "$BASE_DIR/extras/${res_name##*/}" ]; then #found directory (kext) or file (driver) at root level
     srce="$BASE_DIR/extras"
-  elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) at child level
+  elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) as plugin
     srce="$BASE_DIR/extras$tempDest"
+#  elif [ -n "$git_url" ]; then # found repo
   elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
     srce="-$tempDest" #save path for Plugins
   elif [ "${key##* }" = "-" ];then
