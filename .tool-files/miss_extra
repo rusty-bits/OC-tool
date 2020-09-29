@@ -3,6 +3,7 @@ Kernel|Scheme|
 Misc|Boot|
 Misc|Debug|
 Misc|Security|
+PlatformInfo|Generic|
 UEFI|APFS|
 UEFI|Audio|
 UEFI|Input|
