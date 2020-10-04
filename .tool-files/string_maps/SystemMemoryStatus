@@ -1,0 +1,3 @@
+Auto --- use the original PlatformFeature value.
+Upgradable --- explicitly unset PT\_FEATURE\_HAS\_SOLDERED\_SYSTEM\_MEMORY 0x2 in PlatformFeature.
+Soldered --- explicitly set PT\_FEATURE\_HAS\_SOLDERED\_SYSTEM\_MEMORY in PlatformFeature.

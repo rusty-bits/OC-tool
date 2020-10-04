@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.1(031020)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-10-03\ntested with Xcode 12.2 beta"
+VER="3.6.1(041020)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-10-03\ntested with Xcode 12.2 beta"
 REL_VER="061"
 
 INI=$(pwd)
@@ -426,7 +426,9 @@ build_kext() {
 			if [ -z "$buildScheme" ]; then
 				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" build && break
 			else
-				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
+#				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
+        msg "($buildScheme) ... "
+				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" build && break
 			fi
 			if [ "$a" -eq "5" ]; then return 1; fi
 			git_sha=$(git rev-parse @|cut -c -7)
