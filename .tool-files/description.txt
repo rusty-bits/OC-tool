@@ -580,3 +580,5 @@ ProcessorType
 Refer to SMBIOS - ProcessorType - Combined of Processor Major and Minor types
 SystemMemoryStatus
 Indicates whether system memory is upgradable in PlatformFeature This controls the visibility of the Memory tab in About This Mac.  Valid values:  Auto --- use the original PlatformFeature value.  Upgradable --- explicitly unset PT\_FEATURE\_HAS\_SOLDERED\_SYSTEM\_MEMORY 0x2 in PlatformFeature.   Soldered --- explicitly set PT\_FEATURE\_HAS\_SOLDERED\_SYSTEM\_MEMORY in PlatformFeature.    Note: On certain Mac models (namely MacBookPro10,x and any MacBookAir), SPMemoryReporter.spreporter will ignore \texttt{PT\_FEATURE\_HAS\_SOLDERED\_SYSTEM\_MEMORY and assume that system memory is non-upgradable
+ExtendBTFeatureFlags
+Set FeatureFlags to 0x0F for full functionality of Bluetooth, including Continuity. Note: This option is a substitution for BT4LEContinuityFixup.kext, which does not function properly due to late patching progress.
