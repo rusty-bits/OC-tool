@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
-VER="3.6.1(041020)\n\nprebuilt release -> 0.6.1\nprebuilt daily/latest source -> 0.6.2\n\ntested with REL-062-2020-10-03\ntested with Xcode 12.2 beta"
-REL_VER="061"
+VER="3.6.2(071020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-03\ntested with Xcode 12.2 beta"
+REL_VER="062"
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
