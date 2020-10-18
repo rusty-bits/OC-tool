@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.2(071020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-03\ntested with Xcode 12.2 beta"
+VER="3.6.2(181020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-18\ntested with Xcode 12.2 beta"
 REL_VER="062"
 
 INI=$(pwd)
@@ -457,29 +457,29 @@ build_kext() {
 	fi
 }
 
-missing_iasl() {
-  QUIET=""
-	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
-	msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
-	exit 1
-}
+#missing_iasl() {
+#  QUIET=""
+#	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
+#	msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
+#	exit 1
+#}
 
-build_acpi() { # compile .dsl into .aml if user hasn't already
-	pkg_name=${res_name%%.*}
-
-	srce="${git_url%/*}"
-	srce="${srce##*/}"
-	if [ -e "$srce/$res_name" ];then
-		return 0
-	elif [ -e "$RES_DIR/$git_url" ];then
-		command -v iasl||missing_iasl
-		msg "Building $res_name ... "
-		iasl "$RES_DIR/$git_url"||return 1
-		fin
-	else
-		return 1
-	fi
-}
+#build_acpi() { # compile .dsl into .aml if user hasn't already
+#	pkg_name=${res_name%%.*}
+#
+#	srce="${git_url%/*}"
+#	srce="${srce##*/}"
+#	if [ -e "$srce/$res_name" ];then
+#		return 0
+#	elif [ -e "$RES_DIR/$git_url" ];then
+#		command -v iasl||missing_iasl
+#		msg "Building $res_name ... "
+#		iasl "$RES_DIR/$git_url"||return 1
+#		fin
+#	else
+#		return 1
+#	fi
+#}
 
 get_res() { # extract resource from psuedo array (needed for POSIX)
 	eval enabled="\$res$1"
@@ -541,8 +541,8 @@ prepare_resources() {
 									set_build_type "release"
 								fi
 								build_kext||build_failed;;
-							"aml")
-								build_acpi||build_failed;;
+#							"aml")
+#								build_acpi||build_failed;;
 							esac;;
 						"prebuiltRelease"|"prebuiltDaily")
 							case ${res_name##*.} in
@@ -643,6 +643,7 @@ copy_resources() {
                 msg "Copying $res_name to $dest/$dest_name ... "
               fi
               mkdir -p "$BUILD_DIR/$dest"
+              if [ ! -e "$srce/$res_name" ]; then res_not_found $res_name; fi
               cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
               if [ -z "$QUIET" ]; then
                 echo "copied $dest_name to $dest"
