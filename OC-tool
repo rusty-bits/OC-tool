@@ -14,7 +14,7 @@ if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 OPTSPEC="dfhinoqstvCDINTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
-GIT_JSON="$TOOL_FILES/git_repo.json"
+GIT_JSON_TXT="$TOOL_FILES/git_repo.json.txt"
 OUTPUT="$BASE_DIR/OUTPUT"
 BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
@@ -29,6 +29,7 @@ NC='\033[0m'; B='\033[1m'; U='\033[4m' # UO='\033[24m'
 INV='\033[7m'
 
 MODE="prebuiltRelease"; TYPE="release"  # set default to release version of prebuilt release
+JSON_FILE="$GIT_JSON_TXT"
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
@@ -218,7 +219,12 @@ check_resources_for_updates() {
 		else
 			msg "have been updated\n"
 		fi
-	fi
+  fi
+  if [ "$MODE" = "prebuiltDaily" ] && [ ! -d "$RES_DIR/dailyJson" ]; then
+    mkdir -p "$RES_DIR"
+    cd "$RES_DIR"
+    clone "https://github.com/rusty-bits/dailyJson"
+  fi
 }
 
 curl_failed() { # is this needed?
@@ -255,7 +261,7 @@ clone_parent() {
 
 clone_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "|$parent|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
 	tempRes="$res_name" # hold self
 	res_name="$parent"
   if [ -z "$git_url" ]; then
@@ -277,7 +283,8 @@ curl_parent() {
 	mkdir -p "$zip_dir"
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "|$res_name|$MODE|@0|$TYPE-sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$JSON_FILE"|cut -f2 -d '"')
+#	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
 			msg "Downloading $zip_name ... "
@@ -304,13 +311,18 @@ curl_parent() {
 		fi
 	fi
 	srce="$(pwd)"
-	p=$(grep "|$res_name|$MODE|@0|path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"') || p=""
+	p=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || p=""
 	if [ -n "$p" ]; then srce="$srce/$p"; fi
 }
 
 curl_child() { # need parent first, then zip source
 	path="$git_url"
-	git_url=$(grep "|$parent|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+#  msg "path<$path> parent<$parent>\n"
+	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
+  if [ -z "$git_url" ]; then
+    git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$GIT_JSON_TXT"|cut -f2 -d '"')
+  fi
+#  msg "git_url<$git_url>\n"
   if [ "${git_url##*.}" = "git" ]; then
     cd "$RES_DIR"
     clone "$git_url"
@@ -414,12 +426,12 @@ build_kext() {
 		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
 			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
 		fi
-		requiresRes=$(grep "|$res_name|requiresRes " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		requiresRes=$(grep "|$res_name|requiresRes " "$GIT_JSON_TXT"|cut -f2 -d '"')
 		if [ -n "$requiresRes" ]; then
 			rm -rf "$requiresRes"
 			ln -s "$RES_DIR/Kext_builds/$requiresRes" .
 		fi
-		buildScheme=$(grep "|$res_name|buildScheme " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+		buildScheme=$(grep "|$res_name|buildScheme " "$GIT_JSON_TXT"|cut -f2 -d '"')
 		a=1
 		while :
 		do
@@ -491,7 +503,7 @@ prepare_resources() {
 			"latestSource")
 				msg "\n${GRN}Building new or updated resources${NC}\n"
 				clone "https://github.com/acidanthera/audk" "UDK";;
-			"prebuiltRelease")
+			"prebuiltRelease"|"prebuiltDaily")
 				HAS_SHASUM=""
 				msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
 				command -v shasum||HAS_SHASUM="false"
@@ -500,8 +512,8 @@ prepare_resources() {
 					msg "\tDownloading will continue, but there is no way to check zip file sums\n"
 					msg "\tinstall the shasum command if this is an issue\n\n"
 				fi;;
-			"prebuiltDaily")
-				msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
+#			"prebuiltDaily")
+#				msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
 		esac
 	fi
 
@@ -532,7 +544,7 @@ prepare_resources() {
 							"aml")
 								build_acpi||build_failed;;
 							esac;;
-						"prebuiltRelease")
+						"prebuiltRelease"|"prebuiltDaily")
 							case ${res_name##*.} in
 							"base")
 								;;
@@ -540,22 +552,24 @@ prepare_resources() {
 								if [ -n "$parent" ]; then
 									curl_child||curl_unable
 								else
+                  msg "res_name<$res_name> why am I here?\n"
 									curl_parent
-								fi;;
+								fi
+                ;;
 							esac
               ;;
-						"prebuiltDaily")
-							case ${res_name##*.} in
-								"efi"|"kext"|"aml")
-									if [ -n "$parent" ]; then
-										clone_child
-									else
-										clone_parent
-									fi
-                  srce="$srce$temp"
-                  ;;
-							esac
-              ;;
+#						"prebuiltDaily")
+#							case ${res_name##*.} in
+#								"efi"|"kext"|"aml")
+#									if [ -n "$parent" ]; then
+#										clone_child
+#									else
+#										clone_parent
+#									fi
+#                  srce="$srce$temp"
+#                  ;;
+#							esac
+#              ;;
 					esac
 					set_res "$G$S"
 				fi
@@ -570,7 +584,7 @@ res_not_found() {
 	if [ -z "$IGNORE" ]; then
     QUIET=""
 		if [ "$MODE" = "latestSource" ]; then
-			msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON\n"
+			msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON_TXT\n"
 		else
 			msg "\n${RED}ERROR:${NC}\t$1 - no prebuilt found for $1\n"
 		fi
@@ -584,7 +598,7 @@ res_not_found() {
 		msg "\tfor example, try '$INIT_COM -i$EX_COM'\n"
 		exit 1
 	else
-		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON or extras directory - ${YEL}IGNORING${NC}\n"
+		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON_TXT or extras directory - ${YEL}IGNORING${NC}\n"
 		if [ "$IGNORE" = "true" ]; then IGNORE="yes"; fi
 		CONFIG_CHANGED="-i option" # need to write new config before build
 	fi
@@ -617,7 +631,7 @@ copy_resources() {
 					else
 						dest_name="$res_name"
             if [ "$dest_name" = "OpenShell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Shell.efi"; fi
-            if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" = "prebuiltRelease" ]; then res_name="OpenShell.efi"; fi
+            if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi"; fi
             if [ "$dest_name" = "Bootstrap.efi" ]; then dest_name="BOOTx64.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
 						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
@@ -771,42 +785,43 @@ vault_failed() {
 
 build_vault() {
 	msg "\nBuilding vault files for $BUILD_DIR ... "
-	case $MODE in
-		prebuiltRelease)
+#	case $MODE in
+#		prebuiltRelease)
 			if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
 				mkdir -p "$RES_DIR/UDK/OpenCorePkg"
 				cd "$RES_DIR/UDK/OpenCorePkg"
-				ocsupporturl=$(grep "|OpenCorePkg|$MODE|@0|debug " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+				ocsupporturl=$(grep "|OpenCorePkg|versions|@0|links|debug " "$GIT_JSON_TXT"|cut -f2 -d '"')
 				curl -L -O "$ocsupporturl"
 				ocsupportzip=${ocsupporturl##*/}
 				tar xvf "$ocsupportzip"
-			fi;;
-	esac
+			fi
+#      ;;
+#	esac
 	cd "$BUILD_DIR"/OC
 	ls vault* 1> /dev/null 2>&1 && rm vault.*
-	case $MODE in
-		prebuiltRelease)
+#	case $MODE in
+#		prebuiltRelease)
 			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-			;;
-		latestSource)
-			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-			;;
-		prebuiltDaily)
-			"$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
-			;;
-	esac
+#			;;
+#		latestSource)
+#			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
+#			;;
+#		prebuiltDaily)
+#			"$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
+#			;;
+#	esac
 	if [ "$USE_VAULT" != "Basic" ]; then
-		case $MODE in
-			prebuiltRelease)
+#		case $MODE in
+#			prebuiltRelease)
 				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-				;;
-			latestSource)
-				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-				;;
-			prebuiltDaily)
-				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
-				;;
-		esac
+#				;;
+#			latestSource)
+#				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+#				;;
+#			prebuiltDaily)
+#				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
+#				;;
+#		esac
 		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
 		off=$((str+16))
 		len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
@@ -817,19 +832,20 @@ build_vault() {
 }
 
 find_srce_url() {
-	parent=$(grep "|$res_name|parent " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+	parent=$(grep "|$res_name|parent " "$GIT_JSON_TXT"|cut -f2 -d '"')
+#  msg "res_name<$res_name> parent<$parent>\n"
 	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(grep "|$res_name|$MODE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-		if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"'); fi
+		git_url=$(grep "|$res_name|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"')
+		if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"'); fi
     if [ -z "$git_url" ]; then parent=""; fi # ignore parent with no source files
 	else
 		if [ -z "$parent" ]; then # is parent
-			git_url=$(grep "|$res_name|$MODE|@0|$TYPE " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+			git_url=$(grep "|$res_name|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
 		else # is child
-			git_url=$(grep "|$res_name|path " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-      if [ "$MODE" = "prebuiltDaily" ]; then
-        checkDaily=$(grep "|$parent|prebuiltDaily" "$TOOL_FILES/git_repo.json.txt")||parent=""
-      fi
+			git_url=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"')
+#      if [ "$MODE" = "prebuiltDaily" ]; then  # needs to be fixed to read dorito config.json
+#        checkDaily=$(grep "|$parent|versions|@0|links" "$TOOL_FILES/config.txt")||parent=""
+#      fi
 		fi
 	fi
 }
@@ -2931,6 +2947,9 @@ case "${optchar}" in
 done
 
 RES_DIR="$BASE_DIR/resources/$MODE"
+if [ "$MODE" = "prebuiltDaily" ]; then
+  JSON_FILE="$RES_DIR/dailyJson/config.json.txt"
+fi
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
