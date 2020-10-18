@@ -50,6 +50,8 @@ Now, if you want the latest build made yourself from source you will need additi
 [vit9696](https://github.com/vit9696), [PMheart](https://github.com/PMheart), and [cattyhouse](https://github.com/cattyhouse)  
 for parts of [macbuild.tool](https://github.com/acidanthera/OpenCoreShell/blob/master/macbuild.tool) used in .tool-files/get-deps.sh  
 
+[DhinakG](https://github.com/dhinakg) for the [daily build repo](https://dortania.github.io/builds) that OC-tool now uses if you use the -d option  
+
 elliptic-shiho for the [parse_json.sh gist](https://gist.github.com/elliptic-shiho/45698491e1f3a0ba51f4c2e81d0fcfa4) on github  
 
 ---
