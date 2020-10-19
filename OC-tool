@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.2(181020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-18\ntested with Xcode 12.2 beta"
+VER="3.6.2(191020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-18\ntested with Xcode 12.2 beta"
 REL_VER="062"
 
 INI=$(pwd)
@@ -328,6 +328,7 @@ curl_child() { # need parent first, then zip source
     clone "$git_url"
     srce="$(pwd)/$pkg_name"
   else
+    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/${pkg_name}Docs/"; fi
     temp="$res_name" # hold self
     res_name="$parent"
     curl_parent # temp use parent resources
@@ -361,6 +362,7 @@ build_driver() {
     srce="$(pwd)/$pkg_name/Drivers"
   else
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
+    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/$pkg_name/Docs/"; fi
     cd "$pkg_name"
     tempRes="$res_name"
     if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
@@ -765,7 +767,7 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 }
 
 check_if_Sample_plist_updated() {
-	DOC_DIR="$RES_DIR/UDK/OpenCorePkg/Docs"
+  if [ -z "$DOC_DIR" ]; then msg "\nFailes to find docs\n"; exit 1; fi
 	if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
 		cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
 	else
@@ -2955,6 +2957,10 @@ if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start m
 	msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
+if [ "$MODE" = "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
+  msg "\n${YEL}NOTICE:${NC} Only able to build from source on macOS\n\n"
+  exit 0
+fi
 
 if [ -z "$UPDATE" ]; then check_tool_for_updates;fi
 rm -rf "$INPUT" # this looks scary, but input comes from a temp folder
@@ -3043,7 +3049,7 @@ prepare_resources
 set_up_dest_dir
 copy_resources
 
-if [ "$MODE" = "latestSource" ]; then check_if_Sample_plist_updated; fi
+if [ "$MODE" != "prebuiltRelease" ]; then check_if_Sample_plist_updated; fi
 if [ -n "$USE_VAULT" ]; then
 	build_vault||vault_failed
 fi
