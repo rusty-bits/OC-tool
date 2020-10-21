@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.2(191020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-18\ntested with Xcode 12.2 beta"
+VER="3.6.2(201020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-21\ntested with Xcode 12.2 beta"
 REL_VER="062"
 
 INI=$(pwd)
@@ -284,6 +284,9 @@ curl_parent() {
 	cd "$zip_dir"
 	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
 	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$JSON_FILE"|cut -f2 -d '"')
+  if [ -z "$sha" ]; then
+    sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$GIT_JSON_TXT"|cut -f2 -d '"')
+  fi
 #	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
 	if [ "$(cat shasum256)" != "$sha" ]; then
 		if [ -z "$UPDATE" ]; then
@@ -320,7 +323,9 @@ curl_child() { # need parent first, then zip source
 #  msg "path<$path> parent<$parent>\n"
 	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
   if [ -z "$git_url" ]; then
+    msg "\nParent resource $parent does not exist in daily repo, looking for $parent in standard repo.\n"
     git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$GIT_JSON_TXT"|cut -f2 -d '"')
+    if [ -z "$git_url" ]; then msg "no prebuilt resources found for $parent\n"; exit 1; fi
   fi
 #  msg "git_url<$git_url>\n"
   if [ "${git_url##*.}" = "git" ]; then
@@ -328,7 +333,7 @@ curl_child() { # need parent first, then zip source
     clone "$git_url"
     srce="$(pwd)/$pkg_name"
   else
-    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/${pkg_name}Docs/"; fi
+    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/${pkg_name}Docs"; fi
     temp="$res_name" # hold self
     res_name="$parent"
     curl_parent # temp use parent resources
@@ -362,7 +367,7 @@ build_driver() {
     srce="$(pwd)/$pkg_name/Drivers"
   else
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/$pkg_name/Docs/"; fi
+    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/$pkg_name/Docs"; fi
     cd "$pkg_name"
     tempRes="$res_name"
     if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
@@ -775,7 +780,8 @@ check_if_Sample_plist_updated() {
 	fi
 	cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/."
 	cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
-	cp "$DOC_DIR/Differences/Differences.pdf" "$BASE_DIR/Docs/."
+  if [ "$MODE" = "latestSource" ]; then DOC_DIR="$DOC_DIR/Differences"; fi
+	cp "$DOC_DIR/Differences.pdf" "$BASE_DIR/Docs/."
 }
 
 vault_failed() {
