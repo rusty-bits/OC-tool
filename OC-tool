@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.2(201020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-21\ntested with Xcode 12.2 beta"
+VER="3.6.2(271020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-27\ntested with Xcode 12.2 beta"
 REL_VER="062"
 
 INI=$(pwd)
@@ -322,10 +322,11 @@ curl_child() { # need parent first, then zip source
 	path="$git_url"
 #  msg "path<$path> parent<$parent>\n"
 	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
-  if [ -z "$git_url" ]; then
-    msg "\nParent resource $parent does not exist in daily repo, looking for $parent in standard repo.\n"
+  if [ -z "$git_url" ] && [ "$MODE" = "prebuiltDaily" ]; then
+    msg "\nParent $parent not in daily repo, looking in standard repo ... "
     git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$GIT_JSON_TXT"|cut -f2 -d '"')
-    if [ -z "$git_url" ]; then msg "no prebuilt resources found for $parent\n"; exit 1; fi
+    if [ -z "$git_url" ]; then msg "\n${RED}ERROR:${NC} no prebuilt resources found for $parent\n"; exit 1; fi
+    msg "${GRN}found${NC}\n"
   fi
 #  msg "git_url<$git_url>\n"
   if [ "${git_url##*.}" = "git" ]; then

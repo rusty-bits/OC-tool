@@ -586,3 +586,5 @@ LegacyCommpage
 Replaces the default 64-bit commpage bcopy implementation with one that does not require SSSE3, useful for legacy platforms. This prevents a commpage no match for last panic due to no available 64-bit bcopy functions that do not require SSSE3
 CustomMemory
 Use custom memory configuration defined in the Memory section. This completely replaces any existing memory configuration in SMBIOS, and is only active when UpdateSMBIOS is set to true.
+ForceResolution
+Forces Resolution to be set in cases where the desired resolution is not available by default, such as on legacy Intel GMA and first generation Intel HD Graphics (Ironlake/Arrandale). Setting Resolution toi Max will try to pull the largest available resolution from the connected display's EDID. Note: This option depends on the OC\_FORCE\_RESOLUTION\_PROTOCOL protocol being present. This protocol is currently only supported by OpenDuetPkg. The OpenDuetPkg implementation currently only supports Intel iGPUs.
