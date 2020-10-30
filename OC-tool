@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.2(271020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-27\ntested with Xcode 12.2 beta"
+VER="3.6.2(301020)\n\nprebuilt release -> 0.6.2\nprebuilt daily/latest source -> 0.6.3\n\ntested with REL-063-2020-10-28\ntested with Xcode 12.2 beta 3"
 REL_VER="062"
 
 INI=$(pwd)
@@ -42,183 +42,183 @@ ADD_RES_NUM="-1"; LA="1"
 ad2stk=""; C_TEST="ICBIZWxsbywgd29ybGQhICAK"
 
 msg() { #write $1 to screen if not quiet
-	if [ -z "$QUIET" ]; then
-		printf "%b" "$1" > "$TTY_OUT"
-	else
-		printf "%b" "$1"
-	fi
+  if [ -z "$QUIET" ]; then
+    printf "%b" "$1" > "$TTY_OUT"
+  else
+    printf "%b" "$1"
+  fi
 }
 
 msgs() { #write $1 to screen if not quiet don't interpres esc codes
-	if [ -z "$QUIET" ]; then
-		printf "%s" "$1" > "$TTY_OUT"
-	else
-		printf "%s" "$1"
-	fi
+  if [ -z "$QUIET" ]; then
+    printf "%s" "$1" > "$TTY_OUT"
+  else
+    printf "%s" "$1"
+  fi
 }
 
 fin() {
-	msg "${GRN}done${NC}\n"
+  msg "${GRN}done${NC}\n"
 }
 
 missing() {
   QUIET=""
-	msg "\n${RED}ERROR:${NC}\t${B}$1${NC} must be installed to continue\n\t$2\n\t$3\n"
-	msg "\tor run '${B}.tool-files/get-deps.sh${NC}' which will get dependencies for you\n"
-	exit 1
+  msg "\n${RED}ERROR:${NC}\t${B}$1${NC} must be installed to continue\n\t$2\n\t$3\n"
+  msg "\tor run '${B}.tool-files/get-deps.sh${NC}' which will get dependencies for you\n"
+  exit 1
 }
 
 check_requirements() { #required commands moved to .tool-files/requirements for portability
-	res=""
-	while read -r line
-	do
-		res="$res*$line"
-	done < "$TOOL_FILES/requirements"
-	res="$res*"
-	res=$(echo "$res"|cut -f 2- -d '*')
+  res=""
+  while read -r line
+  do
+    res="$res*$line"
+  done < "$TOOL_FILES/requirements"
+  res="$res*"
+  res=$(echo "$res"|cut -f 2- -d '*')
 
-	until [ -z "$res" ]
-	do
-		req=$(echo "$res"|cut -f 1 -d ',')
-		reqm1=$(echo "$res"|cut -f 2 -d ',')
-		reqm2=$(echo "$res"|cut -f 3 -d ',')
-		command -v "$req"||missing "$req" "$reqm1" "$reqm2"
-		res=$(echo "$res"|cut -f 2- -d '*')
-	done
+  until [ -z "$res" ]
+  do
+    req=$(echo "$res"|cut -f 1 -d ',')
+    reqm1=$(echo "$res"|cut -f 2 -d ',')
+    reqm2=$(echo "$res"|cut -f 3 -d ',')
+    command -v "$req"||missing "$req" "$reqm1" "$reqm2"
+    res=$(echo "$res"|cut -f 2- -d '*')
+  done
 }
 
 check_config() { #config.plist must exist, even with -i option
-	if [ ! -f "$BASE_DIR/INPUT/config.plist" ]; then
+  if [ ! -f "$BASE_DIR/INPUT/config.plist" ]; then
     QUIET=""
-		msg "\n${RED}ERROR:${NC}\t$BASE_DIR/INPUT/config.plist does not exist\n"
-		msg "\tEither - copy a config.plist to the INPUT folder,\n"
-		msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
-		msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file | ./OC-tool'\n"
-		exit 1
-	fi
+    msg "\n${RED}ERROR:${NC}\t$BASE_DIR/INPUT/config.plist does not exist\n"
+    msg "\tEither - copy a config.plist to the INPUT folder,\n"
+    msg "\tor - provide a full path to a config.plist './OC-tool path_to_config'\n"
+    msg "\tor - pipe a config.plist into OC-tool 'cat some_config_file | ./OC-tool'\n"
+    exit 1
+  fi
 }
 
 set_up_dest_dir() {
-	if [ -d "$BUILD_DIR" ]; then
-		msg "Removing old $BUILD_DIR ... "
-		rm -rf "$BUILD_DIR"; fin
-	fi
-	msg "Creating new $BUILD_DIR ... "
-	mkdir -p "$BUILD_DIR/BOOT"
-	mkdir -p "$BUILD_DIR/OC"
-	fin
+  if [ -d "$BUILD_DIR" ]; then
+    msg "Removing old $BUILD_DIR ... "
+    rm -rf "$BUILD_DIR"; fin
+  fi
+  msg "Creating new $BUILD_DIR ... "
+  mkdir -p "$BUILD_DIR/BOOT"
+  mkdir -p "$BUILD_DIR/OC"
+  fin
 }
 
 update_log() {
-	new_hash=$(git rev-parse @|cut -c -7)
-	echo "$(date) $1 $2 - $new_hash" >> "$BASE_DIR/update.log"
+  new_hash=$(git rev-parse @|cut -c -7)
+  echo "$(date) $1 $2 - $new_hash" >> "$BASE_DIR/update.log"
 }
 
 clone() { # will only clone if pkg is not local
-	if [ -z "$2" ]; then
-		pkg_name="$1"
-		pkg_name="${pkg_name##*/}"
-	else
-		pkg_name="$2"
-	fi
-	if [ ! -d "$pkg_name" ]; then
-		if [ -z "$UPDATE" ]; then
-			msg "Cloning $1 into $pkg_name ... "
+  if [ -z "$2" ]; then
+    pkg_name="$1"
+    pkg_name="${pkg_name##*/}"
+  else
+    pkg_name="$2"
+  fi
+  if [ ! -d "$pkg_name" ]; then
+    if [ -z "$UPDATE" ]; then
+      msg "Cloning $1 into $pkg_name ... "
       if [ "$pkg_name" = "UDK" ]; then
         git clone --recursive "$1" -b master --depth=1 "$2"
       else
         git clone "$1" "$pkg_name"
       fi
-			fin
-			cd "$pkg_name"
-			update_log "Cloned" "$pkg_name"
-			cd ..
-		else
+      fin
+      cd "$pkg_name"
+      update_log "Cloned" "$pkg_name"
+      cd ..
+    else
       QUIET=""
-			msg "\nCan't clone $pkg_name while using -n option.\n"
-			exit 1
-		fi
-	fi
+      msg "\nCan't clone $pkg_name while using -n option.\n"
+      exit 1
+    fi
+  fi
 }
 
 git_failed() {
   QUIET=""
-	msg "\n${RED}ERROR:${NC}\tfailed to retrieve ${YEL}$1${NC} info from git.\n"
-	if [ "$1" = "OC-tool" ]; then
-		msg "\tThis can be caused by using the Download button on github.com\n"
-		msg "\tinstead of using 'git clone https://github.com/rusty-bits/OC-tool'\n"
-		msg "\tIf this is the case, try ...\n\n"
-		msg "\t'cd' ${YEL}to get to your home directory${NC}\n"
-		msg "\t'git clone https://github.com/rusty-bits/OC-tool' ${YEL}to get as a repo${NC}\n"
-		msg "\t'cd OC-tool' ${YEL}to enter the newly cloned directory${NC}\n\n"
-		msg "\tOtherwise, see tool.log for details.\n"
-	else
-		msg "\tSee tool.log for details.\n"
-	fi
-	exit 1
+  msg "\n${RED}ERROR:${NC}\tfailed to retrieve ${YEL}$1${NC} info from git.\n"
+  if [ "$1" = "OC-tool" ]; then
+    msg "\tThis can be caused by using the Download button on github.com\n"
+    msg "\tinstead of using 'git clone https://github.com/rusty-bits/OC-tool'\n"
+    msg "\tIf this is the case, try ...\n\n"
+    msg "\t'cd' ${YEL}to get to your home directory${NC}\n"
+    msg "\t'git clone https://github.com/rusty-bits/OC-tool' ${YEL}to get as a repo${NC}\n"
+    msg "\t'cd OC-tool' ${YEL}to enter the newly cloned directory${NC}\n\n"
+    msg "\tOtherwise, see tool.log for details.\n"
+  else
+    msg "\tSee tool.log for details.\n"
+  fi
+  exit 1
 }
 
 check_tool_for_updates() {
-	cd "$BASE_DIR"
-	msg "\n${GRN}Checking OC-tool for updates${NC} ... "
-	git fetch --all -q||git_failed "OC-tool"
-	if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
+  cd "$BASE_DIR"
+  msg "\n${GRN}Checking OC-tool for updates${NC} ... "
+  git fetch --all -q||git_failed "OC-tool"
+  if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
     git reset --hard
     git pull $VERBOSE -q||git_failed "OC-tool (git pull)"
-		msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
-		update_log "Updated" "OC-tool"
-		exit 2
-	fi
-	fin
+    msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
+    update_log "Updated" "OC-tool"
+    exit 2
+  fi
+  fin
 }
 
 check_lilu_for_updates() {
-	msg "\n${GRN}Checking Lilu${NC} ... "
-	if [ -d "$RES_DIR/Kext_builds/Lilu" ]; then
-		cd "$RES_DIR/Kext_builds/Lilu"
-		git fetch --all -q||git_failed "Lilu.kext"
-		if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
-			new_hash=$(git rev-parse @|cut -c -7)
-			msg "\n${GRN}Lilu updated to ${NC}$new_hash\n"
-			echo "$(date) Updated Lilu - $new_hash" >> "$BASE_DIR/update.log"
-			msg "${YEL}All kexts will be rebuilt${NC}\n"
-			rm -rf "$RES_DIR/Kext_builds"
-		else
-			fin
-		fi
-	else
-		msg "\n${YEL}no existing Lilu found${NC}\n"
-		msg "Any existing kexts will be rebuilt to ensure they are current\n"
-		rm -rf "$RES_DIR/Kext_builds"
-	fi
+  msg "\n${GRN}Checking Lilu${NC} ... "
+  if [ -d "$RES_DIR/Kext_builds/Lilu" ]; then
+    cd "$RES_DIR/Kext_builds/Lilu"
+    git fetch --all -q||git_failed "Lilu.kext"
+    if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
+      new_hash=$(git rev-parse @|cut -c -7)
+      msg "\n${GRN}Lilu updated to ${NC}$new_hash\n"
+      echo "$(date) Updated Lilu - $new_hash" >> "$BASE_DIR/update.log"
+      msg "${YEL}All kexts will be rebuilt${NC}\n"
+      rm -rf "$RES_DIR/Kext_builds"
+    else
+      fin
+    fi
+  else
+    msg "\n${YEL}no existing Lilu found${NC}\n"
+    msg "Any existing kexts will be rebuilt to ensure they are current\n"
+    rm -rf "$RES_DIR/Kext_builds"
+  fi
 }
 
 check_resources_for_updates() {
-	res_updated=""
-	msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
-	if [ -d "$RES_DIR" ]; then
-		for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d)
-		do
-			git_dir="${git_dir%/*}"
-			cd "$git_dir"
-			git fetch --all -q||git_failed "${git_dir##*/}"
-			msg "\033[2K\r${git_dir##*/} - "
-			if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
-				git pull $VERBOSE -q||git_failed "${git_dir##*/}"
-				new_hash=$(git rev-parse @|cut -c -7)
-				msg "${GRN}updated to ${NC}$new_hash\n"
-				echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
-				res_updated="true"
-			else
-				msg "${GRN}OK${NC}"
-			fi
-		done
-		msg "\033[2K\rexisting resources "
-		if [ -z "$res_updated" ]; then
-			msg "are up to date\n"
-		else
-			msg "have been updated\n"
-		fi
+  res_updated=""
+  msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
+  if [ -d "$RES_DIR" ]; then
+    for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d)
+    do
+      git_dir="${git_dir%/*}"
+      cd "$git_dir"
+      git fetch --all -q||git_failed "${git_dir##*/}"
+      msg "\033[2K\r${git_dir##*/} - "
+      if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
+        git pull $VERBOSE -q||git_failed "${git_dir##*/}"
+        new_hash=$(git rev-parse @|cut -c -7)
+        msg "${GRN}updated to ${NC}$new_hash\n"
+        echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
+        res_updated="true"
+      else
+        msg "${GRN}OK${NC}"
+      fi
+    done
+    msg "\033[2K\rexisting resources "
+    if [ -z "$res_updated" ]; then
+      msg "are up to date\n"
+    else
+      msg "have been updated\n"
+    fi
   fi
   if [ "$MODE" = "prebuiltDaily" ] && [ ! -d "$RES_DIR/dailyJson" ]; then
     mkdir -p "$RES_DIR"
@@ -229,10 +229,10 @@ check_resources_for_updates() {
 
 curl_failed() { # is this needed?
   QUIET=""
-	msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
-	msg "\tpossible shasum mismatch\n"
-	msg "\tsee $LOGFILE for details\n"
-	exit 1
+  msg "\n${RED}ERROR:${NC}\tdownload failed for $res_name\n"
+  msg "\tpossible shasum mismatch\n"
+  msg "\tsee $LOGFILE for details\n"
+  exit 1
 }
 
 curl_unable() {
@@ -246,24 +246,24 @@ curl_unable() {
 
 unzip_failed() {
   QUIET=""
-	msg "\n${RED}ERROR:$NC\tfailed to unzip $zip_name\n"
-	msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
-	msg "\twhich is able to unzip on some systems, but apparently not this one\n"
-	msg "\t${YEL}unzip${NC} command will need to be installed to continue\n"
-	msg "\tand you may need to use the X option at first to clear out unzipped files\n"
-	exit 1
+  msg "\n${RED}ERROR:$NC\tfailed to unzip $zip_name\n"
+  msg "\t${YEL}unzip${NC} command was not found, tried using ${YEL}tar${NC} command\n"
+  msg "\twhich is able to unzip on some systems, but apparently not this one\n"
+  msg "\t${YEL}unzip${NC} command will need to be installed to continue\n"
+  msg "\tand you may need to use the X option at first to clear out unzipped files\n"
+  exit 1
 }
 
 clone_parent() {
-	clone "$git_url"
-	srce="$RES_DIR/$pkg_name"
+  clone "$git_url"
+  srce="$RES_DIR/$pkg_name"
 }
 
 clone_child() { # need parent first, then zip source
-	path="$git_url"
-	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
-	tempRes="$res_name" # hold self
-	res_name="$parent"
+  path="$git_url"
+  git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
+  tempRes="$res_name" # hold self
+  res_name="$parent"
   if [ -z "$git_url" ]; then
     res_not_found "$tempRes"
     msg "\n${RED}ERROR: Something is quite wrong if you got here!!\n"
@@ -273,55 +273,55 @@ clone_child() { # need parent first, then zip source
   else
     clone_parent # temp use parent resources
   fi
-	git_url="$path"
-	res_name="$tempRes"
+  git_url="$path"
+  res_name="$tempRes"
 }
 
 curl_parent() {
-	zip_name="${git_url##*/}"
-	zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
-	mkdir -p "$zip_dir"
-	cd "$zip_dir"
-	if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
-	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$JSON_FILE"|cut -f2 -d '"')
+  zip_name="${git_url##*/}"
+  zip_dir="$RES_DIR/${res_name%.*}/${zip_name%.*}"
+  mkdir -p "$zip_dir"
+  cd "$zip_dir"
+  if [ ! -e "shasum256" ]; then echo "new" > shasum256; fi
+  sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$JSON_FILE"|cut -f2 -d '"')
   if [ -z "$sha" ]; then
     sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$GIT_JSON_TXT"|cut -f2 -d '"')
   fi
-#	sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
-	if [ "$(cat shasum256)" != "$sha" ]; then
-		if [ -z "$UPDATE" ]; then
-			msg "Downloading $zip_name ... "
-			curl -L "$git_url" -o "$zip_name"
-			if [ -z "$HAS_SHASUM" ]; then
-				shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
-				if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
-			fi
-			msg "unzipping ... "
-			command -v unzip||HAS_UNZIP="false"
-			if [ "${zip_name##*.}" = "zip" ]; then
-				if [ -z "$HAS_UNZIP" ]; then
-					unzip -o "$zip_name"
-				else
-					tar -xvf "$zip_name"||unzip_failed
-				fi
-			fi
-			fin
-			echo "$(date) Downloaded $zip_name - $(printf "%s" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
-		else
+#  sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
+  if [ "$(cat shasum256)" != "$sha" ]; then
+    if [ -z "$UPDATE" ]; then
+      msg "Downloading $zip_name ... "
+      curl -L "$git_url" -o "$zip_name"
+      if [ -z "$HAS_SHASUM" ]; then
+        shasum -a 256 "$zip_name"|cut -f1 -d ' ' > shasum256
+        if [ "$(cat shasum256)" != "$sha" ]; then curl_failed; fi
+      fi
+      msg "unzipping ... "
+      command -v unzip||HAS_UNZIP="false"
+      if [ "${zip_name##*.}" = "zip" ]; then
+        if [ -z "$HAS_UNZIP" ]; then
+          unzip -o "$zip_name"
+        else
+          tar -xvf "$zip_name"||unzip_failed
+        fi
+      fi
+      fin
+      echo "$(date) Downloaded $zip_name - $(printf "%s" "$sha"|cut -c -7)" >> "$BASE_DIR/update.log"
+    else
       QUIET=""
-			msg "\nCan't download $zip_name while using -n option.\n"
-			exit 1
-		fi
-	fi
-	srce="$(pwd)"
-	p=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || p=""
-	if [ -n "$p" ]; then srce="$srce/$p"; fi
+      msg "\nCan't download $zip_name while using -n option.\n"
+      exit 1
+    fi
+  fi
+  srce="$(pwd)"
+  p=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || p=""
+  if [ -n "$p" ]; then srce="$srce/$p"; fi
 }
 
 curl_child() { # need parent first, then zip source
-	path="$git_url"
+  path="$git_url"
 #  msg "path<$path> parent<$parent>\n"
-	git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
+  git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
   if [ -z "$git_url" ] && [ "$MODE" = "prebuiltDaily" ]; then
     msg "\nParent $parent not in daily repo, looking in standard repo ... "
     git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$GIT_JSON_TXT"|cut -f2 -d '"')
@@ -341,29 +341,29 @@ curl_child() { # need parent first, then zip source
     git_url="$path"
     res_name="$temp"
   fi
-	if [ -n "$path" ]; then srce="$srce/$path"; fi
+  if [ -n "$path" ]; then srce="$srce/$path"; fi
 }
 
 make_base_tools() {
-	unset WORKSPACE
-	unset EDK_TOOLS_PATH
-	unset CONF_PATH
+  unset WORKSPACE
+  unset EDK_TOOLS_PATH
+  unset CONF_PATH
 # shellcheck disable=SC1091
-	. edksetup.sh
-	make -C BaseTools -j
+  . edksetup.sh
+  make -C BaseTools -j
 }
 
 build_failed() { # failed build even after backing up 5 commits
-	git checkout master
+  git checkout master
   QUIET=""
-	msg "\n${RED}ERROR:${NC}\tbuild failed for $pkg_name\n"
-	msg "\tsee $LOGFILE for details\n"
-	exit 1
+  msg "\n${RED}ERROR:${NC}\tbuild failed for $pkg_name\n"
+  msg "\tsee $LOGFILE for details\n"
+  exit 1
 }
 
 build_driver() {
-	cd "$RES_DIR/UDK"
-	clone "$git_url"
+  cd "$RES_DIR/UDK"
+  clone "$git_url"
   if [ "${pkg_name##*.}" = "git" ]; then
     srce="$(pwd)/$pkg_name/Drivers"
   else
@@ -409,241 +409,241 @@ build_driver() {
 }
 
 build_kext() {
-	mkdir -p "$RES_DIR"/Kext_builds
-	cd "$RES_DIR"/Kext_builds
+  mkdir -p "$RES_DIR"/Kext_builds
+  cd "$RES_DIR"/Kext_builds
   if [ ! -d "MacKernelSDK" ]; then
     msg "Cloning https://github.com/acidanthera/MacKernelSDK into MacKernelSDK ... "
     git clone https://github.com/acidanthera/MacKernelSDK
     fin
   fi
-	clone "$git_url"
-	cd "$pkg_name"
-	if [ ! -L "MacKernelSDK" ]; then ln -s "$RES_DIR"/Kext_builds/MacKernelSDK .; fi
-	if [ -n "$REMOVE_RES" ];then
-		msg "Removing Xcode DerivedData for $pkg_name ... "
-		rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
-		fin
-	fi
-	srce="$(pwd)/build/$XCODE_CONFIG$temp"
-	if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
-		[ ! -e "$srce/${res_name##*/}" ]; then
+  clone "$git_url"
+  cd "$pkg_name"
+  if [ ! -L "MacKernelSDK" ]; then ln -s "$RES_DIR"/Kext_builds/MacKernelSDK .; fi
+  if [ -n "$REMOVE_RES" ];then
+    msg "Removing Xcode DerivedData for $pkg_name ... "
+    rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
+    fin
+  fi
+  srce="$(pwd)/build/$XCODE_CONFIG$temp"
+  if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
+    [ ! -e "$srce/${res_name##*/}" ]; then
       msg "Building $AUDK_CONFIG $pkg_name ... "
 #      msg "Building $AUDK_CONFIG $pkg_name for ${res_name##*/} ... "
-		rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
-		if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
-		if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
-			ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
-		fi
-		requiresRes=$(grep "|$res_name|requiresRes " "$GIT_JSON_TXT"|cut -f2 -d '"')
-		if [ -n "$requiresRes" ]; then
-			rm -rf "$requiresRes"
-			ln -s "$RES_DIR/Kext_builds/$requiresRes" .
-		fi
-		buildScheme=$(grep "|$res_name|buildScheme " "$GIT_JSON_TXT"|cut -f2 -d '"')
-		a=1
-		while :
-		do
-			if [ -z "$buildScheme" ]; then
-				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" build && break
-			else
-#				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
+    rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
+    if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
+    if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
+      ln -s "$RES_DIR"/Kext_builds/VirtualSMC/build/Debug/VirtualSMC.kext .
+    fi
+    requiresRes=$(grep "|$res_name|requiresRes " "$GIT_JSON_TXT"|cut -f2 -d '"')
+    if [ -n "$requiresRes" ]; then
+      rm -rf "$requiresRes"
+      ln -s "$RES_DIR/Kext_builds/$requiresRes" .
+    fi
+    buildScheme=$(grep "|$res_name|buildScheme " "$GIT_JSON_TXT"|cut -f2 -d '"')
+    a=1
+    while :
+    do
+      if [ -z "$buildScheme" ]; then
+        xcodebuild -arch x86_64 -config "$XCODE_CONFIG" build && break
+      else
+#        xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
         msg "($buildScheme) ... "
-				xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" build && break
-			fi
-			if [ "$a" -eq "5" ]; then return 1; fi
-			git_sha=$(git rev-parse @|cut -c -7)
-			msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
-			git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
+        xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" build && break
+      fi
+      if [ "$a" -eq "5" ]; then return 1; fi
+      git_sha=$(git rev-parse @|cut -c -7)
+      msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
+      git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
       msg "Building $pkg_name ... "
 #      msg "Building $pkg_name for ${res_name##*/} ... "
-			a=$((a+1))
-		done
-		if [ "$a" -ne "1" ]; then git checkout master; fi
-		git rev-parse HEAD > git"$AUDK_CONFIG"sha
-		if [ -d "build/Products" ]; then cp -r build/Products/* build; fi
-		fin
-	fi
+      a=$((a+1))
+    done
+    if [ "$a" -ne "1" ]; then git checkout master; fi
+    git rev-parse HEAD > git"$AUDK_CONFIG"sha
+    if [ -d "build/Products" ]; then cp -r build/Products/* build; fi
+    fin
+  fi
 }
 
 #missing_iasl() {
 #  QUIET=""
-#	msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
-#	msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
-#	exit 1
+#  msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
+#  msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
+#  exit 1
 #}
 
 #build_acpi() { # compile .dsl into .aml if user hasn't already
-#	pkg_name=${res_name%%.*}
+#  pkg_name=${res_name%%.*}
 #
-#	srce="${git_url%/*}"
-#	srce="${srce##*/}"
-#	if [ -e "$srce/$res_name" ];then
-#		return 0
-#	elif [ -e "$RES_DIR/$git_url" ];then
-#		command -v iasl||missing_iasl
-#		msg "Building $res_name ... "
-#		iasl "$RES_DIR/$git_url"||return 1
-#		fin
-#	else
-#		return 1
-#	fi
+#  srce="${git_url%/*}"
+#  srce="${srce##*/}"
+#  if [ -e "$srce/$res_name" ];then
+#    return 0
+#  elif [ -e "$RES_DIR/$git_url" ];then
+#    command -v iasl||missing_iasl
+#    msg "Building $res_name ... "
+#    iasl "$RES_DIR/$git_url"||return 1
+#    fin
+#  else
+#    return 1
+#  fi
 #}
 
 get_res() { # extract resource from psuedo array (needed for POSIX)
-	eval enabled="\$res$1"
-	res_name=${enabled%%|*}; enabled=${enabled#*|}
-	git_url=${enabled%%|*}; enabled=${enabled#*|}
-	srce=${enabled%%|*}; enabled=${enabled#*|}
-	dest=${enabled%%|*}; enabled=${enabled#*|}
-	parent=${enabled%%|*}; enabled=${enabled#*|}
+  eval enabled="\$res$1"
+  res_name=${enabled%%|*}; enabled=${enabled#*|}
+  git_url=${enabled%%|*}; enabled=${enabled#*|}
+  srce=${enabled%%|*}; enabled=${enabled#*|}
+  dest=${enabled%%|*}; enabled=${enabled#*|}
+  parent=${enabled%%|*}; enabled=${enabled#*|}
 }
 
 set_res() { # encode resource into psuedo array (needed for POSIX)
-	eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
+  eval "res$1='$res_name'\|'$git_url'\|'$srce'\|'$dest'\|'$parent'\|'$enabled'"
 }
 
 prepare_resources() {
-	mkdir -p "$RES_DIR"
-	cd "$RES_DIR"
+  mkdir -p "$RES_DIR"
+  cd "$RES_DIR"
 
-	if [ -z "$UPDATE" ]; then
-		case "$MODE" in
-			"latestSource")
-				msg "\n${GRN}Building new or updated resources${NC}\n"
-				clone "https://github.com/acidanthera/audk" "UDK";;
-			"prebuiltRelease"|"prebuiltDaily")
-				HAS_SHASUM=""
-				msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
-				command -v shasum||HAS_SHASUM="false"
-				if [ -n "$HAS_SHASUM" ]; then
-					msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
-					msg "\tDownloading will continue, but there is no way to check zip file sums\n"
-					msg "\tinstall the shasum command if this is an issue\n\n"
-				fi;;
-#			"prebuiltDaily")
-#				msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
-		esac
-	fi
+  if [ -z "$UPDATE" ]; then
+    case "$MODE" in
+      "latestSource")
+        msg "\n${GRN}Building new or updated resources${NC}\n"
+        clone "https://github.com/acidanthera/audk" "UDK";;
+      "prebuiltRelease"|"prebuiltDaily")
+        HAS_SHASUM=""
+        msg "\n${GRN}Downloading/unzipping needed or updated resources${NC}\n"
+        command -v shasum||HAS_SHASUM="false"
+        if [ -n "$HAS_SHASUM" ]; then
+          msg "\n${YEL}NOTICE:${NC}\tshasum command is not available\n"
+          msg "\tDownloading will continue, but there is no way to check zip file sums\n"
+          msg "\tinstall the shasum command if this is an issue\n\n"
+        fi;;
+#      "prebuiltDaily")
+#        msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
+    esac
+  fi
 
-	for G in $(seq 0 4) # cycle first 5 groups
-	do
-		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
-		do
+  for G in $(seq 0 4) # cycle first 5 groups
+  do
+    for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
+    do
       if [ "$S" -ge "0" ]; then
-			get_res "$G$S"
-			get_edit_res "$enabled"
-			if [ "$en" != "-" ]; then
+      get_res "$G$S"
+      get_edit_res "$enabled"
+      if [ "$en" != "-" ]; then
         if [ "-${srce#?}" = "$srce" ]; then
          temp="${srce#?}"
          srce=""
-					case "$MODE" in
-						"latestSource")
-							case ${res_name##*.} in
-							"base"|"efi")
-								build_driver||build_failed
-								;;
-							"kext")
-								if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
-									set_build_type "debug"
-									build_kext||build_failed
-									set_build_type "release"
-								fi
-								build_kext||build_failed;;
-#							"aml")
-#								build_acpi||build_failed;;
-							esac;;
-						"prebuiltRelease"|"prebuiltDaily")
-							case ${res_name##*.} in
-							"base")
-								;;
-							"efi"|"kext"|"aml")
-								if [ -n "$parent" ]; then
-									curl_child||curl_unable
-								else
-                  msg "res_name<$res_name> why am I here?\n"
-									curl_parent
-								fi
+          case "$MODE" in
+            "latestSource")
+              case ${res_name##*.} in
+              "base"|"efi")
+                build_driver||build_failed
                 ;;
-							esac
+              "kext")
+                if [ "$res_name" = "Lilu.kext" ] && [ "$TYPE" != "debug" ]; then
+                  set_build_type "debug"
+                  build_kext||build_failed
+                  set_build_type "release"
+                fi
+                build_kext||build_failed;;
+#              "aml")
+#                build_acpi||build_failed;;
+              esac;;
+            "prebuiltRelease"|"prebuiltDaily")
+              case ${res_name##*.} in
+              "base")
+                ;;
+              "efi"|"kext"|"aml")
+                if [ -n "$parent" ]; then
+                  curl_child||curl_unable
+                else
+                  msg "res_name<$res_name> why am I here?\n"
+                  curl_parent
+                fi
+                ;;
+              esac
               ;;
-#						"prebuiltDaily")
-#							case ${res_name##*.} in
-#								"efi"|"kext"|"aml")
-#									if [ -n "$parent" ]; then
-#										clone_child
-#									else
-#										clone_parent
-#									fi
+#            "prebuiltDaily")
+#              case ${res_name##*.} in
+#                "efi"|"kext"|"aml")
+#                  if [ -n "$parent" ]; then
+#                    clone_child
+#                  else
+#                    clone_parent
+#                  fi
 #                  srce="$srce$temp"
 #                  ;;
-#							esac
+#              esac
 #              ;;
-					esac
-					set_res "$G$S"
-				fi
-			fi
+          esac
+          set_res "$G$S"
+        fi
       fi
-		done
-	done
-	msg "\n"
+      fi
+    done
+  done
+  msg "\n"
 }
 
 res_not_found() {
-	if [ -z "$IGNORE" ]; then
+  if [ -z "$IGNORE" ]; then
     QUIET=""
-		if [ "$MODE" = "latestSource" ]; then
-			msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON_TXT\n"
-		else
-			msg "\n${RED}ERROR:${NC}\t$1 - no prebuilt found for $1\n"
-		fi
-		msg "\t$1 file not found in extras directory\n"
-		msg "\tCheck the spelling of the resource, case matters as well.\n"
-		msg "\tAlso check the Configuration.pdf and the Sample.plist to be\n"
-		msg "\tsure the resource hasn't been removed or renamed.\n"
-		msg "\t${YEL}If you are sure you want this resource${NC} then you can\n"
-		msg "\teither place $1 in extras directory to build EFI with $1\n"
-		msg "\tor run with -i option to build EFI without $1\n"
-		msg "\tfor example, try '$INIT_COM -i$EX_COM'\n"
-		exit 1
-	else
-		msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON_TXT or extras directory - ${YEL}IGNORING${NC}\n"
-		if [ "$IGNORE" = "true" ]; then IGNORE="yes"; fi
-		CONFIG_CHANGED="-i option" # need to write new config before build
-	fi
+    if [ "$MODE" = "latestSource" ]; then
+      msg "\n${RED}ERROR:${NC}\t$1 - resource was not found in $GIT_JSON_TXT\n"
+    else
+      msg "\n${RED}ERROR:${NC}\t$1 - no prebuilt found for $1\n"
+    fi
+    msg "\t$1 file not found in extras directory\n"
+    msg "\tCheck the spelling of the resource, case matters as well.\n"
+    msg "\tAlso check the Configuration.pdf and the Sample.plist to be\n"
+    msg "\tsure the resource hasn't been removed or renamed.\n"
+    msg "\t${YEL}If you are sure you want this resource${NC} then you can\n"
+    msg "\teither place $1 in extras directory to build EFI with $1\n"
+    msg "\tor run with -i option to build EFI without $1\n"
+    msg "\tfor example, try '$INIT_COM -i$EX_COM'\n"
+    exit 1
+  else
+    msg "${YEL}WARNING:${NC} $1 repo not in $GIT_JSON_TXT or extras directory - ${YEL}IGNORING${NC}\n"
+    if [ "$IGNORE" = "true" ]; then IGNORE="yes"; fi
+    CONFIG_CHANGED="-i option" # need to write new config before build
+  fi
 }
 
 copy_failed() {
   QUIET=""
-	msg "\n\n${RED}ERROR:${NC} Copying $res_name to $dest failed, see $LOGFILE for details.\n"
-	exit 1
+  msg "\n\n${RED}ERROR:${NC} Copying $res_name to $dest failed, see $LOGFILE for details.\n"
+  exit 1
 }
 
 copy_resources() {
-	msg "\n${GRN}Moving ${YEL}$MODE${GRN} resources into place${NC}\n"
-	IGNORE="" # no more ignoring for you
-	num="0"
-	for G in $(seq 0 4)
-	do
-		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
-		do
-			get_res "$G$S"
-			if [ "$G" -gt "0" ]; then
-				get_edit_res "$enabled"
-				enabled="false"
-				if [ "$en" = "+" ]; then enabled="true"; fi
-			fi
-			if [ "$enabled" = "true" ];then
-				if [ -n "$dest" ]; then
-					if [ "$srce" = "unknown" ];then # catch additions from TUI
-						res_not_found "$res_name"
-					else
-						dest_name="$res_name"
+  msg "\n${GRN}Moving ${YEL}$MODE${GRN} resources into place${NC}\n"
+  IGNORE="" # no more ignoring for you
+  num="0"
+  for G in $(seq 0 4)
+  do
+    for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
+    do
+      get_res "$G$S"
+      if [ "$G" -gt "0" ]; then
+        get_edit_res "$enabled"
+        enabled="false"
+        if [ "$en" = "+" ]; then enabled="true"; fi
+      fi
+      if [ "$enabled" = "true" ];then
+        if [ -n "$dest" ]; then
+          if [ "$srce" = "unknown" ];then # catch additions from TUI
+            res_not_found "$res_name"
+          else
+            dest_name="$res_name"
             if [ "$dest_name" = "OpenShell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Shell.efi"; fi
             if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi"; fi
             if [ "$dest_name" = "Bootstrap.efi" ]; then dest_name="BOOTx64.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
-						if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
-						if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
+            if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
+            if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
             if [ "$dest" != "-${dest#?}" ]; then # not deferred
               if [ "${srce##*/}" = "extras" ]; then # highlight if coming from extras
                 msg "Copying $res_name ${YEL}from extras${NC} to $dest/$dest_name ... "
@@ -675,12 +675,12 @@ copy_resources() {
               echo "${dest#?}" >> $INPUT/deferred # strip leading -
               echo "${dest_name##*/}" >> $INPUT/deferred # dest res without path
             fi
-					fi
-				fi
-			fi
-		done
-	done
-  if [ -e "$INPUT/deferred" ]; then # 
+          fi
+        fi
+      fi
+    done
+  done
+  if [ -e "$INPUT/deferred" ]; then
     msg "\n${GRN}Moving ${YEL}deferred child${GRN} resources into place${NC}\n"
     while read -r srce
     do
@@ -758,112 +758,112 @@ copy_resources() {
       msg "         or ${YEL}extras/Resources/Audio${NC} folder\n\n"
     fi
   fi
-	msg "\n${GRN}Copied $num resources to $BUILD_DIR${NC}\n"
+  msg "\n${GRN}Copied $num resources to $BUILD_DIR${NC}\n"
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
-	diff -u "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
-	cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
-	msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
-	msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
-	msg "\tyou can see the differences with 'cat ./Docs/diff_Sample.txt'\n"
-	msg "\tor run the tool again with the -t option.\n"
-	msg "\t${YEL}You may want to check for any changes${NC} that could apply to\n"
-	msg "\t$inputFilePath\n"
+  diff -u "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
+  cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
+  msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
+  msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
+  msg "\tyou can see the differences with 'cat ./Docs/diff_Sample.txt'\n"
+  msg "\tor run the tool again with the -t option.\n"
+  msg "\t${YEL}You may want to check for any changes${NC} that could apply to\n"
+  msg "\t$inputFilePath\n"
 }
 
 check_if_Sample_plist_updated() {
-  if [ -z "$DOC_DIR" ]; then msg "\nFailes to find docs\n"; exit 1; fi
-	if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
-		cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
-	else
-		cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
-	fi
-	cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/."
-	cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
+  if [ -z "$DOC_DIR/Sample.plist" ]; then msg "\nFailed to find docs\n"; exit 1; fi
+  if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
+    cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
+  else
+    cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
+  fi
+  cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/."
+  cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
   if [ "$MODE" = "latestSource" ]; then DOC_DIR="$DOC_DIR/Differences"; fi
-	cp "$DOC_DIR/Differences.pdf" "$BASE_DIR/Docs/."
+  cp "$DOC_DIR/Differences.pdf" "$BASE_DIR/Docs/."
 }
 
 vault_failed() {
   QUIET=""
-	msg "\n\n${RED}ERROR:${NC}\tvault build failed, see $LOGFILE for details\n"
-	msg "\tIf the log has a message about missing ${YEL}libcrypto.1.0.0.dylib${NC}\n"
-	msg "\tplease see the README.md Requirements section for possible solutions.\n"
-	exit 1
+  msg "\n\n${RED}ERROR:${NC}\tvault build failed, see $LOGFILE for details\n"
+  msg "\tIf the log has a message about missing ${YEL}libcrypto.1.0.0.dylib${NC}\n"
+  msg "\tplease see the README.md Requirements section for possible solutions.\n"
+  exit 1
 }
 
 build_vault() {
-	msg "\nBuilding vault files for $BUILD_DIR ... "
-#	case $MODE in
-#		prebuiltRelease)
-			if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
-				mkdir -p "$RES_DIR/UDK/OpenCorePkg"
-				cd "$RES_DIR/UDK/OpenCorePkg"
-				ocsupporturl=$(grep "|OpenCorePkg|versions|@0|links|debug " "$GIT_JSON_TXT"|cut -f2 -d '"')
-				curl -L -O "$ocsupporturl"
-				ocsupportzip=${ocsupporturl##*/}
-				tar xvf "$ocsupportzip"
-			fi
+  msg "\nBuilding vault files for $BUILD_DIR ... "
+#  case $MODE in
+#    prebuiltRelease)
+      if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
+        mkdir -p "$RES_DIR/UDK/OpenCorePkg"
+        cd "$RES_DIR/UDK/OpenCorePkg"
+        ocsupporturl=$(grep "|OpenCorePkg|versions|@0|links|debug " "$GIT_JSON_TXT"|cut -f2 -d '"')
+        curl -L -O "$ocsupporturl"
+        ocsupportzip=${ocsupporturl##*/}
+        tar xvf "$ocsupportzip"
+      fi
 #      ;;
-#	esac
-	cd "$BUILD_DIR"/OC
-	ls vault* 1> /dev/null 2>&1 && rm vault.*
-#	case $MODE in
-#		prebuiltRelease)
-			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-#			;;
-#		latestSource)
-#			"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-#			;;
-#		prebuiltDaily)
-#			"$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
-#			;;
-#	esac
-	if [ "$USE_VAULT" != "Basic" ]; then
-#		case $MODE in
-#			prebuiltRelease)
-				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-#				;;
-#			latestSource)
-#				"$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-#				;;
-#			prebuiltDaily)
-#				"$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
-#				;;
-#		esac
-		str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
-		off=$((str+16))
-		len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
-		dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count="$len" conv=notrunc
-		rm vault.pub
-	fi
-	fin
+#  esac
+  cd "$BUILD_DIR"/OC
+  ls vault* 1> /dev/null 2>&1 && rm vault.*
+#  case $MODE in
+#    prebuiltRelease)
+    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
+#      ;;
+#    latestSource)
+#      "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
+#      ;;
+#    prebuiltDaily)
+#      "$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
+#      ;;
+#  esac
+  if [ "$USE_VAULT" != "Basic" ]; then
+#    case $MODE in
+#      prebuiltRelease)
+    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+#        ;;
+#      latestSource)
+#        "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+#        ;;
+#      prebuiltDaily)
+#        "$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
+#        ;;
+#    esac
+    str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
+    off=$((str+16))
+    len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
+    dd of=OpenCore.efi if=vault.pub bs=1 seek="$off" count="$len" conv=notrunc
+    rm vault.pub
+  fi
+  fin
 }
 
 find_srce_url() {
-	parent=$(grep "|$res_name|parent " "$GIT_JSON_TXT"|cut -f2 -d '"')
+  parent=$(grep "|$res_name|parent " "$GIT_JSON_TXT"|cut -f2 -d '"')
 #  msg "res_name<$res_name> parent<$parent>\n"
-	if [ "$MODE" = "latestSource" ]; then
-		git_url=$(grep "|$res_name|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"')
-		if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"'); fi
+  if [ "$MODE" = "latestSource" ]; then
+    git_url=$(grep "|$res_name|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"')
+    if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"'); fi
     if [ -z "$git_url" ]; then parent=""; fi # ignore parent with no source files
-	else
-		if [ -z "$parent" ]; then # is parent
-			git_url=$(grep "|$res_name|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
-		else # is child
-			git_url=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"')
+  else
+    if [ -z "$parent" ]; then # is parent
+      git_url=$(grep "|$res_name|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
+    else # is child
+      git_url=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"')
 #      if [ "$MODE" = "prebuiltDaily" ]; then  # needs to be fixed to read dorito config.json
 #        checkDaily=$(grep "|$parent|versions|@0|links" "$TOOL_FILES/config.txt")||parent=""
 #      fi
-		fi
-	fi
+    fi
+  fi
 }
 
 add_res_array() { # add a resource to the psuedo array (needed for POSIX)
-	temp=""
+  temp=""
   tempDest=""
-	if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
+  if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
   if [ "${res_name##*/}" != "$res_name" ]; then # strip off path from plugin
 #    tempDest="${res_name%/*/*}/"
     tempDest="${res_name%/*}/"
@@ -894,639 +894,639 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
     fi
   fi
   if [ "$IGNORE" = "yes" ]; then
-		srce="unknown"
-		IGNORE="true"
-		IGNORE_BOOL="yes"
-		key="${key% ?} i"
-		val="$key"
-		set_edit_res "$num"
-	fi
-	set_res "$1"
-	if [ -n "$DISABLE_RES" ]; then
-		head_line="$ADD_RES_NUM"
-		toggle_enabled
-		DISABLE_RES=""
-	fi
+    srce="unknown"
+    IGNORE="true"
+    IGNORE_BOOL="yes"
+    key="${key% ?} i"
+    val="$key"
+    set_edit_res "$num"
+  fi
+  set_res "$1"
+  if [ -n "$DISABLE_RES" ]; then
+    head_line="$ADD_RES_NUM"
+    toggle_enabled
+    DISABLE_RES=""
+  fi
 }
 
 init_add_array() {
-	ADD_FILE="${2##* }"
-	n=-1
-	while read -r line
-	do
-		if [ "$n" -lt "0" ]; then
-			field_len="$line"
-		else
-			eval add$n="\$line"
-		fi
-		n=$((n+1))
-	done < "$TOOL_FILES/$1/$ADD_FILE"
-	GADD_NUM="$((n-1))"
+  ADD_FILE="${2##* }"
+  n=-1
+  while read -r line
+  do
+    if [ "$n" -lt "0" ]; then
+      field_len="$line"
+    else
+      eval add$n="\$line"
+    fi
+    n=$((n+1))
+  done < "$TOOL_FILES/$1/$ADD_FILE"
+  GADD_NUM="$((n-1))"
 }
 
 init_res_array() { # base-resources moved into .tool-files for portability
-	G=0; S="-1"
-	while read -r line
+  G=0; S="-1"
+  while read -r line
   do
-		S=$((S+1))
-		eval "res0$S=\$line\|true"
-		get_res "0$S"
-		add_res_array "$G$S"
-	done < "$TOOL_FILES/pre-base-resources"
-	G0_NUM=$((S+1))
-	eval "res0$G0_NUM=config.plist\|\|'$INPUT'\|OC\|\|true"
+    S=$((S+1))
+    eval "res0$S=\$line\|true"
+    get_res "0$S"
+    add_res_array "$G$S"
+  done < "$TOOL_FILES/pre-base-resources"
+  G0_NUM=$((S+1))
+  eval "res0$G0_NUM=config.plist\|\|'$INPUT'\|OC\|\|true"
 }
 
 set_build_type() {
-	case $1 in
-		d|debug)
-			TYPE="debug"; XCODE_CONFIG="Debug";;
-		r|release)
-			TYPE="release"; XCODE_CONFIG="Release";;
-		*)
+  case $1 in
+    d|debug)
+      TYPE="debug"; XCODE_CONFIG="Debug";;
+    r|release)
+      TYPE="release"; XCODE_CONFIG="Release";;
+    *)
       QUIET=""
-			msg "Invalid build type selected in set_build_type()\n"
-			exit 1;;
-	esac
-	AUDK_CONFIG=$(echo $XCODE_CONFIG|tr "[:lower:]" "[:upper:]")
-	AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
+      msg "Invalid build type selected in set_build_type()\n"
+      exit 1;;
+  esac
+  AUDK_CONFIG=$(echo $XCODE_CONFIG|tr "[:lower:]" "[:upper:]")
+  AUDK_BUILD_DIR="${AUDK_CONFIG}_XCODE5"
 }
 
 print_res_array() { # debug aid to list psuedo array
-	msg "\033[J\033[0m\n"
-	for G in $(seq 0 10)
-	do
-		for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
-		do
-				eval line="\$res$G$S"
-				msgs "$G$S|$line"
-				msg "\n"
-		done
-	done
-	msg "G1 $G1_START\n"
-	msg "G2 $G2_START\n"
-	msg "G3 $G3_START\n"
-	msg "G4 $G4_START\n"
-	msg "G5 $G5_START\n"
-	msg "G6 $G6_START\n"
-	msg "G7 $G7_START\n"
-	msg "G8 $G8_START\n"
-	msg "TOT $G10_NUM\n"
+  msg "\033[J\033[0m\n"
+  for G in $(seq 0 10)
+  do
+    for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
+    do
+        eval line="\$res$G$S"
+        msgs "$G$S|$line"
+        msg "\n"
+    done
+  done
+  msg "G1 $G1_START\n"
+  msg "G2 $G2_START\n"
+  msg "G3 $G3_START\n"
+  msg "G4 $G4_START\n"
+  msg "G5 $G5_START\n"
+  msg "G6 $G6_START\n"
+  msg "G7 $G7_START\n"
+  msg "G8 $G8_START\n"
+  msg "TOT $G10_NUM\n"
 }
 
 get_edit_res() {
-	eval key="\$res10$1"
-	L0="${key%%|*}"; key="${key#*|}"
-	L1="${key%%|*}"; key="${key#*|}"
-	L2="${key%%|*}"; key="${key#*|}"
-	L3="${key%%|*}"; key="${key#*|}"
-	AD="${key%%|*}"; key="${key#*|}"
-	type="${key%%|*}"; key="${key#*|}"
-	val=${key%%|*}; key="${key#*|}"
-	en="${key##* }"
-	if [ "${#en}" -gt "1" ]; then en="$key"; fi
+  eval key="\$res10$1"
+  L0="${key%%|*}"; key="${key#*|}"
+  L1="${key%%|*}"; key="${key#*|}"
+  L2="${key%%|*}"; key="${key#*|}"
+  L3="${key%%|*}"; key="${key#*|}"
+  AD="${key%%|*}"; key="${key#*|}"
+  type="${key%%|*}"; key="${key#*|}"
+  val=${key%%|*}; key="${key#*|}"
+  en="${key##* }"
+  if [ "${#en}" -gt "1" ]; then en="$key"; fi
 }
 
 pushAD() {
-	ad2stk=$1$ad2stk
+  ad2stk=$1$ad2stk
 }
 
 popAD() {
-	ad2=${ad2stk#?}
-	ad2=${ad2stk%$ad2}
-	ad2stk=${ad2stk#?}
+  ad2=${ad2stk#?}
+  ad2=${ad2stk%$ad2}
+  ad2stk=${ad2stk#?}
 }
 
 clearAD2() {
-	while [ -n "$ad2stk" ]
-	do
-		popAD
-		case "$ad2" in
-			"A")
-				printf "%s\n" "</array>" >> "$OUT";;
-			"D")
-				printf "%s\n" "</dict>" >> "$OUT";;
-		esac
-	done
+  while [ -n "$ad2stk" ]
+  do
+    popAD
+    case "$ad2" in
+      "A")
+        printf "%s\n" "</array>" >> "$OUT";;
+      "D")
+        printf "%s\n" "</dict>" >> "$OUT";;
+    esac
+  done
 }
 
 output_element() {
-	if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi # key + value
-	if [ "$type" = "bool" ]; then
-		printf "%s\n" "<$val/>" >> "$OUT"
-	elif [ -n "$type" ]; then
-		if [ "$en" = "$key" ]; then # no + or -
-			printf "%s\n" "<$type>$val</$type>" >> "$OUT"
-		else
-			printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
-		fi
-	fi
+  if [ "$val" != "$key" ]; then echo "<key>$key</key>" >> "$OUT"; fi # key + value
+  if [ "$type" = "bool" ]; then
+    printf "%s\n" "<$val/>" >> "$OUT"
+  elif [ -n "$type" ]; then
+    if [ "$en" = "$key" ]; then # no + or -
+      printf "%s\n" "<$type>$val</$type>" >> "$OUT"
+    else
+      printf "%s\n" "<$type>${val% ?}</$type>" >> "$OUT"
+    fi
+  fi
 }
 
 write_new_conf() {
-	OUT="$BASE_DIR/INPUT/modified.$inputFileName"
-	msg "\033[J\nWriting new config.plist to $OUT ... "
-	rm -rf "$OUT"
-	num="0"; S0="0"; ad1=""; ad2=""
-	while [ "$num" -le "$G10_NUM" ]
-	do
-		get_edit_res "$num"
-		if [ "$L0" -eq "0" ]; then # part of plist
-			if [ "$key" = "</dict>" ] || [ "$key" = "</plist>" ]; then
-				clearAD2
-				case "$ad1" in
-					"A")
-						printf "%s\n" "</array>" >> "$OUT";;
-					"D")
-						printf "%s\n" "</dict>" >> "$OUT";;
-				esac
-				ad1=""
-				if [ "$key" = "</plist>" ]; then
-					printf "%s\n" "</dict>" >> "$OUT"
-					printf "%s\n" "$key" >> "$OUT"
-				else
-					printf "%s\n" "$key" >> "$OUT"
-				fi
-			elif [ -z "$type" ]; then
-				printf "%s\n" "$key" >> "$OUT"
-			else
-				printf "%s\n" "<key>$key</key>" >> "$OUT"
-				printf "%s\n" "<$type>$val</$type>" >> "$OUT"
-			fi
-		else
-			if [ "$L1" -eq "0" ]; then # new L0
-				clearAD2
-				case "$ad1" in
-					"A")
-						printf "%s\n" "</array>" >> "$OUT";;
-					"D")
-						printf "%s\n" "</dict>" >> "$OUT";;
-				esac
-				ad1=""
-				if [ "$L0" -ne "1" ]; then printf "%s\n" "</dict>" >> "$OUT"; fi
-				printf "%s\n" "<key>$key</key>" >> "$OUT"
-				printf "%s\n" "<dict>" >> "$OUT"
-			elif [ "$L2" -eq "0" ]; then # new something at L1
-				clearAD2
-				if [ -z "$type" ]; then # new L1 subsection
-					case "$ad1" in
-						"A")
-							printf "%s\n" "</array>" >> "$OUT";;
-						"D")
-							printf "%s\n" "</dict>" >> "$OUT";;
-					esac
-					ad1=""
-					printf "%s\n" "<key>$key</key>" >> "$OUT"
-					case "$AD" in
-						"A")
-							printf "%s\n" "<array>" >> "$OUT";;
-						"D")
-							printf "%s\n" "<dict>" >> "$OUT";;
-					esac
-					ad1="$AD"
-				else # item not in dict/array
-					case "$ad1" in
-						"A")
-							printf "%s\n" "</array>" >> "$OUT";;
-						"D")
-							printf "%s\n" "</dict>" >> "$OUT";;
-					esac
-					ad1=""
-					output_element
-				fi
-			elif [ "$L3" -eq "0" ]; then
-				if [ -z "$type" ]; then
-					popAD
-					case "$ad2" in
-						"A")
-							printf "%s\n" "</array>" >> "$OUT";;
-						"D")
-							printf "%s\n" "</dict>" >> "$OUT";;
-					esac
-					if [ "$en" != "$key" ]; then
-						printf "%s\n" "<dict>" >> "$OUT"
-						pushAD "D"
-					else
-						printf "%s\n" "<key>$key</key>" >> "$OUT"
-						case "$AD" in
-							"A")
-								printf "%s\n" "<array>" >> "$OUT";;
-							"D")
-								printf "%s\n" "<dict>" >> "$OUT";;
-						esac
-						pushAD "$AD"
-					fi
-				else
-					clearAD2
-					output_element
-				fi
-			else
-				if [ -z "$AD" ]; then clearAD2; fi
-				output_element
-			fi
-		fi
-		num=$((num+1))
-	done
-	fin
+  OUT="$BASE_DIR/INPUT/modified.$inputFileName"
+  msg "\033[J\nWriting new config.plist to $OUT ... "
+  rm -rf "$OUT"
+  num="0"; S0="0"; ad1=""; ad2=""
+  while [ "$num" -le "$G10_NUM" ]
+  do
+    get_edit_res "$num"
+    if [ "$L0" -eq "0" ]; then # part of plist
+      if [ "$key" = "</dict>" ] || [ "$key" = "</plist>" ]; then
+        clearAD2
+        case "$ad1" in
+          "A")
+            printf "%s\n" "</array>" >> "$OUT";;
+          "D")
+            printf "%s\n" "</dict>" >> "$OUT";;
+        esac
+        ad1=""
+        if [ "$key" = "</plist>" ]; then
+          printf "%s\n" "</dict>" >> "$OUT"
+          printf "%s\n" "$key" >> "$OUT"
+        else
+          printf "%s\n" "$key" >> "$OUT"
+        fi
+      elif [ -z "$type" ]; then
+        printf "%s\n" "$key" >> "$OUT"
+      else
+        printf "%s\n" "<key>$key</key>" >> "$OUT"
+        printf "%s\n" "<$type>$val</$type>" >> "$OUT"
+      fi
+    else
+      if [ "$L1" -eq "0" ]; then # new L0
+        clearAD2
+        case "$ad1" in
+          "A")
+            printf "%s\n" "</array>" >> "$OUT";;
+          "D")
+            printf "%s\n" "</dict>" >> "$OUT";;
+        esac
+        ad1=""
+        if [ "$L0" -ne "1" ]; then printf "%s\n" "</dict>" >> "$OUT"; fi
+        printf "%s\n" "<key>$key</key>" >> "$OUT"
+        printf "%s\n" "<dict>" >> "$OUT"
+      elif [ "$L2" -eq "0" ]; then # new something at L1
+        clearAD2
+        if [ -z "$type" ]; then # new L1 subsection
+          case "$ad1" in
+            "A")
+              printf "%s\n" "</array>" >> "$OUT";;
+            "D")
+              printf "%s\n" "</dict>" >> "$OUT";;
+          esac
+          ad1=""
+          printf "%s\n" "<key>$key</key>" >> "$OUT"
+          case "$AD" in
+            "A")
+              printf "%s\n" "<array>" >> "$OUT";;
+            "D")
+              printf "%s\n" "<dict>" >> "$OUT";;
+          esac
+          ad1="$AD"
+        else # item not in dict/array
+          case "$ad1" in
+            "A")
+              printf "%s\n" "</array>" >> "$OUT";;
+            "D")
+              printf "%s\n" "</dict>" >> "$OUT";;
+          esac
+          ad1=""
+          output_element
+        fi
+      elif [ "$L3" -eq "0" ]; then
+        if [ -z "$type" ]; then
+          popAD
+          case "$ad2" in
+            "A")
+              printf "%s\n" "</array>" >> "$OUT";;
+            "D")
+              printf "%s\n" "</dict>" >> "$OUT";;
+          esac
+          if [ "$en" != "$key" ]; then
+            printf "%s\n" "<dict>" >> "$OUT"
+            pushAD "D"
+          else
+            printf "%s\n" "<key>$key</key>" >> "$OUT"
+            case "$AD" in
+              "A")
+                printf "%s\n" "<array>" >> "$OUT";;
+              "D")
+                printf "%s\n" "<dict>" >> "$OUT";;
+            esac
+            pushAD "$AD"
+          fi
+        else
+          clearAD2
+          output_element
+        fi
+      else
+        if [ -z "$AD" ]; then clearAD2; fi
+        output_element
+      fi
+    fi
+    num=$((num+1))
+  done
+  fin
 }
 
 set_ROW_COL(){ # set ROW and COL for TUI mode based on group and section
-	case "$G" in
-		1|2|3|4)
-			ROW=$((S+3))
-			COL=$(((G-1)*C+1));;
-		5|6|7|8)
-			ROW=$((S+BOT+5))
-			COL=$(((G-5)*C+1));;
-		CH)
-			ROW=2
-			COL=$(((S-1)*C+1));;
-	esac
+  case "$G" in
+    1|2|3|4)
+      ROW=$((S+3))
+      COL=$(((G-1)*C+1));;
+    5|6|7|8)
+      ROW=$((S+BOT+5))
+      COL=$(((G-5)*C+1));;
+    CH)
+      ROW=2
+      COL=$(((S-1)*C+1));;
+  esac
 }
 
 set_text_header() { # eval to avoid unused var in shellcheck
-	n=0
-	while read -r line
-	do
-		n=$((n+1))
-		eval resCH$n="\$line"
-	done < "$TOOL_FILES/text_header.txt"
-	eval GCH_NUM="8"
+  n=0
+  while read -r line
+  do
+    n=$((n+1))
+    eval resCH$n="\$line"
+  done < "$TOOL_FILES/text_header.txt"
+  eval GCH_NUM="8"
 }
 
 set_color() { # set TUI section color based on resource
-	case "$val" in
-		true)
-			color="$GRN"; MSG="+";;
-		false)
-			color="$RED"; MSG="-";;
-		ignored)
-			color="$YEL"; MSG="-i";;
-		*)
-			color="$BLU"; MSG="$val";;
-	esac
-	if [ "$G" = "CH" ]; then color="$NC"; fi
-	if [ "$G" = "3" ]; then color="$color${U}"; fi
+  case "$val" in
+    true)
+      color="$GRN"; MSG="+";;
+    false)
+      color="$RED"; MSG="-";;
+    ignored)
+      color="$YEL"; MSG="-i";;
+    *)
+      color="$BLU"; MSG="$val";;
+  esac
+  if [ "$G" = "CH" ]; then color="$NC"; fi
+  if [ "$G" = "3" ]; then color="$color${U}"; fi
 }
 
 select_MSG() { # draw highligted resource in TUI
-	if [ "$G" -ne "10" ]; then
-		msg "\033[${ROW};${COL}H$color$INV "
-		msgs "$res_name $MSG "
-		msg "\033[0m"
-	fi
+  if [ "$G" -ne "10" ]; then
+    msg "\033[${ROW};${COL}H$color$INV "
+    msgs "$res_name $MSG "
+    msg "\033[0m"
+  fi
 }
 
 unselect_MSG() { # clear highlighted resource in TUI
-	if [ "$G" -ne "10" ]; then
-		msg "\033[${ROW};${COL}H$color "
-		msgs "$res_name $MSG "
-	fi
+  if [ "$G" -ne "10" ]; then
+    msg "\033[${ROW};${COL}H$color "
+    msgs "$res_name $MSG "
+  fi
 }
 
 draw_key() {
-	if [ "$R" -gt "30" ];then
-		msg "$NC\033[$((BOT+KEY+5))H\n"
-		msg "$(cat "$TOOL_FILES/key.msg")\n"
-	fi
+  if [ "$R" -gt "30" ];then
+    msg "$NC\033[$((BOT+KEY+5))H\n"
+    msg "$(cat "$TOOL_FILES/key.msg")\n"
+  fi
 }
 
 draw_screen_header() {
-	syms="REL"
-	[ "$TYPE" = "debug" ] && syms="DBG"
-	e_msg="to edit"
-	if [ "$G" -eq "10" ]; then e_msg="ret to summary\n\033[K"; fi
-	if [ -n "$CONFIG_CHANGED" ]; then
-		CC="${RED}${INV}X${NC}${INV}"
-	else
-		CC="${GRN}${INV} ${NC}${INV}"
-	fi
-	msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  INPUT=${GRN}$inputFilePath${NC}\033[K"
-	if [ "$TUI_MODE" != "pre" ]; then msg " ${U}e${NC} $e_msg\033[K"; fi
+  syms="REL"
+  [ "$TYPE" = "debug" ] && syms="DBG"
+  e_msg="to edit"
+  if [ "$G" -eq "10" ]; then e_msg="ret to summary\n\033[K"; fi
+  if [ -n "$CONFIG_CHANGED" ]; then
+    CC="${RED}${INV}X${NC}${INV}"
+  else
+    CC="${GRN}${INV} ${NC}${INV}"
+  fi
+  msg "$NC\033[H${CC}$TUI_MODE${NC}  mode=$GRN$MODE-$syms$NC  INPUT=${GRN}$inputFilePath${NC}\033[K"
+  if [ "$TUI_MODE" != "pre" ]; then msg " ${U}e${NC} $e_msg\033[K"; fi
 }
 
 draw_col_header() {
-	G='CH'; color=${NC}
-	for S in $(seq 1 4)
-	do
-		get_res "$G$S"
-		set_ROW_COL
-		msg "\033[${ROW};${COL}H$color $res_name "
-		get_res "$G$((S+4))"
-		ROW=$((ROW+BOT+2))
-		msg "\033[${ROW};${COL}H$color $res_name "
-	done
+  G='CH'; color=${NC}
+  for S in $(seq 1 4)
+  do
+    get_res "$G$S"
+    set_ROW_COL
+    msg "\033[${ROW};${COL}H$color $res_name "
+    get_res "$G$((S+4))"
+    ROW=$((ROW+BOT+2))
+    msg "\033[${ROW};${COL}H$color $res_name "
+  done
 }
 
 draw_screen() {
-	OLD_G=$G; OLD_S=$S; BOT=0
-	R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
-	C=$((C/4))
-	msg "\033[2J\033[H"
-	draw_screen_header
-	for G in $(seq 1 4)
-	do
-		S="0"
-		eval n="\$G${G}_NUM"
-		while [ "$S" -le "$n" ]
-		do
-			get_res "$G$S"
-			get_edit_res "$enabled"
-			if [ "$en" = "+" ]; then
-				val="true"
-			elif [ "$en" = "-" ]; then
-				val="false"
-			elif [ "$en" = "i" ]; then
-				val="ignored"
-			fi
-			res_name="${key% ?}"
-			set_ROW_COL
-			set_color
-			unselect_MSG
-			if [ "$BOT" -lt "$S" ];then BOT="$S"; fi
-			S=$((S+1))
-		done
-	done
-	KEY=0
-	for G in $(seq 5 8)
-	do
-		eval num="\$G${G}_START"
-		num=$((num+1))
-		get_edit_res "$num"
-		a="$L1"; S=0
-		while [ "$a" -eq "$L1" ]
-		do
-			set_ROW_COL
-			res_name="$key"
-			enabled="$val"
-			set_color
-			unselect_MSG
-			num=$((num+1)); S=$((S+1))
-			get_edit_res "$num"
-			if [ -z "$L1" ]; then break; fi
-		done
-		eval G"${G}"_NUM=\"$((S-1))\"
-		if [ "$KEY" -lt "$S" ]; then KEY="$S"; fi
-	done
-	draw_col_header
-	draw_key
-	draw_footer
-	G=$OLD_G; S=$OLD_S
+  OLD_G=$G; OLD_S=$S; BOT=0
+  R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+  C=$((C/4))
+  msg "\033[2J\033[H"
+  draw_screen_header
+  for G in $(seq 1 4)
+  do
+    S="0"
+    eval n="\$G${G}_NUM"
+    while [ "$S" -le "$n" ]
+    do
+      get_res "$G$S"
+      get_edit_res "$enabled"
+      if [ "$en" = "+" ]; then
+        val="true"
+      elif [ "$en" = "-" ]; then
+        val="false"
+      elif [ "$en" = "i" ]; then
+        val="ignored"
+      fi
+      res_name="${key% ?}"
+      set_ROW_COL
+      set_color
+      unselect_MSG
+      if [ "$BOT" -lt "$S" ];then BOT="$S"; fi
+      S=$((S+1))
+    done
+  done
+  KEY=0
+  for G in $(seq 5 8)
+  do
+    eval num="\$G${G}_START"
+    num=$((num+1))
+    get_edit_res "$num"
+    a="$L1"; S=0
+    while [ "$a" -eq "$L1" ]
+    do
+      set_ROW_COL
+      res_name="$key"
+      enabled="$val"
+      set_color
+      unselect_MSG
+      num=$((num+1)); S=$((S+1))
+      get_edit_res "$num"
+      if [ -z "$L1" ]; then break; fi
+    done
+    eval G"${G}"_NUM=\"$((S-1))\"
+    if [ "$KEY" -lt "$S" ]; then KEY="$S"; fi
+  done
+  draw_col_header
+  draw_key
+  draw_footer
+  G=$OLD_G; S=$OLD_S
 }
 
 draw_footer() {
-	msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
-	msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q: quit without saving   s: save to INPUT/modified.$inputFileName and exit"
+  msg "\033[$((R-1));2H$GRN$INV enabled $NC $RED$INV disabled $NC "
+  msg "$YEL$INV ignored $NC $BLU$INV integer $NC  q: quit without saving   s: save to INPUT/modified.$inputFileName and exit"
 }
 
 get_CHAR() {
-	stty -icanon
-	CHAR=$(dd bs=1 count=1 2>/dev/null|od -A n -a|tr -d ' ')
-	stty icanon
+  stty -icanon
+  CHAR=$(dd bs=1 count=1 2>/dev/null|od -A n -a|tr -d ' ')
+  stty icanon
 }
 
 compute_data_vals() {
-	case $data_field in
-		0|1)
-			val="$e_val"
-			hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-		2)
-			hex_val="$e_val"
-			val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
-			asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
-		3)
-			if [ -z "$asc_touched" ]; then
-				asc_val="$e_val"
-				val=$(printf "%s" "$asc_val"|base64)
-				hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
-			fi;;
-		esac
+  case $data_field in
+    0|1)
+      val="$e_val"
+      hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+      asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+    2)
+      hex_val="$e_val"
+      val=$(printf "%s" "$hex_val"|xxd -p -r|base64)
+      asc_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '"%_p"');;
+    3)
+      if [ -z "$asc_touched" ]; then
+        asc_val="$e_val"
+        val=$(printf "%s" "$asc_val"|base64)
+        hex_val=$(printf "%s" "$val"|base64 --decode|hexdump -v -e '1/1 " %02x"')
+      fi;;
+    esac
 }
 
 sample_text(){
-	lb="${hex_val#?}"
-	case "$lb" in
-		0)
-			fg=30;;
-		1)
-			fg=34;;
-		2)
-			fg=32;;
-		3)
-			fg=36;;
-		4)
-			fg=31;;
-		5)
-			fg=35;;
-		6)
-			fg=33;;
-		7)
-			fg=37;;
-	esac
-	lb="${hex_val%?}"
-	case "$lb" in
-		0)
-			bg=40;;
-		1)
-			bg=44;;
-		2)
-			bg=42;;
-		3)
-			bg=46;;
-		4)
-			bg=41;;
-		5)
-			bg=45;;
-		6)
-			bg=43;;
-		7)
-			bg=47;;
-	esac
-	msg "    \033[${bg};${fg}m$C_TEST${NC}"
+  lb="${hex_val#?}"
+  case "$lb" in
+    0)
+      fg=30;;
+    1)
+      fg=34;;
+    2)
+      fg=32;;
+    3)
+      fg=36;;
+    4)
+      fg=31;;
+    5)
+      fg=35;;
+    6)
+      fg=33;;
+    7)
+      fg=37;;
+  esac
+  lb="${hex_val%?}"
+  case "$lb" in
+    0)
+      bg=40;;
+    1)
+      bg=44;;
+    2)
+      bg=42;;
+    3)
+      bg=46;;
+    4)
+      bg=41;;
+    5)
+      bg=45;;
+    6)
+      bg=43;;
+    7)
+      bg=47;;
+  esac
+  msg "    \033[${bg};${fg}m$C_TEST${NC}"
 }
 
 draw_edit_val() {
-	if [ "$key" = "$val" ] && [ -z "$LONE" ]; then
-		msg "\033[${S}H${e_text}"
-		msgs "$e_val"
-		msg "${NC}\033[K"
-	else
-		case "$type" in
-			"data")
-				compute_data_vals
-				msg "\033[${S}H${e_text}"
-				msgs "$key"
-				msg "${NC} | "
-				msgs "$val | $hex_val | $asc_val |"
-				msg "\033[K"
-				if [ -n "$e_split" ]; then
-					case $data_field in
-						1)
-							msg "\033[${S}H${e_text}"
-							msgs "$key"
-							msg "${NC} | "
-							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
-						2)
-							msg "\033[${S}H${e_text}"
-							msgs "$key"
-							msg "${NC} | "
-							msgs "$val | "
-							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
-						3)
-							msg "\033[${S}H${e_text}"
-							msgs "$key"
-							msg "${NC} | "
-							msgs "$val | $hex_val | "
-							printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
-					esac
-				fi;;
-			"integer")
-				if [ -n "$BIT_NUM" ] && [ "$CHAR" = "sp" ]; then draw_bit_editor; fi
-				case $data_field in
-					0|1)
-						val="$e_val"
-						hex_val=$(echo "$e_val"|sed 's/^0*//')
-						if [ -z "$hex_val" ]; then hex_val=0; fi
-						if [ "$hex_val" = "-" ]; then hex_val=0; fi
-						hex_val=$(printf "%0${HEX_LEN}x" "$hex_val");;
-					2)
-						hex_val="$e_val"
-						if [ -z "$e_val" ]; then
-							val="0"
-						else
-							val=$(printf "%d" "0x$e_val") # cant use bc, fails with lowercase hex
-						fi;;
-				esac
-				if [ -n "$BIT_NUM" ] && [ "$CHAR" != "sp" ]; then draw_bit_editor; fi
-				msg "\033[${S}H${e_text}"
-				msgs "$key"
-				msg "${NC} | $val | 0x$hex_val |\033[K"
-				if [ -n "$BIT_NUM" ] && [ "$res_name" = "ConsoleAttributes" ]; then sample_text; fi
-				if [ -n "$e_split" ]; then
-					case "$data_field" in
-						1)
-							msg "\033[${S}H${e_text}"
-							msgs "$key"
-							msg "${NC} | "
-							printf "%.${e_split}s" "$val" > "$TTY_OUT";;
-						2)
-							msg "\033[${S}H${e_text}"
-							msgs "$key"
-							msg "${NC} | $val | 0x"
-							printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
-					esac
-				fi;;
-			*)
-				msg "\033[${S}H${e_text}"
-				if [ -n "$SPEC_KEY" ]; then
-					msg "$key"
-					msgs "$SPEC_KEY"
-					msg "${NC}$SPEC_END"
-				else
-					msgs "$key"
-				fi
-				msg "${NC} | "
-				msgs "$e_val |"
-				msg "\033[K"
-				if [ -n "$e_split" ]; then
-					msg "\033[${S}H${e_text}"
-					if [ -n "$SPEC_KEY" ]; then
-						msg "$key"
-						msgs "$SPEC_KEY"
-						msg "${NC}$SPEC_END"
-					else
-						msgs "$key"
-					fi
-					msg "${NC} | "
-					printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
-				fi;;
-		esac
-	fi
+  if [ "$key" = "$val" ] && [ -z "$LONE" ]; then
+    msg "\033[${S}H${e_text}"
+    msgs "$e_val"
+    msg "${NC}\033[K"
+  else
+    case "$type" in
+      "data")
+        compute_data_vals
+        msg "\033[${S}H${e_text}"
+        msgs "$key"
+        msg "${NC} | "
+        msgs "$val | $hex_val | $asc_val |"
+        msg "\033[K"
+        if [ -n "$e_split" ]; then
+          case $data_field in
+            1)
+              msg "\033[${S}H${e_text}"
+              msgs "$key"
+              msg "${NC} | "
+              printf "%.${e_split}s" "$val" > "$TTY_OUT";;
+            2)
+              msg "\033[${S}H${e_text}"
+              msgs "$key"
+              msg "${NC} | "
+              msgs "$val | "
+              printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
+            3)
+              msg "\033[${S}H${e_text}"
+              msgs "$key"
+              msg "${NC} | "
+              msgs "$val | $hex_val | "
+              printf "%.${e_split}s" "$asc_val" > "$TTY_OUT";;
+          esac
+        fi;;
+      "integer")
+        if [ -n "$BIT_NUM" ] && [ "$CHAR" = "sp" ]; then draw_bit_editor; fi
+        case $data_field in
+          0|1)
+            val="$e_val"
+            hex_val=$(echo "$e_val"|sed 's/^0*//')
+            if [ -z "$hex_val" ]; then hex_val=0; fi
+            if [ "$hex_val" = "-" ]; then hex_val=0; fi
+            hex_val=$(printf "%0${HEX_LEN}x" "$hex_val");;
+          2)
+            hex_val="$e_val"
+            if [ -z "$e_val" ]; then
+              val="0"
+            else
+              val=$(printf "%d" "0x$e_val") # cant use bc, fails with lowercase hex
+            fi;;
+        esac
+        if [ -n "$BIT_NUM" ] && [ "$CHAR" != "sp" ]; then draw_bit_editor; fi
+        msg "\033[${S}H${e_text}"
+        msgs "$key"
+        msg "${NC} | $val | 0x$hex_val |\033[K"
+        if [ -n "$BIT_NUM" ] && [ "$res_name" = "ConsoleAttributes" ]; then sample_text; fi
+        if [ -n "$e_split" ]; then
+          case "$data_field" in
+            1)
+              msg "\033[${S}H${e_text}"
+              msgs "$key"
+              msg "${NC} | "
+              printf "%.${e_split}s" "$val" > "$TTY_OUT";;
+            2)
+              msg "\033[${S}H${e_text}"
+              msgs "$key"
+              msg "${NC} | $val | 0x"
+              printf "%.${e_split}s" "$hex_val" > "$TTY_OUT";;
+          esac
+        fi;;
+      *)
+        msg "\033[${S}H${e_text}"
+        if [ -n "$SPEC_KEY" ]; then
+          msg "$key"
+          msgs "$SPEC_KEY"
+          msg "${NC}$SPEC_END"
+        else
+          msgs "$key"
+        fi
+        msg "${NC} | "
+        msgs "$e_val |"
+        msg "\033[K"
+        if [ -n "$e_split" ]; then
+          msg "\033[${S}H${e_text}"
+          if [ -n "$SPEC_KEY" ]; then
+            msg "$key"
+            msgs "$SPEC_KEY"
+            msg "${NC}$SPEC_END"
+          else
+            msgs "$key"
+          fi
+          msg "${NC} | "
+          printf "%.${e_split}s" "$e_val" > "$TTY_OUT"
+        fi;;
+    esac
+  fi
 }
 
 draw_pre_status() {
-	case "$S0" in
-		1)
-			if [ "$en" = "+" ]; then
-				msg " ${GRN}${INV} Will be ADDED ${NC}"
-			elif [ "$en" = "-" ]; then
-				msg " ${RED}${INV} Will be ignored ${NC}"
-			elif [ "$en" = "i" ]; then
-				msg "${YEL}${U}This is yellow${NC}"
-			fi;;
-		2)
-			if [ "$en" = "+" ]; then
-				msg " ${GRN}${INV} Will be left alone ${NC}"
-			elif [ "$en" = "-" ]; then
-				msg " ${RED}${INV} Will be REMOVED ${NC}"
-			elif [ "$en" = "i" ]; then
-				msg "${YEL}${U} yellow ${NC}"
-			fi;;
-	esac
+  case "$S0" in
+    1)
+      if [ "$en" = "+" ]; then
+        msg " ${GRN}${INV} Will be ADDED ${NC}"
+      elif [ "$en" = "-" ]; then
+        msg " ${RED}${INV} Will be ignored ${NC}"
+      elif [ "$en" = "i" ]; then
+        msg "${YEL}${U}This is yellow${NC}"
+      fi;;
+    2)
+      if [ "$en" = "+" ]; then
+        msg " ${GRN}${INV} Will be left alone ${NC}"
+      elif [ "$en" = "-" ]; then
+        msg " ${RED}${INV} Will be REMOVED ${NC}"
+      elif [ "$en" = "i" ]; then
+        msg "${YEL}${U} yellow ${NC}"
+      fi;;
+  esac
 }
 
 draw_edit_key() {
-	S=$((S+1))
-	if [ -z "$type" ]; then
-		case "$en" in
-			+)
-				e_text="${e_text}${GRN}";;
-			-)
-				e_text="${e_text}${RED}";;
-			i)
-				e_text="${e_text}${YEL}";;
-		esac
-		opn=">"
-		if [ -n "$selected" ] && [ "$level" -gt "$selected" ]; then opn="---"; fi
-		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
-			res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
-		msg "\033[${S}H${e_text}"
-		msgs "$key"
-		msg "${NC} $opn  \033[K"
-		opn=""
-	else
-		case $type in
-			bool)
-				if [ "$e_val" = "true" ]; then
-					e_text="${e_text}${GRN}"
-				else
-					e_text="${e_text}${RED}"
-				fi;;
-			data)
-				e_text="${e_text}${YEL}";;
-			integer)
-				e_text="${e_text}${BLU}";;
-			string)
-				if [ "$en" = "+" ]; then
-					e_text="${e_text}${GRN}${U}"
-				elif [ "$en" = "-" ]; then
-					e_text="${e_text}${RED}${U}"
-				elif [ "$en" = "i" ]; then
-					e_text="${e_text}${YEL}${U}"
-				fi;;
-		esac
-		if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; \
-			res_name="$key"; res_num="$num"; res_type="$type"; fi
-		draw_edit_val
-		if [ "$TUI_MODE" = "pre" ]; then draw_pre_status; fi
-	fi
+  S=$((S+1))
+  if [ -z "$type" ]; then
+    case "$en" in
+      +)
+        e_text="${e_text}${GRN}";;
+      -)
+        e_text="${e_text}${RED}";;
+      i)
+        e_text="${e_text}${YEL}";;
+    esac
+    opn=">"
+    if [ -n "$selected" ] && [ "$level" -gt "$selected" ]; then opn="---"; fi
+    if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level=""; \
+      res_name="$key"; res_num="$num"; res_type="$type"; head_line="$num"; fi
+    msg "\033[${S}H${e_text}"
+    msgs "$key"
+    msg "${NC} $opn  \033[K"
+    opn=""
+  else
+    case $type in
+      bool)
+        if [ "$e_val" = "true" ]; then
+          e_text="${e_text}${GRN}"
+        else
+          e_text="${e_text}${RED}"
+        fi;;
+      data)
+        e_text="${e_text}${YEL}";;
+      integer)
+        e_text="${e_text}${BLU}";;
+      string)
+        if [ "$en" = "+" ]; then
+          e_text="${e_text}${GRN}${U}"
+        elif [ "$en" = "-" ]; then
+          e_text="${e_text}${RED}${U}"
+        elif [ "$en" = "i" ]; then
+          e_text="${e_text}${YEL}${U}"
+        fi;;
+    esac
+    if [ -n "$selected" ]; then e_text="${e_text}${INV}"; selected=""; has_higher_level="$S"; \
+      res_name="$key"; res_num="$num"; res_type="$type"; fi
+    draw_edit_val
+    if [ "$TUI_MODE" = "pre" ]; then draw_pre_status; fi
+  fi
 }
 
 load_edit_text() {
-	num=0; SEC=""; SUB=""
-	A0="0"; A1="0"; A2="0"
-	G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
-	while read -r line
-	do
-		eval "res10$num=\$line"
-		get_edit_res "$num"
-		if [ "$L0" -ne "0" ]; then
-			if [ "$type" = "integer" ]; then
-				val=$(printf "%d" "$val") # if hex, make decimal
-				set_edit_res "$num"
-			fi
-			if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
+  num=0; SEC=""; SUB=""
+  A0="0"; A1="0"; A2="0"
+  G1_NUM=-1; G2_NUM=-1; G3_NUM=-1; G4_NUM=-1
+  while read -r line
+  do
+    eval "res10$num=\$line"
+    get_edit_res "$num"
+    if [ "$L0" -ne "0" ]; then
+      if [ "$type" = "integer" ]; then
+        val=$(printf "%d" "$val") # if hex, make decimal
+        set_edit_res "$num"
+      fi
+      if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
       if [ "$key" = "PlayChime" ]; then PLAY_CHIME="$num"; fi
       if [ "$key" = "BootProtect" ]; then BOOT_PROTECT_NUM="$num"; fi # OC\Bootstrap\Bootstrap.efi
       if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
@@ -1534,146 +1534,146 @@ load_edit_text() {
         IGNORE_BOOL=""
         set_edit_res "$num"
       fi
-			if [ "$A0" -ne "$L0" ]; then
-				SEC="$key"; SUB=""
-				A0="$L0"; A1="0"; A2="0"
-			elif [ "$A1" -ne "$L1" ]; then
-				SUB="$key"; A1="$L1"; A2="0"
-				eval "$SEC${SUB}_START"=\"$num\"
-			elif [ "$A2" -ne "$L2" ]; then
-				A2="$L2"
-				G=0
-				case "$SEC$SUB" in
-					"ACPIAdd")
-						G=1; G1_NUM=$((G1_NUM+1)); dest="OC/ACPI";;
-					"KernelAdd")
-						G=2; G2_NUM=$((G2_NUM+1)); dest="OC/Kexts";;
-					"UEFIDrivers")
-						G=3; G3_NUM=$((G3_NUM+1)); dest="OC/Drivers";;
-					"MiscTools")
-						G=4; G4_NUM=$((G4_NUM+1)); dest="OC/Tools";;
-				esac
-				if [ "$G" -gt "0" ]; then
-					res_name="${key% ?}"
-					enabled="$num"; S="$((L2-1))"
-					add_res_array "$G$S"
-					if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
-						if [ "#${key#?}" = "$key" ]; then
-							key="$key -"; val="$val -"
-						else
-							key="$key +"; val="$val +"
-						fi
-						set_edit_res "$num"
-					fi
-				fi
-			fi
-		fi
-		num=$((num+1))
-	done < "$INPUT/edit_text.txt"
-	num=$((num-1))
-	eval G1_START="\$ACPIAdd_START"
-	eval G2_START="\$KernelAdd_START"
-	eval G3_START="\$UEFIDrivers_START"
-	eval G4_START="\$MiscTools_START"
-	eval G5_START="\$ACPIQuirks_START"
-	eval G6_START="\$KernelQuirks_START"
-	eval G7_START="\$UEFIQuirks_START"
-	eval G8_START="\$BooterQuirks_START"
-	eval G10_NUM="$num"
+      if [ "$A0" -ne "$L0" ]; then
+        SEC="$key"; SUB=""
+        A0="$L0"; A1="0"; A2="0"
+      elif [ "$A1" -ne "$L1" ]; then
+        SUB="$key"; A1="$L1"; A2="0"
+        eval "$SEC${SUB}_START"=\"$num\"
+      elif [ "$A2" -ne "$L2" ]; then
+        A2="$L2"
+        G=0
+        case "$SEC$SUB" in
+          "ACPIAdd")
+            G=1; G1_NUM=$((G1_NUM+1)); dest="OC/ACPI";;
+          "KernelAdd")
+            G=2; G2_NUM=$((G2_NUM+1)); dest="OC/Kexts";;
+          "UEFIDrivers")
+            G=3; G3_NUM=$((G3_NUM+1)); dest="OC/Drivers";;
+          "MiscTools")
+            G=4; G4_NUM=$((G4_NUM+1)); dest="OC/Tools";;
+        esac
+        if [ "$G" -gt "0" ]; then
+          res_name="${key% ?}"
+          enabled="$num"; S="$((L2-1))"
+          add_res_array "$G$S"
+          if [ "$G" -eq "3" ] && [ "${key##* }" != "i" ]; then
+            if [ "#${key#?}" = "$key" ]; then
+              key="$key -"; val="$val -"
+            else
+              key="$key +"; val="$val +"
+            fi
+            set_edit_res "$num"
+          fi
+        fi
+      fi
+    fi
+    num=$((num+1))
+  done < "$INPUT/edit_text.txt"
+  num=$((num-1))
+  eval G1_START="\$ACPIAdd_START"
+  eval G2_START="\$KernelAdd_START"
+  eval G3_START="\$UEFIDrivers_START"
+  eval G4_START="\$MiscTools_START"
+  eval G5_START="\$ACPIQuirks_START"
+  eval G6_START="\$KernelQuirks_START"
+  eval G7_START="\$UEFIQuirks_START"
+  eval G8_START="\$BooterQuirks_START"
+  eval G10_NUM="$num"
 }
 
 set_edit_res() {
-	eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$AD\|\$type\|\$val\|\$key\"
+  eval res10"$1"=\"\$L0\|\$L1\|\$L2\|\$L3\|\$AD\|\$type\|\$val\|\$key\"
 }
 
 split_val() {
-	e_len="${#e_val}"
-	val1="$(printf "%.${e_split}s" "$e_val")"
-	val2="$(printf "%s" "$e_val" | tail -c $((e_len-e_split)))"
+  e_len="${#e_val}"
+  val1="$(printf "%.${e_split}s" "$e_val")"
+  val2="$(printf "%s" "$e_val" | tail -c $((e_len-e_split)))"
 }
 
 highlight_type() {
-	msg "\033[3H"
-	case "$res_type" in
-		"data")
-			msg "       tab: ${YEL}cycle through types${NC}  ";;
-		"integer")
-			msg "       tab: ${BLU}cycle through types${NC}  ";;
-	esac
-	if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
-	case "$res_type" in
-		"data")
-			msg "base64${NC} | ";;
-		"integer")
-			msg "int${NC} | ";;
-	esac
-	if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
-	msg "hex${NC} | "
-	if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
-	if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
-	msg "   return: save changes\033[K"
-	if [ "$EDIT_RES_NUM" -gt "0" ]; then
-		msg "   ${RED}esc esc${NC}: discard changes"
-	fi
+  msg "\033[3H"
+  case "$res_type" in
+    "data")
+      msg "       tab: ${YEL}cycle through types${NC}  ";;
+    "integer")
+      msg "       tab: ${BLU}cycle through types${NC}  ";;
+  esac
+  if [ "$data_field" -eq "1" ]; then msg "${INV}"; fi
+  case "$res_type" in
+    "data")
+      msg "base64${NC} | ";;
+    "integer")
+      msg "int${NC} | ";;
+  esac
+  if [ "$data_field" -eq "2" ]; then msg "${INV}"; fi
+  msg "hex${NC} | "
+  if [ "$data_field" -eq "3" ]; then msg "${INV}"; fi
+  if [ "$res_type" = "data" ]; then msg "ascii${NC}"; fi
+  msg "   return: save changes\033[K"
+  if [ "$EDIT_RES_NUM" -gt "0" ]; then
+    msg "   ${RED}esc esc${NC}: discard changes"
+  fi
 }
 
 draw_edit_header() {
-	msg "\033[3H"
-	case "$res_type" in
-		"bool")
-			msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
-		"integer")
-			highlight_type;;
-		"data")
-			highlight_type;;
-		"string")
-			if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
-				if [ "$TUI_MODE" = "pre" ]; then
-					if [ "$MODE" = "prebuiltRelease" ]; then
-						msg " ${INV}using $REL_VER plist${NC}"
-					fi
-					msg "  space: select/unselect  - "
-					case "$S0" in
-						"1")
-							msg "${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
-						"2")
-							msg "${RED} red- ${NC} will be removed, ${GRN} green+ ${NC} will be left alone";;
-					esac
-				else
-					msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection\033[K"
-				fi
-			else
-				msg "       return: edit string\033[K"
-				if [ "$EDIT_RES_NUM" -gt "0" ]; then
-					msg "   return: save changes   ${RED}esc esc${NC}: discard changes"
-				fi
-			fi;;
-		*)
-			msg "       up dn: select section | ->: expand | <-: collapse"
-			if [ "$ADD_RES_NUM" -lt "0" ]; then
-				if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
-					msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
-				fi
-				if [ "${res_name##* }" = "i" ]; then
-					msg "  ${YEL}Disabled by -i option${NC}"
-				fi
-			elif [ "$LA" -eq "2" ]; then
-				eval a="\$add$SA"
-				msg "    return to add ${YEL}${a##* }${NC}"
-			else
-				msg "    ${RED}esc esc${NC}: to cancel"
-			fi
-			msg "\033[K";;
-	esac
+  msg "\033[3H"
+  case "$res_type" in
+    "bool")
+      msg "       space: ${GRN}enable${NC}/${RED}disable${NC} value\033[K";;
+    "integer")
+      highlight_type;;
+    "data")
+      highlight_type;;
+    "string")
+      if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
+        if [ "$TUI_MODE" = "pre" ]; then
+          if [ "$MODE" = "prebuiltRelease" ]; then
+            msg " ${INV}using $REL_VER plist${NC}"
+          fi
+          msg "  space: select/unselect  - "
+          case "$S0" in
+            "1")
+              msg "${GRN} green+ ${NC} will be added, ${RED} red- ${NC} will be ignored";;
+            "2")
+              msg "${RED} red- ${NC} will be removed, ${GRN} green+ ${NC} will be left alone";;
+          esac
+        else
+          msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection\033[K"
+        fi
+      else
+        msg "       return: edit string\033[K"
+        if [ "$EDIT_RES_NUM" -gt "0" ]; then
+          msg "   return: save changes   ${RED}esc esc${NC}: discard changes"
+        fi
+      fi;;
+    *)
+      msg "       up dn: select section | ->: expand | <-: collapse"
+      if [ "$ADD_RES_NUM" -lt "0" ]; then
+        if [ "${res_name##* }" = "+" ] || [ "${res_name##* }" = "-" ]; then
+          msg "    space: ${GRN}enable${NC}/${RED}disable${NC} selection"
+        fi
+        if [ "${res_name##* }" = "i" ]; then
+          msg "  ${YEL}Disabled by -i option${NC}"
+        fi
+      elif [ "$LA" -eq "2" ]; then
+        eval a="\$add$SA"
+        msg "    return to add ${YEL}${a##* }${NC}"
+      else
+        msg "    ${RED}esc esc${NC}: to cancel"
+      fi
+      msg "\033[K";;
+  esac
 }
 
 init_bit_editor() {
-	BIT_NUM="-1"
-	while read -r line
-	do
-		BIT_NUM=$((BIT_NUM + 1))
-		eval BIT${BIT_NUM}=\"\$line\"
-	done < "$TOOL_FILES/bit_maps/$res_name"
+  BIT_NUM="-1"
+  while read -r line
+  do
+    BIT_NUM=$((BIT_NUM + 1))
+    eval BIT${BIT_NUM}=\"\$line\"
+  done < "$TOOL_FILES/bit_maps/$res_name"
 }
 
 pow () {
@@ -1685,1176 +1685,1176 @@ pow () {
 }
 
 draw_bit_editor() {
-	msg "\033[$((S + BIT_NUM + 2))H\033[K"
-	bit="$((BIT_NUM - 2))"; bit_total=$(echo "$val"|sed 's/^0*//')
-	if [ -z "$bit_total" ]; then bit_total=0; fi
-	test_bit="31"; test_value="4294967296" # use bit length of 32 when parsing
-	while [ "$bit" -ge "0" ]
-	do
-		eval message=\"\$BIT${bit}\"
+  msg "\033[$((S + BIT_NUM + 2))H\033[K"
+  bit="$((BIT_NUM - 2))"; bit_total=$(echo "$val"|sed 's/^0*//')
+  if [ -z "$bit_total" ]; then bit_total=0; fi
+  test_bit="31"; test_value="4294967296" # use bit length of 32 when parsing
+  while [ "$bit" -ge "0" ]
+  do
+    eval message=\"\$BIT${bit}\"
 # shellcheck disable=SC2154
-		bit_value=$(printf "%d" "${message%% *}")
-		while [ "$test_value" -ne "$bit_value" ]
-		do
-			if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
-#			test_value=$((2 ** test_bit))
+    bit_value=$(printf "%d" "${message%% *}")
+    while [ "$test_value" -ne "$bit_value" ]
+    do
+      if [ "$test_value" -le "$bit_total" ]; then bit_total=$((bit_total - test_value)); fi
+#      test_value=$((2 ** test_bit))
       test_value=$(pow "2" "$test_bit")
-			test_bit=$((test_bit-1))
-		done
-		if [ "$bit_value" -le "$bit_total" ]; then
-			if [ "$bit" -eq "$BIT_TOGGLE" ]; then
-				BIT_TOGGLE="-1"
-				msg "${RED}"
-				e_val=$((val - bit_value))
-				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
-				e_split=${#e_val}
-			else
-				msg "${GRN}"
-			fi
-			bit_total=$((bit_total - bit_value))
-		else
-			if [ "$bit" -eq "$BIT_TOGGLE" ]; then
-				BIT_TOGGLE="-1"
-				msg "${GRN}"
-				e_val=$((val + bit_value))
-				if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
-				e_split=${#e_val}
-			else
-				msg "${RED}"
-			fi
-		fi
-		if [ "$bit" -eq "$BIT_EDIT" ]; then msg "${INV}"; fi
-		msg "\033[$((S + bit + 3))H    $message\033[K"
-		bit=$((bit - 1))
-	done
-	msg "${NC}\033[$((S + 1))H\033[K\n  up dn: select bit   space: ${GRN}enable${NC}/${RED}disable${NC} bit\033[K"
+      test_bit=$((test_bit-1))
+    done
+    if [ "$bit_value" -le "$bit_total" ]; then
+      if [ "$bit" -eq "$BIT_TOGGLE" ]; then
+        BIT_TOGGLE="-1"
+        msg "${RED}"
+        e_val=$((val - bit_value))
+        if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
+        e_split=${#e_val}
+      else
+        msg "${GRN}"
+      fi
+      bit_total=$((bit_total - bit_value))
+    else
+      if [ "$bit" -eq "$BIT_TOGGLE" ]; then
+        BIT_TOGGLE="-1"
+        msg "${GRN}"
+        e_val=$((val + bit_value))
+        if [ "$data_field" -eq "2" ]; then e_val=$(printf "%x" "$e_val"); fi
+        e_split=${#e_val}
+      else
+        msg "${RED}"
+      fi
+    fi
+    if [ "$bit" -eq "$BIT_EDIT" ]; then msg "${INV}"; fi
+    msg "\033[$((S + bit + 3))H    $message\033[K"
+    bit=$((bit - 1))
+  done
+  msg "${NC}\033[$((S + 1))H\033[K\n  up dn: select bit   space: ${GRN}enable${NC}/${RED}disable${NC} bit\033[K"
 }
 
 select_add_field() {
-	for n in $(seq 0 $GADD_NUM)
-	do
-		S=$((S+1))
-		eval a="\$add$n"
-		msg "\033[${S}H\033[2K"
-		if [ "$n" -eq "$SA" ]; then
-			msg "- add "
-		else
-			msg "      "
-		fi
-		if [ "$LA" -eq "2" ]; then msg "< $ADD_FILE "; fi
-		if [ "$SA" -eq "$n" ]; then msg "$INV"; fi
-		msg "$a${NC}"
-		if [ "$LA" -eq "1" ]; then msg " >"; fi
-	done
+  for n in $(seq 0 $GADD_NUM)
+  do
+    S=$((S+1))
+    eval a="\$add$n"
+    msg "\033[${S}H\033[2K"
+    if [ "$n" -eq "$SA" ]; then
+      msg "- add "
+    else
+      msg "      "
+    fi
+    if [ "$LA" -eq "2" ]; then msg "< $ADD_FILE "; fi
+    if [ "$SA" -eq "$n" ]; then msg "$INV"; fi
+    msg "$a${NC}"
+    if [ "$LA" -eq "1" ]; then msg " >"; fi
+  done
 }
 
 edit_val() {
-	old_val="$val"
-	e_split="${#e_val}"
-	asc_touched="false"
-	msg "$(tput cnorm)"
-	if [ -e "$TOOL_FILES/bit_maps/$res_name" ]; then
-		read -r line < "$TOOL_FILES/bit_maps/$res_name"
-		HEX_LEN=${line%% *}; HEX_LEN=${#HEX_LEN}; HEX_LEN=$((HEX_LEN - 2))
-		init_bit_editor
-		draw_bit_editor
-	fi
-	if [ -e "$TOOL_FILES/string_maps/$res_name" ]; then
-		msg "\033[${S}H\n\033[2K\n"
-		while read -r line
-		do
-			msg "  $line\033[K\n"
-		done < "$TOOL_FILES/string_maps/$res_name"
-		msg "\033[2K"
-	fi
-	if [ "$type" = "data" ] || [ "$type" = "integer" ]; then
-		highlight_type
-	fi
-	draw_edit_val
-	while :
-	do
-		get_CHAR
-		case $CHAR in
-			del)
-				split_val
-				e_val="${val1%?}$val2"
-				e_split=$((e_split-1))
-				if [ "$data_field" -eq "3" ]; then  asc_touched=""; else asc_touched="false"; fi
-				if [ "$e_split" -lt "0" ]; then e_split="0"; fi
-				;;
-			esc)
-				get_CHAR
-				case $CHAR in
-					"[")
-						get_CHAR
-						case $CHAR in
-							A)
-								if [ -n "$BIT_NUM" ]; then
-									BIT_EDIT=$((BIT_EDIT - 1))
-									if [ "$BIT_EDIT" -lt "0" ]; then BIT_EDIT="0"; fi
-								fi;;
-							B)
-								if [ -n "$BIT_NUM" ]; then
-									BIT_EDIT=$((BIT_EDIT + 1))
-									if [ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ]; then BIT_EDIT="$((BIT_NUM-2))"; fi
-								fi;;
-							C)
-								e_split=$((e_split+1))
-								if [ "$e_split" -gt "${#e_val}" ]; then e_split="${#e_val}"; fi
-								;;
-							D)
-								e_split=$((e_split-1))
-								if [ "$e_split" -lt "0" ]; then e_split="0"; fi
-								;;
-						esac;;
-					esc)
-						val="$old_val"
-						e_val="$val"
-						data_field="1"
-						BIT_NUM=""; BIT_EDIT="0"
-						draw_edit_val
-						msg "$(tput civis)"
-						break;;
-				esac;;
-			ht)
-				if [ "$type" = "data" ]; then
-					case $data_field in
-						1)
-							e_val="$hex_val"
-							data_field="2";;
-						2)
-							hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
-							e_val="$asc_val"
-							data_field="3";;
-						3)
-							e_val="$val"
-							data_field="1";;
-					esac
-					e_split="${#e_val}"
-					highlight_type
-				elif [ "$type" = "integer" ]; then
-					case $data_field in
-						1)
-							tval=$(echo $val|sed 's/^0*//')
-							if [ -z "$tval" ]; then tval=0; fi
-							if [ "$tval" -ge "0" ]; then
-								e_val="$hex_val"
-								data_field="2"
-							fi;;
-						2)
-							e_val="$val"
-							data_field="1";;
-					esac
-					e_split="${#e_val}"
-					highlight_type
-				fi;;
-			nl)
-				if [ "$type" != "data" ] && [ "$type" != "integer" ]; then val="$e_val"; fi
-				if [ -n "$LONE" ]; then
-					key="$val"
-					LONE=""
-				fi
-				msg "$(tput civis)"
-				CONFIG_CHANGED="-t option"
-				BIT_NUM=""; BIT_EDIT="0" # reset bit editing
-				draw_screen_header
-				break;;
-			sp)
-				if [ "$type" != "integer" ]; then
-					split_val
-					e_val="$val1 $val2"
-					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-					e_split=$((e_split+1))
-				else
-					if [ -n "$BIT_NUM" ]; then BIT_TOGGLE="$BIT_EDIT"; fi
-				fi;;
-			[0-9] )
-				split_val
-				e_val="$val1$CHAR$val2"
-				if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-				e_split=$((e_split+1));;
-			[a-fA-F] )
-				if [ "$type" != "integer" ] || [ "$data_field" -eq "2" ]; then
-					split_val
-					e_val="$val1$CHAR$val2"
-					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-					e_split=$((e_split+1))
-				fi;;
-			*)
-				if [ "$type" != "integer" ] && [ "$data_field" -ne "2" ]; then
-					split_val
-					e_val="$val1$CHAR$val2"
-					if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
-					e_split=$((e_split+1))
-				fi;;
-		esac
-		draw_edit_val
-	done
-	HEX_LEN="2"
-	EDIT_RES_NUM="-1"
-	data_field="0"
-	e_split=""
+  old_val="$val"
+  e_split="${#e_val}"
+  asc_touched="false"
+  msg "$(tput cnorm)"
+  if [ -e "$TOOL_FILES/bit_maps/$res_name" ]; then
+    read -r line < "$TOOL_FILES/bit_maps/$res_name"
+    HEX_LEN=${line%% *}; HEX_LEN=${#HEX_LEN}; HEX_LEN=$((HEX_LEN - 2))
+    init_bit_editor
+    draw_bit_editor
+  fi
+  if [ -e "$TOOL_FILES/string_maps/$res_name" ]; then
+    msg "\033[${S}H\n\033[2K\n"
+    while read -r line
+    do
+      msg "  $line\033[K\n"
+    done < "$TOOL_FILES/string_maps/$res_name"
+    msg "\033[2K"
+  fi
+  if [ "$type" = "data" ] || [ "$type" = "integer" ]; then
+    highlight_type
+  fi
+  draw_edit_val
+  while :
+  do
+    get_CHAR
+    case $CHAR in
+      del)
+        split_val
+        e_val="${val1%?}$val2"
+        e_split=$((e_split-1))
+        if [ "$data_field" -eq "3" ]; then  asc_touched=""; else asc_touched="false"; fi
+        if [ "$e_split" -lt "0" ]; then e_split="0"; fi
+        ;;
+      esc)
+        get_CHAR
+        case $CHAR in
+          "[")
+            get_CHAR
+            case $CHAR in
+              A)
+                if [ -n "$BIT_NUM" ]; then
+                  BIT_EDIT=$((BIT_EDIT - 1))
+                  if [ "$BIT_EDIT" -lt "0" ]; then BIT_EDIT="0"; fi
+                fi;;
+              B)
+                if [ -n "$BIT_NUM" ]; then
+                  BIT_EDIT=$((BIT_EDIT + 1))
+                  if [ "$BIT_EDIT" -gt "$((BIT_NUM-2))" ]; then BIT_EDIT="$((BIT_NUM-2))"; fi
+                fi;;
+              C)
+                e_split=$((e_split+1))
+                if [ "$e_split" -gt "${#e_val}" ]; then e_split="${#e_val}"; fi
+                ;;
+              D)
+                e_split=$((e_split-1))
+                if [ "$e_split" -lt "0" ]; then e_split="0"; fi
+                ;;
+            esac;;
+          esc)
+            val="$old_val"
+            e_val="$val"
+            data_field="1"
+            BIT_NUM=""; BIT_EDIT="0"
+            draw_edit_val
+            msg "$(tput civis)"
+            break;;
+        esac;;
+      ht)
+        if [ "$type" = "data" ]; then
+          case $data_field in
+            1)
+              e_val="$hex_val"
+              data_field="2";;
+            2)
+              hex_val=$(printf "%s" "$e_val"|xxd -p -r|hexdump -v -e '1/1 " %02x"')
+              e_val="$asc_val"
+              data_field="3";;
+            3)
+              e_val="$val"
+              data_field="1";;
+          esac
+          e_split="${#e_val}"
+          highlight_type
+        elif [ "$type" = "integer" ]; then
+          case $data_field in
+            1)
+              tval=$(echo $val|sed 's/^0*//')
+              if [ -z "$tval" ]; then tval=0; fi
+              if [ "$tval" -ge "0" ]; then
+                e_val="$hex_val"
+                data_field="2"
+              fi;;
+            2)
+              e_val="$val"
+              data_field="1";;
+          esac
+          e_split="${#e_val}"
+          highlight_type
+        fi;;
+      nl)
+        if [ "$type" != "data" ] && [ "$type" != "integer" ]; then val="$e_val"; fi
+        if [ -n "$LONE" ]; then
+          key="$val"
+          LONE=""
+        fi
+        msg "$(tput civis)"
+        CONFIG_CHANGED="-t option"
+        BIT_NUM=""; BIT_EDIT="0" # reset bit editing
+        draw_screen_header
+        break;;
+      sp)
+        if [ "$type" != "integer" ]; then
+          split_val
+          e_val="$val1 $val2"
+          if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
+          e_split=$((e_split+1))
+        else
+          if [ -n "$BIT_NUM" ]; then BIT_TOGGLE="$BIT_EDIT"; fi
+        fi;;
+      [0-9] )
+        split_val
+        e_val="$val1$CHAR$val2"
+        if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
+        e_split=$((e_split+1));;
+      [a-fA-F] )
+        if [ "$type" != "integer" ] || [ "$data_field" -eq "2" ]; then
+          split_val
+          e_val="$val1$CHAR$val2"
+          if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
+          e_split=$((e_split+1))
+        fi;;
+      *)
+        if [ "$type" != "integer" ] && [ "$data_field" -ne "2" ]; then
+          split_val
+          e_val="$val1$CHAR$val2"
+          if [ "$data_field" -eq "3" ]; then asc_touched=""; else asc_touched="false"; fi
+          e_split=$((e_split+1))
+        fi;;
+    esac
+    draw_edit_val
+  done
+  HEX_LEN="2"
+  EDIT_RES_NUM="-1"
+  data_field="0"
+  e_split=""
 }
 
 draw_plist_footer() {
-	if [ "$TUI_MODE" = "pre" ]; then
-		PL_FOOT="$((R-11))"
-		msg "\033[${PL_FOOT}H Items under the MISSING tag were found in the Sample.plist, but they\n"
-		msg "do not exist in the INPUT plist.  Use the arrow keys to navigate, then space\n"
-		msg "to select/unselect items.  ${GRN}Green+${NC} will be added to loaded plist,\n"
-		msg "${RED}red-${NC} will be left out.\n\n"
-		msg "Items under the EXTRAS tag were found in the INPUT plist, but do not exist in the\n"
-		msg "Sample.plist. ${RED}Red-${NC} will be removed from loaded plist, ${GRN}green+${NC} left alone."
-		msg "\033[$((R-3))H g: go to TUI screen with changes   i: info for ${INV}highlighted${NC} item\n\033[2K\n"
-		msg " $GRN$INV added if missing / not removed if exists $NC\n"
-		msg " $RED$INV ignore if missing / remove if exists $NC "
-		msg "q: quit without saving\033[K"
-	else
-		PL_FOOT="$((R-4))"
-		msg "\033[${PL_FOOT}H a: add new item to plist     d: ${RED}delete${NC} highlighted item        g: go build new EFI folder\n\033[2K"
-		msg " i: info of ${INV}highlighted${NC} item  n: change name of highlighted key\n\033[2K\n"
-		msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
-		msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
-	fi
+  if [ "$TUI_MODE" = "pre" ]; then
+    PL_FOOT="$((R-11))"
+    msg "\033[${PL_FOOT}H Items under the MISSING tag were found in the Sample.plist, but they\n"
+    msg "do not exist in the INPUT plist.  Use the arrow keys to navigate, then space\n"
+    msg "to select/unselect items.  ${GRN}Green+${NC} will be added to loaded plist,\n"
+    msg "${RED}red-${NC} will be left out.\n\n"
+    msg "Items under the EXTRAS tag were found in the INPUT plist, but do not exist in the\n"
+    msg "Sample.plist. ${RED}Red-${NC} will be removed from loaded plist, ${GRN}green+${NC} left alone."
+    msg "\033[$((R-3))H g: go to TUI screen with changes   i: info for ${INV}highlighted${NC} item\n\033[2K\n"
+    msg " $GRN$INV added if missing / not removed if exists $NC\n"
+    msg " $RED$INV ignore if missing / remove if exists $NC "
+    msg "q: quit without saving\033[K"
+  else
+    PL_FOOT="$((R-4))"
+    msg "\033[${PL_FOOT}H a: add new item to plist     d: ${RED}delete${NC} highlighted item        g: go build new EFI folder\n\033[2K"
+    msg " i: info of ${INV}highlighted${NC} item  n: change name of highlighted key\n\033[2K\n"
+    msg " $GRN$INV enabled $NC $RED$INV disabled $NC "
+    msg "$YEL$INV data $NC $BLU$INV integer $NC $INV string $NC q: quit without saving  s: save and exit\033[K"
+  fi
 }
 
 draw_edit_text() {
-	num=0; S=3
-	data_field="0"
-	if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
-	draw_screen_header
-	draw_plist_footer
-	while [ "$num" -le "$G10_NUM" ]
-	do
-		e_text=""
-		get_edit_res "$num"; e_val="$val"
-		if [ "$L0" -ne "0" ]; then
-			if [ "$ADD_RES_NUM" -eq "$num" ]; then
-				select_add_field
-			fi
-			if [ "$L1" -eq "0" ]; then
-				if [ "$L0" -eq "$S0" ]; then selected="0"; fi
-				e_text="$e_text"; draw_edit_key
-				if [ "$level" -eq "0" ]; then LLEN=$L0; fi
-			elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
-				if [ "$L1" -eq "$S1" ]; then selected="1"; fi
-				e_text="    $e_text"; draw_edit_key
-				if [ "$level" -eq "1" ]; then LLEN=$L1; fi
-			elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
-				if [ "$L2" -eq "$S2" ]; then selected="2"; fi
-				e_text="        $e_text"; draw_edit_key
-				if [ "$level" -eq "2" ]; then LLEN=$L2; fi
-			elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
-				if [ "$L3" -eq "$S3" ]; then selected="3"; fi
-				e_text="            $e_text"; draw_edit_key
-				if [ "$level" -eq "3" ]; then LLEN=$L3; fi
-			fi
-			if [ -n "$has_higher_level" ]; then
-				if [ "$EDIT_RES_NUM" -eq "$num" ]; then
-					data_field="1"
-					draw_edit_header
-					edit_val
-					set_edit_res "$num"
-				fi
-			fi
-		fi
-		num=$((num+1))
-	done
-	if [ "$PL_FOOT" -gt "$S" ]; then
-		for n in $(seq $((S+1)) $((PL_FOOT-1)))
-		do
-			msg "\033[${n}H\033[K"
-		done
-	fi
-	draw_edit_header
-	n=$((S+1))
-	msg "\033[${S}H\n"
-	res_name="${res_name% ?}"
+  num=0; S=3
+  data_field="0"
+  if [ "$moved" = "redraw" ]; then msg "\033[2J"; fi
+  draw_screen_header
+  draw_plist_footer
+  while [ "$num" -le "$G10_NUM" ]
+  do
+    e_text=""
+    get_edit_res "$num"; e_val="$val"
+    if [ "$L0" -ne "0" ]; then
+      if [ "$ADD_RES_NUM" -eq "$num" ]; then
+        select_add_field
+      fi
+      if [ "$L1" -eq "0" ]; then
+        if [ "$L0" -eq "$S0" ]; then selected="0"; fi
+        e_text="$e_text"; draw_edit_key
+        if [ "$level" -eq "0" ]; then LLEN=$L0; fi
+      elif [ "$level" -gt "0" ] && [ "$L2" -eq "0" ] && [ "$L0" -eq "$S0" ]; then
+        if [ "$L1" -eq "$S1" ]; then selected="1"; fi
+        e_text="    $e_text"; draw_edit_key
+        if [ "$level" -eq "1" ]; then LLEN=$L1; fi
+      elif [ "$level" -gt "1" ] && [ "$L3" -eq "0" ] && [ "$L1" -eq "$S1" ] && [ "$L0" -eq "$S0" ]; then
+        if [ "$L2" -eq "$S2" ]; then selected="2"; fi
+        e_text="        $e_text"; draw_edit_key
+        if [ "$level" -eq "2" ]; then LLEN=$L2; fi
+      elif [ "$level" -gt "2" ] && [ "$L0" -eq "$S0" ] && [ "$L1" -eq "$S1" ] && [ "$L2" -eq "$S2" ]; then
+        if [ "$L3" -eq "$S3" ]; then selected="3"; fi
+        e_text="            $e_text"; draw_edit_key
+        if [ "$level" -eq "3" ]; then LLEN=$L3; fi
+      fi
+      if [ -n "$has_higher_level" ]; then
+        if [ "$EDIT_RES_NUM" -eq "$num" ]; then
+          data_field="1"
+          draw_edit_header
+          edit_val
+          set_edit_res "$num"
+        fi
+      fi
+    fi
+    num=$((num+1))
+  done
+  if [ "$PL_FOOT" -gt "$S" ]; then
+    for n in $(seq $((S+1)) $((PL_FOOT-1)))
+    do
+      msg "\033[${n}H\033[K"
+    done
+  fi
+  draw_edit_header
+  n=$((S+1))
+  msg "\033[${S}H\n"
+  res_name="${res_name% ?}"
 }
 
 show_description() {
-	DESC=""
-	if [ "$TUI_MODE" = "pre" ]; then
-		res_name="${res_name#*>*>  }"
+  DESC=""
+  if [ "$TUI_MODE" = "pre" ]; then
+    res_name="${res_name#*>*>  }"
     res_name="${res_name% :*}"
-	fi
-	while read -r line
-	do
-		read -r desc
-		if [ "$line" = "$res_name" ];then
-			DESC=$desc
-			break
-		fi
-	done < "$TOOL_FILES/description.txt"
-	if [ -z "$DESC" ]; then DESC="No description found."; fi
-	msg "$NC\033[2K\n"
-	msgs "$DESC"
-	msg "\033[K\n\033[2K"
-	moved="redraw"
-	select_MSG
-	get_CHAR
+  fi
+  while read -r line
+  do
+    read -r desc
+    if [ "$line" = "$res_name" ];then
+      DESC=$desc
+      break
+    fi
+  done < "$TOOL_FILES/description.txt"
+  if [ -z "$DESC" ]; then DESC="No description found."; fi
+  msg "$NC\033[2K\n"
+  msgs "$DESC"
+  msg "\033[K\n\033[2K"
+  moved="redraw"
+  select_MSG
+  get_CHAR
 }
 
 toggle_enabled() {
-	if [ "$type" = "" ] || \
-	{ [ "$type" = "bool" ] && [ "$key" = "Enabled" ]; }; then
-		get_edit_res "$head_line"
-		case "$en" in
-			"-"|"+")
-				temp=${key%?}
-				case "${key##* }" in
-					"-")
-						key="$temp+";;
-					"+")
-						key="$temp-";;
-				esac
-				set_edit_res "$head_line"
-				num="$head_line"
-				while [ "$key" != "Enabled" ]
-				do
-					num=$((num+1))
-					get_edit_res "$num"
-				done
-				case "$val" in
-					true)
-						val="false";;
-					false)
-						val="true";;
-				esac
-				set_edit_res "$num"
-				CONFIG_CHANGED="-t option"
-				moved="changed"
-				;;
-		esac
-	elif [ "$type" = "bool" ]; then
-		case "$val" in
-			true)
-				val="false";;
-			false)
-				val="true";;
-		esac
-		CONFIG_CHANGED="-t option"
-		set_edit_res "$res_num"
-		moved="changed"
-	elif [ "$en" != "$key" ]; then
-		get_edit_res "$res_num"
-		if [ "$en" = "+" ]; then
-			key="#${key% ?} -"
-			CONFIG_CHANGED="-t option"
-			moved="changed"
-		elif [ "$en" = "-" ]; then
-			key="${key#?}"
-			key="${key% ?} +"
-			CONFIG_CHANGED="-t option"
-			moved="changed"
-		fi
-		val="$key"
-		set_edit_res "$res_num"
-	fi
+  if [ "$type" = "" ] || \
+  { [ "$type" = "bool" ] && [ "$key" = "Enabled" ]; }; then
+    get_edit_res "$head_line"
+    case "$en" in
+      "-"|"+")
+        temp=${key%?}
+        case "${key##* }" in
+          "-")
+            key="$temp+";;
+          "+")
+            key="$temp-";;
+        esac
+        set_edit_res "$head_line"
+        num="$head_line"
+        while [ "$key" != "Enabled" ]
+        do
+          num=$((num+1))
+          get_edit_res "$num"
+        done
+        case "$val" in
+          true)
+            val="false";;
+          false)
+            val="true";;
+        esac
+        set_edit_res "$num"
+        CONFIG_CHANGED="-t option"
+        moved="changed"
+        ;;
+    esac
+  elif [ "$type" = "bool" ]; then
+    case "$val" in
+      true)
+        val="false";;
+      false)
+        val="true";;
+    esac
+    CONFIG_CHANGED="-t option"
+    set_edit_res "$res_num"
+    moved="changed"
+  elif [ "$en" != "$key" ]; then
+    get_edit_res "$res_num"
+    if [ "$en" = "+" ]; then
+      key="#${key% ?} -"
+      CONFIG_CHANGED="-t option"
+      moved="changed"
+    elif [ "$en" = "-" ]; then
+      key="${key#?}"
+      key="${key% ?} +"
+      CONFIG_CHANGED="-t option"
+      moved="changed"
+    fi
+    val="$key"
+    set_edit_res "$res_num"
+  fi
 }
 
 add_field() {
-	get_edit_res "$ADD_RES_NUM"
-	for n in $(seq "$G10_NUM" "$ADD_RES_NUM") # shift array up
-	do
-		o=$((n+field_len))
-		eval res10$o="\$res10$n"
-	done
-	for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # clear array
-	do
-		eval res10$n=""
-	done
-	G10_NUM=$((G10_NUM+field_len)) # mark new length
-	if [ -z "$new_key" ]; then # get new key if not provided
-		SPEC_KEY="$new_type"; SPEC_END=" --> "
-		key="\n\n Enter key name for new ${YEL}"
-		val=""; e_val="$val"
-		type="string"; res_type="string"
-		data_field=1
-		draw_edit_header
-		edit_val
-		SPEC_KEY=""
-		key="$val"
-		if [ -z "$key" ]; then key="NewKey"; fi
-		val=""
-	else
-		key="$new_key"
-		val="$new_val"
-	fi
-	type="$new_type"
-	if [ "$type" = "bool" ]; then val="false"; fi
-	o=0
-	if [ -n "$USING_TEMPLATE" ]; then
-		for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
-		do
-			eval a="\$add$o"
-			L3="$o"
-			type="${a%%|*}"
-			a="${a#*|}"
-			val="${a%%|*}"
-			eval val=\"$val\"
-			key="${a##*|}"
-			eval key=\"$key\"
-			set_edit_res "$n"
-			o=$((o+1))
-		done
-	else
-		set_edit_res "$ADD_RES_NUM"
-		USING_TEMPLATE=""
-	fi
-	new_res="$res_name"
-	n=$((ADD_RES_NUM+field_len))
-	get_edit_res "$n"
-	eval l=\$L$((level-1)); l2=$l
-	while [ "$l2" -eq "$l" ]
-	do
-		eval L$level=\$\(\(L$level+1\)\)
-		set_edit_res "$n"
-		n=$((n+1))
-		get_edit_res "$n"
-		eval l=\$L$((level-1))
-	done
-	for n in $(seq 1 8) # move summary screen start pointers up
-	do
-		eval l=\$G"$n"_START
-		if [ "$l" -gt "$ADD_RES_NUM" ]; then
-			l=$((l+field_len))
-			eval G"$n"_START=$l
-		fi
-	done
-	for n in $(seq 1 4) # move linked pointer up
-	do
-		eval p=\$G"$n"_NUM
-		resize=""
-		for o in $(seq 0 "$p")
-		do
-			get_res "$n$o"
-			if [ "$enabled" -eq "$ADD_RES_NUM" ] && [ -z "$resize" ]; then resize="$o"; fi # found position for new item
-			if [ "$enabled" -ge "$ADD_RES_NUM" ]; then
-				enabled=$((enabled+field_len))
-				set_res "$n$o"
-			fi
-		done
-		if [ -n "$resize" ]; then # add linked pointer for new item
-			p=$((p+1))
-			for o in $(seq "$p" "$((resize+1))")
-			do
-				eval res$n$o=\$res$n$((o-1))
-			done
-			eval G"$n"_NUM=$p
-			res_name="$new_res"
-			enabled="$ADD_RES_NUM"
-			add_res_array "$n$resize" # add resource + git url to build array
-		fi
-	done
-	ADD_RES_NUM="-1"
+  get_edit_res "$ADD_RES_NUM"
+  for n in $(seq "$G10_NUM" "$ADD_RES_NUM") # shift array up
+  do
+    o=$((n+field_len))
+    eval res10$o="\$res10$n"
+  done
+  for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # clear array
+  do
+    eval res10$n=""
+  done
+  G10_NUM=$((G10_NUM+field_len)) # mark new length
+  if [ -z "$new_key" ]; then # get new key if not provided
+    SPEC_KEY="$new_type"; SPEC_END=" --> "
+    key="\n\n Enter key name for new ${YEL}"
+    val=""; e_val="$val"
+    type="string"; res_type="string"
+    data_field=1
+    draw_edit_header
+    edit_val
+    SPEC_KEY=""
+    key="$val"
+    if [ -z "$key" ]; then key="NewKey"; fi
+    val=""
+  else
+    key="$new_key"
+    val="$new_val"
+  fi
+  type="$new_type"
+  if [ "$type" = "bool" ]; then val="false"; fi
+  o=0
+  if [ -n "$USING_TEMPLATE" ]; then
+    for n in $(seq $((ADD_RES_NUM)) $((ADD_RES_NUM+field_len-1))) # fill array
+    do
+      eval a="\$add$o"
+      L3="$o"
+      type="${a%%|*}"
+      a="${a#*|}"
+      val="${a%%|*}"
+      eval val=\"$val\"
+      key="${a##*|}"
+      eval key=\"$key\"
+      set_edit_res "$n"
+      o=$((o+1))
+    done
+  else
+    set_edit_res "$ADD_RES_NUM"
+    USING_TEMPLATE=""
+  fi
+  new_res="$res_name"
+  n=$((ADD_RES_NUM+field_len))
+  get_edit_res "$n"
+  eval l=\$L$((level-1)); l2=$l
+  while [ "$l2" -eq "$l" ]
+  do
+    eval L$level=\$\(\(L$level+1\)\)
+    set_edit_res "$n"
+    n=$((n+1))
+    get_edit_res "$n"
+    eval l=\$L$((level-1))
+  done
+  for n in $(seq 1 8) # move summary screen start pointers up
+  do
+    eval l=\$G"$n"_START
+    if [ "$l" -gt "$ADD_RES_NUM" ]; then
+      l=$((l+field_len))
+      eval G"$n"_START=$l
+    fi
+  done
+  for n in $(seq 1 4) # move linked pointer up
+  do
+    eval p=\$G"$n"_NUM
+    resize=""
+    for o in $(seq 0 "$p")
+    do
+      get_res "$n$o"
+      if [ "$enabled" -eq "$ADD_RES_NUM" ] && [ -z "$resize" ]; then resize="$o"; fi # found position for new item
+      if [ "$enabled" -ge "$ADD_RES_NUM" ]; then
+        enabled=$((enabled+field_len))
+        set_res "$n$o"
+      fi
+    done
+    if [ -n "$resize" ]; then # add linked pointer for new item
+      p=$((p+1))
+      for o in $(seq "$p" "$((resize+1))")
+      do
+        eval res$n$o=\$res$n$((o-1))
+      done
+      eval G"$n"_NUM=$p
+      res_name="$new_res"
+      enabled="$ADD_RES_NUM"
+      add_res_array "$n$resize" # add resource + git url to build array
+    fi
+  done
+  ADD_RES_NUM="-1"
 }
 
 delete_field() {
-	get_edit_res "$res_num"
-	eval l=\$L$level
-	if [ "$l" -eq "0" ]; then
-		level=$((level-1))
-		eval s=\$S$level
-		if [ "$s" -eq "$LLEN" ]; then
-			eval S$level=$((LLEN-1))
-		fi
-	fi
-	if [ "$level" -gt "0" ]; then
-		field_len=1
-		eval l=\$L$((level-1))
-		l2=$l
-		eval d=\$L$level
-		for n in $(seq $res_num $G10_NUM)
-		do
-			o=$((n+field_len))
-			if [ "$l" -eq "$l2" ]; then # no need to check if done with section
-				get_edit_res "$o"
-				eval l2=\$L$((level-1))
-				eval d2=\$L$level
-				while [ "$d" -eq "$d2" ]
-				do
-					field_len=$((field_len+1))
-					o=$((n+field_len))
-					get_edit_res "$o"
-					eval l2=\$L$((level-1))
-					eval d2=\$L$level
-				done
-				if [ "$l" -eq "$l2" ]; then
-					eval L$level=\$\(\(L$level-1\)\)
-				else
-					l="-1"
-				fi
-				set_edit_res "$n"
-			else
-				eval res10"$n"=\$res10$o # just swap
-			fi
-		done
-		G10_NUM=$((G10_NUM-field_len))
-		eval s=\$S$level
-		if [ "$s" -eq "$LLEN" ]; then
-			s=$((s-1))
-			LLEN=0
-		elif [ "$LLEN" -eq "0" ]; then
-			s=1
-		fi
-		eval S$level=$s
-		for n in $(seq 1 8)
-		do
-			eval l=\$G"$n"_START
-			if [ "$l" -gt "$res_num" ]; then
-				l=$((l-field_len))
-				eval G"$n"_START=$l
-			fi
-		done
-		for n in $(seq 1 4)
-		do
-			eval p=\$G"$n"_NUM
-			resize=""
-			for o in $(seq 0 "$p")
-			do
-				get_res "$n$o"
-				if [ "$enabled" -eq "$res_num" ]; then
-					eval res$n$o=""
-					resize="true"
-				elif [ "$enabled" -gt "$res_num" ]; then
-					enabled=$((enabled-field_len))
-					set_res "$n$o"
-				fi
-			done
-			if [ -n "$resize" ]; then
-				for o in $(seq 0 "$p")
-				do
-					eval a=\$res$n$o
-					if [ -z "$a" ]; then
-						eval res$n$o=\$res$n$((o+1))
-						eval res$n$((o+1))=""
-					fi
-				done
-				eval G"$n"_NUM=$((p-1))
-			fi
-		done
-	fi
+  get_edit_res "$res_num"
+  eval l=\$L$level
+  if [ "$l" -eq "0" ]; then
+    level=$((level-1))
+    eval s=\$S$level
+    if [ "$s" -eq "$LLEN" ]; then
+      eval S$level=$((LLEN-1))
+    fi
+  fi
+  if [ "$level" -gt "0" ]; then
+    field_len=1
+    eval l=\$L$((level-1))
+    l2=$l
+    eval d=\$L$level
+    for n in $(seq $res_num $G10_NUM)
+    do
+      o=$((n+field_len))
+      if [ "$l" -eq "$l2" ]; then # no need to check if done with section
+        get_edit_res "$o"
+        eval l2=\$L$((level-1))
+        eval d2=\$L$level
+        while [ "$d" -eq "$d2" ]
+        do
+          field_len=$((field_len+1))
+          o=$((n+field_len))
+          get_edit_res "$o"
+          eval l2=\$L$((level-1))
+          eval d2=\$L$level
+        done
+        if [ "$l" -eq "$l2" ]; then
+          eval L$level=\$\(\(L$level-1\)\)
+        else
+          l="-1"
+        fi
+        set_edit_res "$n"
+      else
+        eval res10"$n"=\$res10$o # just swap
+      fi
+    done
+    G10_NUM=$((G10_NUM-field_len))
+    eval s=\$S$level
+    if [ "$s" -eq "$LLEN" ]; then
+      s=$((s-1))
+      LLEN=0
+    elif [ "$LLEN" -eq "0" ]; then
+      s=1
+    fi
+    eval S$level=$s
+    for n in $(seq 1 8)
+    do
+      eval l=\$G"$n"_START
+      if [ "$l" -gt "$res_num" ]; then
+        l=$((l-field_len))
+        eval G"$n"_START=$l
+      fi
+    done
+    for n in $(seq 1 4)
+    do
+      eval p=\$G"$n"_NUM
+      resize=""
+      for o in $(seq 0 "$p")
+      do
+        get_res "$n$o"
+        if [ "$enabled" -eq "$res_num" ]; then
+          eval res$n$o=""
+          resize="true"
+        elif [ "$enabled" -gt "$res_num" ]; then
+          enabled=$((enabled-field_len))
+          set_res "$n$o"
+        fi
+      done
+      if [ -n "$resize" ]; then
+        for o in $(seq 0 "$p")
+        do
+          eval a=\$res$n$o
+          if [ -z "$a" ]; then
+            eval res$n$o=\$res$n$((o+1))
+            eval res$n$((o+1))=""
+          fi
+        done
+        eval G"$n"_NUM=$((p-1))
+      fi
+    done
+  fi
 }
 
 text_user_interface() {
-	git_url=""; srce=""; dest=""; parent=""
-	BOT=0; KEY=0
-	CHAR=""; moved=""
-	set_text_header
-	msg "$(tput smcup)"
-	msg "$(tput civis)"
-	stty -echo
-	S=0
-	level=0; S0=1; S1=0; S2=0; S3=0
-	if [ "$TUI_MODE" = "pre"  ]; then
-		G="10"
-		draw_edit_text
-	else
-		G=1
-		draw_screen
-		get_res "$G$S"
-		get_edit_res "$enabled"
-		if [ "$en" = "+" ]; then
-			val="true"
-		elif [ "$en" = "-" ]; then
-			val="false"
-		elif [ "$en" = "i" ]; then
-			val="ignored"
-		fi
-		set_ROW_COL; set_color
-		select_MSG
-	fi
-	while [ "$CHAR" != "g" ]
-	do
-		get_CHAR
-		if [ "$TUI_MODE" = "pre" ]; then # restrict options in pre MODE
-			case $CHAR in
-				sp|g|h|j|k|l|i|p|r|q|A|B|C|D)
-					CHAR="$CHAR";;
-				*)
-					CHAR="";;
-			esac
-		fi
-		case $CHAR in
-			e)
-				moved="redraw"
-				ADD_RES_NUM="-1"
-				if [ "$TUI_MODE" != "summary" ]; then
-					TUI_MODE="summary"
-					G="$SUMMARY_G"; S="$SUMMARY_S"
-					draw_screen
-				else
-					TUI_MODE=" plist "
-					msg "\033[2H\033[2K"
-					SUMMARY_G="$G"; SUMMARY_S="$S"
-					G="10"
-				fi;;
-			p) # debug dump array
-				stty echo
-				msg "${NC}"
-				msg "$(tput rmcup)"
-				msg "$(tput cnorm)"
-				print_res_array
-				exit 0;;
-			q)
-				stty echo
-				CHAR='g'
-				TUI_MODE='quit';;
-			s) # exit loop with 'g' then save Docs/config.plist if changed then stop
-				if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
-				CHAR='g'
-				TUI_MODE='stop';;
-			*)
-				if [ "$G" -lt 10 ]; then
-					case "$CHAR" in # key press actions for summary screen
-						b)
-							moved="true"
-							eval S="\$G${G}_NUM";;
-						i)
-							show_description
-							draw_screen;;
-						r)
-							draw_screen
-							moved="true";;
-						A|k) # move up
-							moved="true"
-							S=$((S-1))
-							if [ "$S" -lt "0" ];then
-								if [ "$G" -gt "4" ];then
-									G=$((G-4))
-									eval S="\$G${G}_NUM"
-								else
-									S=0
-								fi
-							fi;;
-						B|j) # move down
-							moved="true"
-							S=$((S+1))
-							eval len="\$G${G}_NUM"
-							if [ "$S" -gt "$len" ];then
-								if [ "$G" -lt "5" ];then
-									G=$((G+4))
-									S=0
-								else
-									S=$len
-								fi
-							fi;;
-						C|l) # move right
-							moved="true"
-							G=$((G+1))
-							if [ "$G" -eq "5" ]; then G=4; fi
-							if [ "$G" -eq "9" ]; then G=8; fi
-							;;
-						D|h) # move left
-							moved="true"
-							G=$((G-1))
-							if [ "$G" -eq "0" ]; then G=1; fi
-							if [ "$G" -eq "4" ]; then G=5; fi
-							;;
-						sp|nl) # toggle enabled
-							unselect_MSG
-							moved="changed"
-							if [ "$G" = "3" ]; then
-								res_num="$enabled"
-							elif [ "$G" -lt "5" ]; then
-								head_line="$enabled"
-							else
-								res_num="$num"
-							fi
-							toggle_enabled
-							CONFIG_CHANGED="-t option"
-							if [ "$G" -eq "3" ]; then res_name="${key% ?}"; set_res "$G$S"; fi
-							draw_screen_header;;
-						ht)
-							G=$((G+1))
-							if [ "$G" -gt "8" ]; then G=1; fi
-							moved="true";;
-					esac
-				else # user is in plist edit screen
-					if [ "$ADD_RES_NUM" -lt "0" ]; then # not in add field mode
-						case "$CHAR" in # key press actions for edit plist screen
-							a)
-								if [ "$level" -gt "0" ]; then
-									init_add_array "add_tree" "add_tree1"
-									ADD_RES_NUM="$res_num"
-									SA=0; LA=1
-									new_key=""; new_val=""
-									eval SN=\$S$level
-									eval S$level="-1"
-									moved="true"
-								else
-									msg "\n${YEL}Can't add to base of plist yet, expand a section to add items${NC}"
-								fi;;
-							d) # delete field or section
-								if [ "$level" -gt "0" ]; then
-									msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} "
-									msgs "$res_name"
-									msg "${NC}, any other key to abort"
-									get_CHAR
-									if [ "$CHAR" = "d" ]; then
-										delete_field
-									fi
-									moved="true"
-								fi;;
-							i)
-								show_description
-								moved="true";;
-							n)
-								get_edit_res "$res_num"
-								if [ "$key" = "$en" ]; then
-									val="$key"; e_val="$val"; SPEC_KEY="$val"; SPEC_END=" field --> "
-									key="\n\nEnter new name for ${YEL}"
-									type="string"; res_type="string"
-									data_field=1
-									EDIT_RES_NUM="$res_num"
-									draw_edit_header
-									edit_val
-									new_key="$val"; SPEC_KEY=""
-									get_edit_res "$res_num"
-									key="$new_key"
-									if [ -z "$key" ]; then key="BlankKey"; fi
-									set_edit_res "$res_num"
-									EDIT_RES_NUM="-1"
-								fi
-								moved="true";;
-							r)
-								moved="redraw"
-								draw_edit_text
-								moved="";;
-							A|k) # move up
-								eval SN="\$S$level"
-								SN=$((SN-1))
-								if [ "$SN" -lt "1" ]; then
-									SN=1
-								else
-									moved="true"
-								fi
-								eval S$level=$SN;;
-							B|j) # move down
-								eval SN="\$S$level"
-								SN=$((SN+1))
-								if [ "$SN" -gt "$LLEN" ]; then
-									SN=$LLEN
-								else
-									moved="true"
-								fi
-								eval "S$level=$SN";;
-							C|l) # move right
-								if [ -z "$has_higher_level" ]; then
-									level=$((level+1))
-									if [ "$level" -gt "3" ]; then level=3; fi
-									eval S$level=1
-									moved="redraw"
-								fi;;
-							D|h) # move left
-								if [ "$level" -gt "0" ]; then
-									eval S$level=0
-									level=$((level-1))
-									moved="redraw"
-								fi;;
-							sp) # only mark CONFIG_CHANGED if change was done  sp|nl
-								get_edit_res "$res_num"
-								toggle_enabled
-								;; # end case sp
-							nl|ht)
-								get_edit_res "$res_num"
-								if [ "$en" = "$key" ]; then
-									case $type in
-										"string")
-											if [ "$key" = "$val" ]; then LONE="true"; fi
-											EDIT_RES_NUM="$res_num"
-											moved="changed";;
-										"integer"|"data")
-											EDIT_RES_NUM="$res_num"
-											moved="changed";;
-									esac
-								fi;;
-						esac
-					else # key press actions in add field mode
-						case $CHAR in
-							esc)
-								get_CHAR
-								if [ "$CHAR" = "esc" ]; then
-									ADD_RES_NUM="-1"
-									moved="true"
-									eval S$level=$SN
-								fi;;
-							nl)
-								if [ "$LA" -eq "2" ]; then
-									case "${ADD_FILE#*_}" in
-										"Drivers"|"Kexts"|"SSDTs"|"Tools")
-											eval res_name="\$add$SA"
-											init_add_array "templates" "${ADD_FILE#*_}"
-											USING_TEMPLATE="true"
-											new_type=""
-											new_val=""
-											new_key="$res_name"
-											add_field;;
-										"variable")
-											eval a="\$add$SA"
-											new_val=""
-											new_key=""
-											new_type="${a##* }"
-											add_field;;
-										*)
-											ADD_RES_NUM="-1";;
-									esac
-									CONFIG_CHANGED="-t option"
-									moved="true"
-									eval S$level=$SN
-								fi;;
-							A|k) # move up
-								SA=$((SA-1))
-								moved="true"
-								if [ "$SA" -lt "0" ]; then SA=0; fi;;
-							B|j) # move down
-								SA=$((SA+1))
-								moved="true"
-								if [ "$SA" -gt "$GADD_NUM" ]; then SA=$GADD_NUM; fi;;
-							C|l) # move right
-								if [ "$LA" -ne "2" ]; then
-									eval a="\$add$SA"
-									init_add_array "add_tree" "$a"
-									LA=2; SA=0
-									moved="true"
-								fi;;
-							D|h) # move left
-								if [ "$LA" -ne "1" ]; then
-									init_add_array "add_tree" "add_tree1"
-									LA=1; SA=0
-									moved="true"
-								fi;;
-						esac
-					fi
-				fi;;
-		esac
-		eval temp="\$G${G}_NUM"
-		if [ "$S" -gt "$temp" ]; then S="$temp"; fi
-		if [ "$S" -lt "0" ]; then S=0; fi
-		if [ -n "$moved" ]; then
-			if [ "$G" -lt "5" ]; then
-				unselect_MSG
-				get_res "$G$S"
-				get_edit_res "$enabled"
-				if [ "$en" = "+" ]; then
-					val="true"
-				elif [ "$en" = "-" ]; then
-					val="false"
-				elif [ "$en" = "i" ]; then
-					val="ignored"
-				fi
-				set_ROW_COL
-				set_color
-				select_MSG
-			elif [ "$G" -lt "10" ]; then
-				unselect_MSG
-				eval num="\$G${G}_START"
-				num=$((num+S+1))
-				get_edit_res "$num"
-				res_name="$key"
-				set_ROW_COL
-				set_color
-				select_MSG
-			else
-				draw_edit_text
-			fi
-			moved=""
-		fi
-	done
-	stty echo
-	msg "${NC}"
+  git_url=""; srce=""; dest=""; parent=""
+  BOT=0; KEY=0
+  CHAR=""; moved=""
+  set_text_header
+  msg "$(tput smcup)"
+  msg "$(tput civis)"
+  stty -echo
+  S=0
+  level=0; S0=1; S1=0; S2=0; S3=0
+  if [ "$TUI_MODE" = "pre"  ]; then
+    G="10"
+    draw_edit_text
+  else
+    G=1
+    draw_screen
+    get_res "$G$S"
+    get_edit_res "$enabled"
+    if [ "$en" = "+" ]; then
+      val="true"
+    elif [ "$en" = "-" ]; then
+      val="false"
+    elif [ "$en" = "i" ]; then
+      val="ignored"
+    fi
+    set_ROW_COL; set_color
+    select_MSG
+  fi
+  while [ "$CHAR" != "g" ]
+  do
+    get_CHAR
+    if [ "$TUI_MODE" = "pre" ]; then # restrict options in pre MODE
+      case $CHAR in
+        sp|g|h|j|k|l|i|p|r|q|A|B|C|D)
+          CHAR="$CHAR";;
+        *)
+          CHAR="";;
+      esac
+    fi
+    case $CHAR in
+      e)
+        moved="redraw"
+        ADD_RES_NUM="-1"
+        if [ "$TUI_MODE" != "summary" ]; then
+          TUI_MODE="summary"
+          G="$SUMMARY_G"; S="$SUMMARY_S"
+          draw_screen
+        else
+          TUI_MODE=" plist "
+          msg "\033[2H\033[2K"
+          SUMMARY_G="$G"; SUMMARY_S="$S"
+          G="10"
+        fi;;
+      p) # debug dump array
+        stty echo
+        msg "${NC}"
+        msg "$(tput rmcup)"
+        msg "$(tput cnorm)"
+        print_res_array
+        exit 0;;
+      q)
+        stty echo
+        CHAR='g'
+        TUI_MODE='quit';;
+      s) # exit loop with 'g' then save Docs/config.plist if changed then stop
+        if [ -z "$CONFIG_CHANGED" ]; then CONFIG_CHANGED="save"; fi
+        CHAR='g'
+        TUI_MODE='stop';;
+      *)
+        if [ "$G" -lt 10 ]; then
+          case "$CHAR" in # key press actions for summary screen
+            b)
+              moved="true"
+              eval S="\$G${G}_NUM";;
+            i)
+              show_description
+              draw_screen;;
+            r)
+              draw_screen
+              moved="true";;
+            A|k) # move up
+              moved="true"
+              S=$((S-1))
+              if [ "$S" -lt "0" ];then
+                if [ "$G" -gt "4" ];then
+                  G=$((G-4))
+                  eval S="\$G${G}_NUM"
+                else
+                  S=0
+                fi
+              fi;;
+            B|j) # move down
+              moved="true"
+              S=$((S+1))
+              eval len="\$G${G}_NUM"
+              if [ "$S" -gt "$len" ];then
+                if [ "$G" -lt "5" ];then
+                  G=$((G+4))
+                  S=0
+                else
+                  S=$len
+                fi
+              fi;;
+            C|l) # move right
+              moved="true"
+              G=$((G+1))
+              if [ "$G" -eq "5" ]; then G=4; fi
+              if [ "$G" -eq "9" ]; then G=8; fi
+              ;;
+            D|h) # move left
+              moved="true"
+              G=$((G-1))
+              if [ "$G" -eq "0" ]; then G=1; fi
+              if [ "$G" -eq "4" ]; then G=5; fi
+              ;;
+            sp|nl) # toggle enabled
+              unselect_MSG
+              moved="changed"
+              if [ "$G" = "3" ]; then
+                res_num="$enabled"
+              elif [ "$G" -lt "5" ]; then
+                head_line="$enabled"
+              else
+                res_num="$num"
+              fi
+              toggle_enabled
+              CONFIG_CHANGED="-t option"
+              if [ "$G" -eq "3" ]; then res_name="${key% ?}"; set_res "$G$S"; fi
+              draw_screen_header;;
+            ht)
+              G=$((G+1))
+              if [ "$G" -gt "8" ]; then G=1; fi
+              moved="true";;
+          esac
+        else # user is in plist edit screen
+          if [ "$ADD_RES_NUM" -lt "0" ]; then # not in add field mode
+            case "$CHAR" in # key press actions for edit plist screen
+              a)
+                if [ "$level" -gt "0" ]; then
+                  init_add_array "add_tree" "add_tree1"
+                  ADD_RES_NUM="$res_num"
+                  SA=0; LA=1
+                  new_key=""; new_val=""
+                  eval SN=\$S$level
+                  eval S$level="-1"
+                  moved="true"
+                else
+                  msg "\n${YEL}Can't add to base of plist yet, expand a section to add items${NC}"
+                fi;;
+              d) # delete field or section
+                if [ "$level" -gt "0" ]; then
+                  msg "\n ${U}d${NC} again to ${RED}${INV}delete${YEL} "
+                  msgs "$res_name"
+                  msg "${NC}, any other key to abort"
+                  get_CHAR
+                  if [ "$CHAR" = "d" ]; then
+                    delete_field
+                  fi
+                  moved="true"
+                fi;;
+              i)
+                show_description
+                moved="true";;
+              n)
+                get_edit_res "$res_num"
+                if [ "$key" = "$en" ]; then
+                  val="$key"; e_val="$val"; SPEC_KEY="$val"; SPEC_END=" field --> "
+                  key="\n\nEnter new name for ${YEL}"
+                  type="string"; res_type="string"
+                  data_field=1
+                  EDIT_RES_NUM="$res_num"
+                  draw_edit_header
+                  edit_val
+                  new_key="$val"; SPEC_KEY=""
+                  get_edit_res "$res_num"
+                  key="$new_key"
+                  if [ -z "$key" ]; then key="BlankKey"; fi
+                  set_edit_res "$res_num"
+                  EDIT_RES_NUM="-1"
+                fi
+                moved="true";;
+              r)
+                moved="redraw"
+                draw_edit_text
+                moved="";;
+              A|k) # move up
+                eval SN="\$S$level"
+                SN=$((SN-1))
+                if [ "$SN" -lt "1" ]; then
+                  SN=1
+                else
+                  moved="true"
+                fi
+                eval S$level=$SN;;
+              B|j) # move down
+                eval SN="\$S$level"
+                SN=$((SN+1))
+                if [ "$SN" -gt "$LLEN" ]; then
+                  SN=$LLEN
+                else
+                  moved="true"
+                fi
+                eval "S$level=$SN";;
+              C|l) # move right
+                if [ -z "$has_higher_level" ]; then
+                  level=$((level+1))
+                  if [ "$level" -gt "3" ]; then level=3; fi
+                  eval S$level=1
+                  moved="redraw"
+                fi;;
+              D|h) # move left
+                if [ "$level" -gt "0" ]; then
+                  eval S$level=0
+                  level=$((level-1))
+                  moved="redraw"
+                fi;;
+              sp) # only mark CONFIG_CHANGED if change was done  sp|nl
+                get_edit_res "$res_num"
+                toggle_enabled
+                ;; # end case sp
+              nl|ht)
+                get_edit_res "$res_num"
+                if [ "$en" = "$key" ]; then
+                  case $type in
+                    "string")
+                      if [ "$key" = "$val" ]; then LONE="true"; fi
+                      EDIT_RES_NUM="$res_num"
+                      moved="changed";;
+                    "integer"|"data")
+                      EDIT_RES_NUM="$res_num"
+                      moved="changed";;
+                  esac
+                fi;;
+            esac
+          else # key press actions in add field mode
+            case $CHAR in
+              esc)
+                get_CHAR
+                if [ "$CHAR" = "esc" ]; then
+                  ADD_RES_NUM="-1"
+                  moved="true"
+                  eval S$level=$SN
+                fi;;
+              nl)
+                if [ "$LA" -eq "2" ]; then
+                  case "${ADD_FILE#*_}" in
+                    "Drivers"|"Kexts"|"SSDTs"|"Tools")
+                      eval res_name="\$add$SA"
+                      init_add_array "templates" "${ADD_FILE#*_}"
+                      USING_TEMPLATE="true"
+                      new_type=""
+                      new_val=""
+                      new_key="$res_name"
+                      add_field;;
+                    "variable")
+                      eval a="\$add$SA"
+                      new_val=""
+                      new_key=""
+                      new_type="${a##* }"
+                      add_field;;
+                    *)
+                      ADD_RES_NUM="-1";;
+                  esac
+                  CONFIG_CHANGED="-t option"
+                  moved="true"
+                  eval S$level=$SN
+                fi;;
+              A|k) # move up
+                SA=$((SA-1))
+                moved="true"
+                if [ "$SA" -lt "0" ]; then SA=0; fi;;
+              B|j) # move down
+                SA=$((SA+1))
+                moved="true"
+                if [ "$SA" -gt "$GADD_NUM" ]; then SA=$GADD_NUM; fi;;
+              C|l) # move right
+                if [ "$LA" -ne "2" ]; then
+                  eval a="\$add$SA"
+                  init_add_array "add_tree" "$a"
+                  LA=2; SA=0
+                  moved="true"
+                fi;;
+              D|h) # move left
+                if [ "$LA" -ne "1" ]; then
+                  init_add_array "add_tree" "add_tree1"
+                  LA=1; SA=0
+                  moved="true"
+                fi;;
+            esac
+          fi
+        fi;;
+    esac
+    eval temp="\$G${G}_NUM"
+    if [ "$S" -gt "$temp" ]; then S="$temp"; fi
+    if [ "$S" -lt "0" ]; then S=0; fi
+    if [ -n "$moved" ]; then
+      if [ "$G" -lt "5" ]; then
+        unselect_MSG
+        get_res "$G$S"
+        get_edit_res "$enabled"
+        if [ "$en" = "+" ]; then
+          val="true"
+        elif [ "$en" = "-" ]; then
+          val="false"
+        elif [ "$en" = "i" ]; then
+          val="ignored"
+        fi
+        set_ROW_COL
+        set_color
+        select_MSG
+      elif [ "$G" -lt "10" ]; then
+        unselect_MSG
+        eval num="\$G${G}_START"
+        num=$((num+S+1))
+        get_edit_res "$num"
+        res_name="$key"
+        set_ROW_COL
+        set_color
+        select_MSG
+      else
+        draw_edit_text
+      fi
+      moved=""
+    fi
+  done
+  stty echo
+  msg "${NC}"
 }
 
 #start_logging() {
-#	if [ -z "$VERBOSE" ]; then
-#		exec 6>&1 #start logging
-#		exec > "$LOGFILE"
+#  if [ -z "$VERBOSE" ]; then
+#    exec 6>&1 #start logging
+#    exec > "$LOGFILE"
  #   exec &> >(tee -a "$LOGFILE")
-#		exec 2>&1
-#	fi
+#    exec 2>&1
+#  fi
 #}
 
 #stop_logging() {
-#	if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
+#  if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
 #}
 
 remove_resource_msg() {
-	msg "\n ${RED}***${NC} WARNING: -X option used ${RED}****************************************\n"
-	msg " ${RED}*** ${NC}$RES_DIR has been removed\n"
-	msg " ${RED}*** ${NC}the -X option is only useful if there is an issue with the\n"
-	msg " ${RED}*** ${NC}previously downloaded resources causing problems while building.\n"
-	msg " ${RED}*** ${NC}Using it at any other time will only increase bandwith usage and\n"
-	msg " ${RED}*** ${NC}compile time, in many cases requiring all tools to be rebuilt.\n"
-	msg " ${RED}*********************************************************************${NC}\n"
+  msg "\n ${RED}***${NC} WARNING: -X option used ${RED}****************************************\n"
+  msg " ${RED}*** ${NC}$RES_DIR has been removed\n"
+  msg " ${RED}*** ${NC}the -X option is only useful if there is an issue with the\n"
+  msg " ${RED}*** ${NC}previously downloaded resources causing problems while building.\n"
+  msg " ${RED}*** ${NC}Using it at any other time will only increase bandwith usage and\n"
+  msg " ${RED}*** ${NC}compile time, in many cases requiring all tools to be rebuilt.\n"
+  msg " ${RED}*********************************************************************${NC}\n"
 }
 
 set_up_vault() {
-	if [ -n "$USE_VAULT_STR" ]; then
-		get_edit_res "$USE_VAULT_STR"
-		USE_VAULT="$val"
-	fi
+  if [ -n "$USE_VAULT_STR" ]; then
+    get_edit_res "$USE_VAULT_STR"
+    USE_VAULT="$val"
+  fi
 
-	if [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
+  if [ "$USE_VAULT" = "Optional" ]; then USE_VAULT=""; fi
 
-	if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
-		if [ -n "$USE_VAULT" ] && [ "$USE_VAULT" != "Optional" ]; then
-			CONFIG_CHANGED="temp vault disable"
-				get_edit_res "$USE_VAULT_STR"
-				val="Optional"
-				set_edit_res "$USE_VAULT_STR"
-			msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
-			msg "\tvault disabled for prebuilts not made on macOS\n"
-			USE_VAULT=""
-		fi
-	fi
+  if [ "$MODE" != "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
+    if [ -n "$USE_VAULT" ] && [ "$USE_VAULT" != "Optional" ]; then
+      CONFIG_CHANGED="temp vault disable"
+        get_edit_res "$USE_VAULT_STR"
+        val="Optional"
+        set_edit_res "$USE_VAULT_STR"
+      msg "\n${YEL}NOTICE:${NC}\tcurrently unable to build vault files on $UNAME\n"
+      msg "\tvault disabled for prebuilts not made on macOS\n"
+      USE_VAULT=""
+    fi
+  fi
 }
 
 bad_config() {
-	if [ -z "$IGNORE" ]; then
+  if [ -z "$IGNORE" ]; then
     QUIET=""
-		msg "\n${RED}ERROR:${NC}\tproblem found in config.plist file\n"
-		msg "\tSee $LOGFILE for details\n\n"
-		msg "\tIf you want to try fixing the error with OC-tool, you can use the -it options\n"
-		msg "\ttry using '$INIT_COM -it$EX_COM'\n\n"
-		exit 1
-	else
-		msg "\n${YEL}WARNING:${NC}\tproblem found in config.plist file --- ${YEL}IGNORING${NC}\n"
-		msg "\tMake sure to fix the error before using the EFI\n"
-		msg "\t${YEL}###############################################${NC}\n\n"
-	fi
+    msg "\n${RED}ERROR:${NC}\tproblem found in config.plist file\n"
+    msg "\tSee $LOGFILE for details\n\n"
+    msg "\tIf you want to try fixing the error with OC-tool, you can use the -it options\n"
+    msg "\ttry using '$INIT_COM -it$EX_COM'\n\n"
+    exit 1
+  else
+    msg "\n${YEL}WARNING:${NC}\tproblem found in config.plist file --- ${YEL}IGNORING${NC}\n"
+    msg "\tMake sure to fix the error before using the EFI\n"
+    msg "\t${YEL}###############################################${NC}\n\n"
+  fi
 }
 
 get_config_txt_res() {
-	t_val="$1"
-	t_section="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_array="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_item="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_type="${t_val%%|*}"; t_val="${t_val#*|}"
-	t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
-	t_val="${t_val%\"*}"
+  t_val="$1"
+  t_section="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_array="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_item="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_type="${t_val%%|*}"; t_val="${t_val#*|}"
+  t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
+  t_val="${t_val%\"*}"
 }
 
 remove_res_plist_txt() {
-	mv config.plist.txt config.plist.tmp
-	while read -r line
-	do
-		if [ "${line%| *}" != "$1" ]; then
-			printf "%s\n" "$line" >> config.plist.txt
-		fi
-	done < config.plist.tmp
-	rm config.plist.tmp
+  mv config.plist.txt config.plist.tmp
+  while read -r line
+  do
+    if [ "${line%| *}" != "$1" ]; then
+      printf "%s\n" "$line" >> config.plist.txt
+    fi
+  done < config.plist.tmp
+  rm config.plist.tmp
 }
 
 add_res_plist_txt() {
-	mv config.plist.txt config.plist.tmp
-	written=""; found_sec=""
-	while read -r line
-	do
-		if [ -z "$written" ]; then
-			srch="${resme%|?*|?*|?*|?*}"
-			lines="${line%|?*|?*|?*|?*}"
-			if [ "$srch" = "$lines" ]; then
-				printf "%s\n" "$resme" >> config.plist.txt
-				written="y"
-			else
-				srch="${srch%%|*}"
-				lines="${lines%%|*}"
-				if [ "$srch" = "$lines" ]; then found_sec="y"; fi
-			fi
-			if [ -n "$found_sec" ] && [ -z "$written" ]; then
-				if [ "$srch" != "$lines" ]; then # end of section place here
-					printf "%s\n" "$resme" >> config.plist.txt
-					written="y"
-				fi
-			fi
-		fi
-		printf "%s\n" "$line" >> config.plist.txt
-	done < config.plist.tmp
-	rm config.plist.tmp
+  mv config.plist.txt config.plist.tmp
+  written=""; found_sec=""
+  while read -r line
+  do
+    if [ -z "$written" ]; then
+      srch="${resme%|?*|?*|?*|?*}"
+      lines="${line%|?*|?*|?*|?*}"
+      if [ "$srch" = "$lines" ]; then
+        printf "%s\n" "$resme" >> config.plist.txt
+        written="y"
+      else
+        srch="${srch%%|*}"
+        lines="${lines%%|*}"
+        if [ "$srch" = "$lines" ]; then found_sec="y"; fi
+      fi
+      if [ -n "$found_sec" ] && [ -z "$written" ]; then
+        if [ "$srch" != "$lines" ]; then # end of section place here
+          printf "%s\n" "$resme" >> config.plist.txt
+          written="y"
+        fi
+      fi
+    fi
+    printf "%s\n" "$line" >> config.plist.txt
+  done < config.plist.tmp
+  rm config.plist.tmp
 }
 
 process_plist_txt() {
-	ex_num="0"
-	msg "Adding selected fields to modified.config.plist ... "
-	for num in $(seq 0 $G10_NUM)
-	do
-		get_edit_res "$num"
-		case "$L0" in
-			"1")
-				if [ "$en" = "+" ]; then
-					eval resme=\$miss"$num"
-					add_res_plist_txt
-				fi;;
-			"2")
-				if [ "$ex_num" -eq "0" ]; then
-					fin
-					msg "Removing selected fields from modified.config.plist ... "
-				fi
-				if [ "$en" = "-" ]; then
-					eval resme=\$extra$ex_num
-					remove_res_plist_txt "${resme%| *}"
-				fi
-				ex_num=$((ex_num+1));;
-		esac
-	done
-	fin
+  ex_num="0"
+  msg "Adding selected fields to modified.config.plist ... "
+  for num in $(seq 0 $G10_NUM)
+  do
+    get_edit_res "$num"
+    case "$L0" in
+      "1")
+        if [ "$en" = "+" ]; then
+          eval resme=\$miss"$num"
+          add_res_plist_txt
+        fi;;
+      "2")
+        if [ "$ex_num" -eq "0" ]; then
+          fin
+          msg "Removing selected fields from modified.config.plist ... "
+        fi
+        if [ "$en" = "-" ]; then
+          eval resme=\$extra$ex_num
+          remove_res_plist_txt "${resme%| *}"
+        fi
+        ex_num=$((ex_num+1));;
+    esac
+  done
+  fin
 }
 
 process_plist() {
-	HAS_PLUTIL=""
-	msg "\n${GRN}Processing config.plist${NC} ... "
-	command -v "plutil" || HAS_PLUTIL="false"
-	if [ -z "$HAS_PLUTIL" ]; then
-		plutil "$CONFIG_PLIST.tmp" || bad_config
-	fi
+  HAS_PLUTIL=""
+  msg "\n${GRN}Processing config.plist${NC} ... "
+  command -v "plutil" || HAS_PLUTIL="false"
+  if [ -z "$HAS_PLUTIL" ]; then
+    plutil "$CONFIG_PLIST.tmp" || bad_config
+  fi
 
-	cd "$INPUT"
-	if [ "$IGNORE_SAMPLE" != "true" ]; then
-		if [ -z "$USE_CUSTOM" ]; then
-			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
-			else
-				cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
-			fi
-		else
-			if [ "$MODE" = "prebuiltRelease" ]; then
-				cp "$BASE_DIR/Docs/SampleCustom$REL_VER.plist" sample.plist.tmp
-			else
-				cp "$BASE_DIR/Docs/SampleCustom.plist" sample.plist.tmp
-			fi
-		fi
-		tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
-		rm sample.plist.tmp
-		"$TOOL_FILES/parsePlistMod.sh" "sample.plist"
-	fi
-	tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
-	rm config.plist.tmp
-	"$TOOL_FILES/parsePlistMod.sh" "config.plist"
-	fin
+  cd "$INPUT"
+  if [ "$IGNORE_SAMPLE" != "true" ]; then
+    if [ -z "$USE_CUSTOM" ]; then
+      if [ "$MODE" = "prebuiltRelease" ]; then
+        cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
+      else
+        cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+      fi
+    else
+      if [ "$MODE" = "prebuiltRelease" ]; then
+        cp "$BASE_DIR/Docs/SampleCustom$REL_VER.plist" sample.plist.tmp
+      else
+        cp "$BASE_DIR/Docs/SampleCustom.plist" sample.plist.tmp
+      fi
+    fi
+    tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
+    rm sample.plist.tmp
+    "$TOOL_FILES/parsePlistMod.sh" "sample.plist"
+  fi
+  tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
+  rm config.plist.tmp
+  "$TOOL_FILES/parsePlistMod.sh" "config.plist"
+  fin
 
-	if [ "$IGNORE_SAMPLE" != "true" ]; then
-		if [ "$IGNORE_SAMPLE" = "full" ]; then
-			tr -d '\r' < "$TOOL_FILES/miss_extra_legacy" > miss_extra.txt # strip CRLF ?
-		else
-			tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
-		fi
-		msg "Checking for missing fields ... "
-		while read -r line
-		do
-			grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
-		done < miss_extra.txt
-		while read -r line
-		do
-			grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
-		done < sampleQuirks
+  if [ "$IGNORE_SAMPLE" != "true" ]; then
+    if [ "$IGNORE_SAMPLE" = "full" ]; then
+      tr -d '\r' < "$TOOL_FILES/miss_extra_legacy" > miss_extra.txt # strip CRLF ?
+    else
+      tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
+    fi
+    msg "Checking for missing fields ... "
+    while read -r line
+    do
+      grep "$line" sample.plist.txt >> sampleQuirks || echo "$line not found"
+    done < miss_extra.txt
+    while read -r line
+    do
+      grep -q "${line%| *}" config.plist.txt || echo "$line" >> missing
+    done < sampleQuirks
 
-		num=0
-		if [ -e "missing" ]; then
-			res100="1|0|0|0||||MISSING from user plist"
-			msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
-			while read -r line
-			do
-				num=$((num+1))
-				get_config_txt_res "$line"
-				field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : <$t_type>$t_val"
-				msg "\t$field\n"
-				eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
-				eval miss$num="\$line"
-			done < missing
-			if [ -z "$TUI_MODE" ]; then
-				msg "\n\tYou can edit your config.plist manually, or\n"
-				msg "\tuse the -t option to select fields to add\n"
-				msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-			fi
-		else
-			fin
-		fi
+    num=0
+    if [ -e "missing" ]; then
+      res100="1|0|0|0||||MISSING from user plist"
+      msg "\n${YEL}NOTE:${NC}\tfound fields missing from config.plist\n\n"
+      while read -r line
+      do
+        num=$((num+1))
+        get_config_txt_res "$line"
+        field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : <$t_type>$t_val"
+        msg "\t$field\n"
+        eval res10$num="1\|\$num\|0\|0\|\|string\|\$field\ +\|\$field\ +"
+        eval miss$num="\$line"
+      done < missing
+      if [ -z "$TUI_MODE" ]; then
+        msg "\n\tYou can edit your config.plist manually, or\n"
+        msg "\tuse the -t option to select fields to add\n"
+        msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+      fi
+    else
+      fin
+    fi
 
-		msg "Checking for extra fields ... "
-		while read -r line
-		do
-			grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
-		done < miss_extra.txt
-		while read -r line
-		do
-			grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
-		done < configQuirks
+    msg "Checking for extra fields ... "
+    while read -r line
+    do
+      grep "$line" config.plist.txt >> configQuirks || echo "$line not found"
+    done < miss_extra.txt
+    while read -r line
+    do
+      grep -q "${line%| *}" sample.plist.txt || echo "$line" >> extra
+    done < configQuirks
 
-		num=$((num+1))
+    num=$((num+1))
 
-		if [ -e "extra" ]; then
-			ex_num="0"
-			field="EXTRAS: found in user plist, not in Sample.plist"
-			eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
-			msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
-			while read -r line
-			do
-				num=$((num+1))
-				ex_num=$((ex_num+1))
-				get_config_txt_res "$line"
-				field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : <$t_type>$t_val"
-				msg "\t$field\n"
-				eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
-				eval extra$ex_num="\$line"
-			done < extra
-			if [ -z "$TUI_MODE" ]; then
-				msg "\n\tYou can edit your config.plist manually, or\n"
-				msg "\tuse the -t option to select fields to remove\n"
-				msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
-			fi
-		else
-			fin
-		fi
+    if [ -e "extra" ]; then
+      ex_num="0"
+      field="EXTRAS: found in user plist, not in Sample.plist"
+      eval res10$num="2\|0\|0\|0\|\|\|\|\$field"
+      msg "\n${YEL}NOTE:${NC}\tfound extra fields in config.plist\n\n"
+      while read -r line
+      do
+        num=$((num+1))
+        ex_num=$((ex_num+1))
+        get_config_txt_res "$line"
+        field="$t_section > $t_sub1 $t_sub2 > $t_array $t_key : <$t_type>$t_val"
+        msg "\t$field\n"
+        eval res10$num="2\|\$ex_num\|0\|0\|\|string\|\$field\ -\|\$field\ -"
+        eval extra$ex_num="\$line"
+      done < extra
+      if [ -z "$TUI_MODE" ]; then
+        msg "\n\tYou can edit your config.plist manually, or\n"
+        msg "\tuse the -t option to select fields to remove\n"
+        msg "\te.g. '$INIT_COM -t$EX_COM'\n\n"
+      fi
+    else
+      fin
+    fi
 
-		if [ -n "$TUI_MODE" ]; then
-			if [ -e "missing" ] || [ -e "extra" ]; then
-				msg "Entering TUI to select missing/extra fields ... "
-				TUI_MODE="pre"
-				G10_NUM="$num"
-				text_user_interface
-				msg "\033[J\n" # cleanup for TERM types that don't buffer
-				msg "$(tput cnorm)"
-				msg "$(tput rmcup)"
-				msg "${GRN}done${NC}\n"
-				if [ "$TUI_MODE" = "quit" ]; then
-					msg "\nQuit by user.\n"
-					exit 0
-				fi
-				process_plist_txt
-				CONFIG_CHANGED="auto add/remove"
-				TUI_MODE="summary"
-			fi
-		fi
-	fi
+    if [ -n "$TUI_MODE" ]; then
+      if [ -e "missing" ] || [ -e "extra" ]; then
+        msg "Entering TUI to select missing/extra fields ... "
+        TUI_MODE="pre"
+        G10_NUM="$num"
+        text_user_interface
+        msg "\033[J\n" # cleanup for TERM types that don't buffer
+        msg "$(tput cnorm)"
+        msg "$(tput rmcup)"
+        msg "${GRN}done${NC}\n"
+        if [ "$TUI_MODE" = "quit" ]; then
+          msg "\nQuit by user.\n"
+          exit 0
+        fi
+        process_plist_txt
+        CONFIG_CHANGED="auto add/remove"
+        TUI_MODE="summary"
+      fi
+    fi
+  fi
 
-	"$TOOL_FILES/parsePlistEdit.sh"
+  "$TOOL_FILES/parsePlistEdit.sh"
 
-	if [ ! -e "edit_subs.txt" ]; then
-		if [ -z "$IGNORE" ]; then
+  if [ ! -e "edit_subs.txt" ]; then
+    if [ -z "$IGNORE" ]; then
       QUIET=""
       msg "\n${RED}ERROR:${NC}\t${inputFilePath} does not appear to be an OpenCore plist\n"
       msg "\tor it may just be missing sections that are present in the Sample.plist\n"
-			msg "\t${YEL}You may continue${NC} if you wish by using the -i option to bypass\n"
-			msg "\tthis warning.\n\n"
-			msg "\te.g. './OC-tool -i$EX_COM'\n\n"
-			exit 1
-		else
-			msg "\t${YEL}************* IGNORING ${inputFilePath} format *******************${NC}\n\n"
-		fi
-	fi
-	if [ -e "errors.txt" ]; then CONFIG_CHANGED="input scan"; fi
+      msg "\t${YEL}You may continue${NC} if you wish by using the -i option to bypass\n"
+      msg "\tthis warning.\n\n"
+      msg "\te.g. './OC-tool -i$EX_COM'\n\n"
+      exit 1
+    else
+      msg "\t${YEL}************* IGNORING ${inputFilePath} format *******************${NC}\n\n"
+    fi
+  fi
+  if [ -e "errors.txt" ]; then CONFIG_CHANGED="input scan"; fi
 }
 
 #****** Start build ***************
 if [ -p /dev/stdin ]; then # data was piped, disable TUI and status output
-	QUIET="-q" # currently stdin is not a terminal, no output to tty
-	TUI_MODE=""
-	inputFilePath="stdin"
+  QUIET="-q" # currently stdin is not a terminal, no output to tty
+  TUI_MODE=""
+  inputFilePath="stdin"
 else  #  no input found on stdin
-	TTY_OUT=$(tty)
+  TTY_OUT=$(tty)
 fi
 
 if [ -e "last_run_issues.txt" ]; then rm last_run_issues.txt; fi
@@ -2866,94 +2866,94 @@ exec 2>&1
 
 while getopts "$OPTSPEC" optchar; do
 case "${optchar}" in
-		d)
-			MODE="prebuiltDaily"
-			EX_COM="${EX_COM}d";;
-		f)
-			IGNORE_SAMPLE="full";;
-		h) # help
+    d)
+      MODE="prebuiltDaily"
+      EX_COM="${EX_COM}d";;
+    f)
+      IGNORE_SAMPLE="full";;
+    h) # help
       QUIET=""
-			msg "$(cat "$TOOL_FILES"/help.msg)\n"
-			exit 0;;
-		i)
-			IGNORE="true";;
-		n)
-			IGNORE_SAMPLE="true";;
-		o)
-			FINDER="open"
-			EX_COM="${EX_COM}o";;
-		q)
+      msg "$(cat "$TOOL_FILES"/help.msg)\n"
+      exit 0;;
+    i)
+      IGNORE="true";;
+    n)
+      IGNORE_SAMPLE="true";;
+    o)
+      FINDER="open"
+      EX_COM="${EX_COM}o";;
+    q)
       if [ -n "$TUI_MODE" ]; then
         msg "\n${YEL}NOTICE:${NC} Quiet mode not allowed with TUI\n"
         exit 1
       fi
-			QUIET="-q"
-			EX_COM="${EX_COM}q";;
-		s)
-			MODE="latestSource"
-			EX_COM="${EX_COM}s";;
-		v)
-			VERBOSE="-v"
-			EX_COM="${EX_COM}v";;
-		t)
+      QUIET="-q"
+      EX_COM="${EX_COM}q";;
+    s)
+      MODE="latestSource"
+      EX_COM="${EX_COM}s";;
+    v)
+      VERBOSE="-v"
+      EX_COM="${EX_COM}v";;
+    t)
       if [ -n "$QUIET" ]; then
         QUIET=""
         msg "\n${YEL}NOTICE:${NC} TUI not allowed in quiet mode.\n"
         exit 1
       fi
-			if [ "$inputFilePath" = "stdin" ]; then
-				msg "TUI mode unavailable when plist is piped to stdin\n"
-			else
-				R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
-				if [ "$C" -lt "90" ] || [ "$R" -lt "40" ]; then
-					msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
-					msg "\tThis is below the suggested miminum size of 90 x 40\n"
-					msg "\tfor the TUI mode.  You can resize your terminal or use\n"
-					msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
-					msg "\tbut do note that items on the screen may scroll or be\n"
-					msg "\twritten over because of the smaller size\n"
-					exit 0
-				fi
-				TUI_MODE="summary"
-			fi
-			EX_COM="${EX_COM}t";;
-		C)
-			USE_CUSTOM="true";;
-		D) # default type is now release
-			TYPE="debug";;
-		I)
-			IGNORE="TRUE";;
-		N)
-			UPDATE="false"
-			EX_COM="${EX_COM}N";;
-		T)
-			if [ "$inputFilePath" = "stdin" ]; then
-				msg "TUI override is not available when plist is piped to stdin\n"
-			else
-				TUI_MODE="summary"
-			fi
-			EX_COM="${EX_COM}T";;
-		V)
+      if [ "$inputFilePath" = "stdin" ]; then
+        msg "TUI mode unavailable when plist is piped to stdin\n"
+      else
+        R=$(stty size|cut -f1 -d ' '); C=$(stty size|cut -f2 -d ' ')
+        if [ "$C" -lt "90" ] || [ "$R" -lt "40" ]; then
+          msg "\n${YEL}NOTICE:${NC} Your terminal size is set to $C x $R\n"
+          msg "\tThis is below the suggested miminum size of 90 x 40\n"
+          msg "\tfor the TUI mode.  You can resize your terminal or use\n"
+          msg "\tthe ${B}-T${NC} option instead of ${B}-t${NC} to override this warning,\n"
+          msg "\tbut do note that items on the screen may scroll or be\n"
+          msg "\twritten over because of the smaller size\n"
+          exit 0
+        fi
+        TUI_MODE="summary"
+      fi
+      EX_COM="${EX_COM}t";;
+    C)
+      USE_CUSTOM="true";;
+    D) # default type is now release
+      TYPE="debug";;
+    I)
+      IGNORE="TRUE";;
+    N)
+      UPDATE="false"
+      EX_COM="${EX_COM}N";;
+    T)
+      if [ "$inputFilePath" = "stdin" ]; then
+        msg "TUI override is not available when plist is piped to stdin\n"
+      else
+        TUI_MODE="summary"
+      fi
+      EX_COM="${EX_COM}T";;
+    V)
       QUIET=""
-			msg "OC-tool version $VER\n"
-			HAS_NVRAM=""
-			command -v nvram 1>/dev/null||HAS_NVRAM="false"
-			if [ -z "$HAS_NVRAM" ]; then
-				v=$(nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:opencore-version 2>/dev/null || echo "")
-				if [ -z "$v" ]; then
-					msg "\nNo booted opencore-version found in NVRAM\n"
-				else
-					msg "\nFound booted ${v#*:}  in NVRAM\n"
-				fi
-			fi
-			exit 0;;
-		X)
-			REMOVE_RES="true";;
-		*)
+      msg "OC-tool version $VER\n"
+      HAS_NVRAM=""
+      command -v nvram 1>/dev/null||HAS_NVRAM="false"
+      if [ -z "$HAS_NVRAM" ]; then
+        v=$(nvram 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:opencore-version 2>/dev/null || echo "")
+        if [ -z "$v" ]; then
+          msg "\nNo booted opencore-version found in NVRAM\n"
+        else
+          msg "\nFound booted ${v#*:}  in NVRAM\n"
+        fi
+      fi
+      exit 0;;
+    X)
+      REMOVE_RES="true";;
+    *)
       QUIET=""
-			msg "$(cat "$TOOL_FILES/usage.msg")\n"
-			exit 1;;
-	esac
+      msg "$(cat "$TOOL_FILES/usage.msg")\n"
+      exit 1;;
+  esac
 done
 
 RES_DIR="$BASE_DIR/resources/$MODE"
@@ -2961,7 +2961,7 @@ if [ "$MODE" = "prebuiltDaily" ]; then
   JSON_FILE="$RES_DIR/dailyJson/config.json.txt"
 fi
 if [ "$MODE" != "latestSource" ] && [ "$UNAME" = "Darwin" ]; then # show start message
-	msg "To build from source use ${B}-s${NC} option\n"
+  msg "To build from source use ${B}-s${NC} option\n"
 fi
 msg "For help use '${B}./OC-tool -h${NC}'\n"
 if [ "$MODE" = "latestSource" ] && [ "$UNAME" != "Darwin" ]; then
@@ -2972,25 +2972,25 @@ fi
 if [ -z "$UPDATE" ]; then check_tool_for_updates;fi
 rm -rf "$INPUT" # this looks scary, but input comes from a temp folder
 if [ "$inputFilePath" = "stdin" ]; then # get filepath or piped data now that options are processed
-	mkdir -p "$INPUT"
-	cat > "$CONFIG_PLIST.tmp"
+  mkdir -p "$INPUT"
+  cat > "$CONFIG_PLIST.tmp"
 else
-	eval inputFilePath="\$$OPTIND"
-	if [ -e "$inputFilePath" ]; then
-		EX_COM="${EX_COM} ${inputFilePath}"
-	else
-		if [ -n "${inputFilePath}" ]; then
+  eval inputFilePath="\$$OPTIND"
+  if [ -e "$inputFilePath" ]; then
+    EX_COM="${EX_COM} ${inputFilePath}"
+  else
+    if [ -n "${inputFilePath}" ]; then
       QUIET=""
-			msg "config.plist file '${inputFilePath}' not found\n"
-			msg "$(cat "$TOOL_FILES"/usage.msg)\n"
-			exit 1
-		else
-			check_config
-			inputFilePath="$BASE_DIR/INPUT/config.plist"
-		fi
-	fi
-	mkdir -p "$INPUT"
-	cp "${inputFilePath}" "$CONFIG_PLIST.tmp"
+      msg "config.plist file '${inputFilePath}' not found\n"
+      msg "$(cat "$TOOL_FILES"/usage.msg)\n"
+      exit 1
+    else
+      check_config
+      inputFilePath="$BASE_DIR/INPUT/config.plist"
+    fi
+  fi
+  mkdir -p "$INPUT"
+  cp "${inputFilePath}" "$CONFIG_PLIST.tmp"
 fi
 process_plist
 if [ -e "$INPUT/parse_error.txt" ]; then
@@ -3006,9 +3006,9 @@ msg "Using ${inputFilePath}\n"
 MODI=""
 echo "$inputFilePath"|grep -q "INPUT/modified" || MODI="no"
 if [ -z "$MODI" ]; then
-	inputFileName="${inputFilePath##*INPUT/modified.}"
+  inputFileName="${inputFilePath##*INPUT/modified.}"
 else
-	inputFileName="${inputFilePath##*/}"
+  inputFileName="${inputFilePath##*/}"
 fi
 
 if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
@@ -3016,8 +3016,8 @@ if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
 set_build_type "$TYPE"
 
 if [ -z "$UPDATE" ]; then
-	if [ "$MODE" = "latestSource" ]; then check_lilu_for_updates; fi
-	if [ "$MODE" != "prebuiltRelease" ]; then check_resources_for_updates; fi
+  if [ "$MODE" = "latestSource" ]; then check_lilu_for_updates; fi
+  if [ "$MODE" != "prebuiltRelease" ]; then check_resources_for_updates; fi
 fi
 if [ -n "$REMOVE_RES" ]; then remove_resource_msg; fi #show warning in tool.log also
 if [ "$MODE" = "latestSource" ]; then check_requirements; fi
@@ -3025,30 +3025,30 @@ if [ "$MODE" = "latestSource" ]; then check_requirements; fi
 init_res_array
 
 if [ -n "$TUI_MODE" ] && [ -z "$QUIET" ]; then
-	msg "\nSwitching to TUI ... "
-	C_TEST="$(echo $C_TEST|base64 --decode)"
-	text_user_interface
-	msg "\033[J\n" # cleanup for TERM types that don't buffer
-	msg "$(tput cnorm)"
-	msg "$(tput rmcup)"
-	msg "${GRN}done in TUI${NC}\n"
+  msg "\nSwitching to TUI ... "
+  C_TEST="$(echo $C_TEST|base64 --decode)"
+  text_user_interface
+  msg "\033[J\n" # cleanup for TERM types that don't buffer
+  msg "$(tput cnorm)"
+  msg "$(tput rmcup)"
+  msg "${GRN}done in TUI${NC}\n"
 fi
 if [ "$TUI_MODE" = "quit" ];then # quit without saving changes
-	msg "\nOC-tool quit by user.\n"
-	exit 0
+  msg "\nOC-tool quit by user.\n"
+  exit 0
 fi
 
 set_up_vault # update vault settings before writing new config
 
 if [ -n "$CONFIG_CHANGED" ]; then
-	write_new_conf
+  write_new_conf
 
-	if [ -z "$HAS_PLUTIL" ]; then
-		plutil -convert xml1 "$OUT"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
-	fi
-	get_res "0$G0_NUM" # update location for config.plist file
-	srce="$BASE_DIR/INPUT"
-	set_res "0$G0_NUM"
+  if [ -z "$HAS_PLUTIL" ]; then
+    plutil -convert xml1 "$OUT"||echo "plutil could not convert plist" >> "$INPUT/errors.txt"
+  fi
+  get_res "0$G0_NUM" # update location for config.plist file
+  srce="$BASE_DIR/INPUT"
+  set_res "0$G0_NUM"
 fi
 if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 
@@ -3058,24 +3058,24 @@ copy_resources
 
 if [ "$MODE" != "prebuiltRelease" ]; then check_if_Sample_plist_updated; fi
 if [ -n "$USE_VAULT" ]; then
-	build_vault||vault_failed
+  build_vault||vault_failed
 fi
 
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
-	msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
-	msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
-	msg "\tmodified.$inputFileName has been saved in $BASE_DIR/INPUT\n"
-	if [ -n "$MODI" ]; then
-		msg "\tthe original $inputFilePath ${YEL}has not been touched${NC}\n\n"
-	fi
+  msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
+  msg "\tthis has been done to ensure OC wont fail on boot with this new EFI folder\n"
+  msg "\tmodified.$inputFileName has been saved in $BASE_DIR/INPUT\n"
+  if [ -n "$MODI" ]; then
+    msg "\tthe original $inputFilePath ${YEL}has not been touched${NC}\n\n"
+  fi
 fi
 if [ -e "$INPUT/errors.txt" ]; then
-	msg "${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
-	msg "\tSome may have been repaired by the input scan.\n"
-	msg "\tSome may not be important. You can view the issues with\n"
-	msg "\t'cat last_run_issues.txt'\n\n"
-	cp "$INPUT/errors.txt" "$BASE_DIR/last_run_issues.txt"
+  msg "${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
+  msg "\tSome may have been repaired by the input scan.\n"
+  msg "\tSome may not be important. You can view the issues with\n"
+  msg "\t'cat last_run_issues.txt'\n\n"
+  cp "$INPUT/errors.txt" "$BASE_DIR/last_run_issues.txt"
 fi
 #stop_logging
 
