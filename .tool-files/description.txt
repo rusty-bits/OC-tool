@@ -239,7 +239,7 @@ Allow CTRL+Enter and CTRL+Index handling to set the default boot option in boot 
 AuthRestart
 Enable VirtualSMC-compatible authenticated restart. Authenticated restart is a way to reboot FileVault 2 enabled macOS without entering the password. To perform authenticated restart one can use a dedicated terminal command: sudo fdesetup authrestart. It is also used when installing operating system updates. VirtualSMC performs authenticated restart by saving disk encryption key split in NVRAM and RTC, which despite being removed as soon as OpenCore starts, may be considered a security risk and thus is optional.
 BlacklistAppleUpdate
-Ignore boot options trying to update Apple peripheral firmware (e.g. MultiUpdater.efi).
+Ignore boot options trying to update Apple peripheral firmware (e.g. MultiUpdater.efi). Note: This option exists due to some operating systems, namely macOS Big Sur, being incapable of disabling firmware updates with the NVRAM variable (run-efi-updater).
 BootProtect
 Attempt to provide bootloader persistence. Valid values: • None — do nothing. • Bootstrap — create or update top-priority \EFI\OC\Bootstrap\Bootstrap.efi boot option (Boot9696) in UEFI variable storage at bootloader startup. For this option to work RequestBootVarRouting is required to be enabled.
 ExposeSensitiveData
@@ -590,3 +590,7 @@ ForceResolution
 Forces Resolution to be set in cases where the desired resolution is not available by default, such as on legacy Intel GMA and first generation Intel HD Graphics (Ironlake/Arrandale). Setting Resolution toi Max will try to pull the largest available resolution from the connected display's EDID. Note: This option depends on the OC\_FORCE\_RESOLUTION\_PROTOCOL protocol being present. This protocol is currently only supported by OpenDuetPkg. The OpenDuetPkg implementation currently only supports Intel iGPUs.
 ForceSecureBootScheme
 Force x86 scheme for IMG4 verification. Note: This option is required on virtual machines when using SecureBootModel different from x86legacy.
+RealPath
+Pass full path to the tool when launching. Passing tool directory may be unsafe for tool accidentally trying to access files without checking their integrity and thus should generally be disabled. Reason to enable this property may include cases where tools cannot work without external files or may need them for better function (e.g. memtest86 for logging and configuration or Shell for automatic script execution). Note: This property is only valid for Tools. For Entries this property cannot be specified and is always true
+TextMode
+Run the entry in text mode instead of graphics mode. This setting may be benefitial to some older tools that require text output. By default all the tools are launched in graphics mode.
