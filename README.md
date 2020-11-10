@@ -4,7 +4,7 @@ POSIX shell script that builds an OpenCore EFI folder from an OpenCore config.pl
 Can also be double-clicked in macOS Finder which will run as `./OC-tool -o` 
 
 see either the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more detailed information  
-or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/master/Docs/tool-changelog.md) for ver 2.0 info  
+or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/master/Docs/tool-changelog.md)  
 
 ---
 
@@ -27,21 +27,12 @@ NOTE: If you use the `Clone or download` button OC-tool's files will be download
 
 It will also run on Windows under [WSL](https://docs.microsoft.com/en-us/windows/wsl) or by using [Git for Windows](https://gitforwindows.org)
 
-That's it. Nothing more is needed to have `OC-tool` make a working EFI folder from the prebuilt releases on [Acidanthera's github](https://github.com/acidanthera). `git`, `grep`, `curl`, `cp`, `cut`, `tr`, etc used by OC-tool should already exist on those shells.  
+That's it, nothing more is needed. `OC-tool` will make a working EFI folder by getting what it needs from the stable releases on [Acidanthera's github](https://github.com/acidanthera) or the daily build on Dortania if you so choose.  `git`, `grep`, `curl`, `cp`, `cut`, `tr`, etc used by OC-tool should already exist on those shells.  
 
-Now, if you want the latest build made yourself from source you will need additional tools/dependencies, and as far as I know will have to use macOS as well.  If there is a good way to run Xcode on Linux let me know ...  
+Now, if you want OC-tool to build the latest from source you will need additional tools/dependencies, and as far as I know will have to use macOS as well.  If there is a good way to run Xcode on Linux let me know ...  
 
 - To build from source `Xcode` with `xcodebuild`, `nasm`, and `mtoc` need to be installed and configured to run from the command line.  You can build/install these yourself, or you can run the get-deps.sh in the .tool-files folder which uses code from acidanthera to get prebuilt dependencies.    
 `.tool-files/get-deps.sh` while in the `OC-tool` directory  
-  
-- Also, if you want the tool to compile .dsl files into .aml on the fly, `iasl` needs to be installed, but I recommend you compile them yourself and place them in the extras directory. The tool will copy what's needed to the EFI directory.  
-
-~- Lastly, if you use OpenCore vault signing, you will need the `libcrypto.1.0.0.dylib` library in `/usr/local/opt/openssl/lib`.  This library is part of OpenSSL v1.0.  If you have a newer version of OpenSSL then the vault build may fail.  You can use `brew switch openssl 1.0.2t` if you have OpenSSL installed via [homebrew](https://brew.sh/)  If you don't have OpenSSL and have LibreSSL, which comes as part of Catalina, or you want to stay on version 1.1 or later of OpenSSL, you can copy the included `libcrypto.1.0.0.dylib` into `/usr/local/opt/openssl/lib`~
-
-  ~`mkdir -p /usr/local/opt/openssl/lib` to make the directory if it doesn't exist~  
-  ~`cp ./extras/libcrypto.1.0.0.dylib /usr/local/opt/openssl/lib/.` copy from the extras folder~    
-  
-  This no longer seems to be an issue with the vault signing  
   
 ---
 
