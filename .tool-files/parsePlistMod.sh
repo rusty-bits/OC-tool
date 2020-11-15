@@ -3,7 +3,6 @@
 # turn config.plist into config.plist.txt for fast grep selection and editing
 # make edit_text.txt from config.plist.txt for fast plist edit screen drawing
 IN=$1
-#WROTE_KEY=""
 section=""
 array=""
 item=""
@@ -15,39 +14,34 @@ NC='\033[0m'
 
 msg() {
 	printf "%s\n" "$section|$sub1|$sub2|$array|$item|$type|$key| \"$val\"" >> "$IN.txt"
-#	if [ -z "$WROTE_KEY" ]; then
-#		echo "<key>$key</key>" >> "$IN.mod"
-#		WROTE_KEY="y"
-#	fi
-#	if [ "$type" = "bool" ]; then
-#		echo "<$val/>" >> "$IN.mod"
-#		WRITTEN="y"
-#	elif [ -n "$type" ]; then
-#		echo "<$type>$val</$type>" >> "$IN.mod"
-#		WRITTEN="y"
-#	fi
 }
 
 found_split() {
-	echo "$IN - Line number $line_num" >> errors.txt
-	echo "Found split <$1> in $section $sub1 $sub2 $item $key" >> errors.txt
-	echo "${GRN}Combined to one line in modified.config.plist${NC}" >> errors.txt
-	echo "" >> errors.txt
+  {
+    echo "$IN - Line number $line_num"
+    echo "Found split <$1> in $section $sub1 $sub2 $item $key"
+    echo "${GRN}Combined to one line in modified.config.plist${NC}"
+    echo ""
+  } >> errors.txt
 	sp=""
 }
 
 found_empty_array() {
-	echo "$IN - Line number $line_num" >> errors.minor.txt
-	echo "Found empty <array> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
-	echo "This may not be an issue for certain sections" >> errors.minor.txt
-	echo "" >> errors.minor.txt
+  {
+    echo "$IN - Line number $line_num"
+    echo "Found empty <array> in $section $sub1 $sub2 $item $key"
+    echo "This may not be an issue for certain sections"
+    echo ""
+  } >> errors.minor.txt
 }
 
 found_empty_dict() {
-	echo "$IN - Line number $line_num" >> errors.minor.txt
-	echo "Found empty <dict> in $section $sub1 $sub2 $item $key" >> errors.minor.txt
-	echo "This may not be an issue for certain sections" >> errors.minor.txt
-	echo "" >> errors.minor.txt
+  {
+    echo "$IN - Line number $line_num"
+    echo "Found empty <dict> in $section $sub1 $sub2 $item $key"
+    echo "This may not be an issue for certain sections"
+    echo ""
+  } >> errors.minor.txt
 	ds=""
 	type=""
 	val=""
@@ -55,13 +49,7 @@ found_empty_dict() {
 	key=""
 }
 
-#rm -rf config.plist.mod
-#rm -rf config.plist.txt
-#rm -rf edit*
-#rm -rf errors*
-
 while read -r line; do
-	WRITTEN=""
 	line_num=$((line_num+1))
 	case "${line%%>*}" in
 		"<dict")
@@ -112,8 +100,6 @@ while read -r line; do
 			;;
 		"<dict/")
 			found_empty_dict
-#			echo "PLIST|<key>$key</key>" >> "config.plist.txt"
-#			printf "%s\n" "PLIST|$line" >> "$IN.txt"
 			;;
 		"<array")
 			ds=""
@@ -173,7 +159,6 @@ while read -r line; do
 		"<key")
 			ds=""
 			sp=""
-			WROTE_KEY=""
 			key=${line#<key>}
 			while [ "${line#*</}" != "key>" ]
 			do
@@ -243,8 +228,4 @@ while read -r line; do
 			printf "%s\n" "PLIST|$line" >> "$IN.txt"
 			;;
 	esac
-#	if [ -z "$WRITTEN" ]; then
-#		echo "$line" >> "$IN.mod"
-#		if [ -n "$key" ]; then WROTE_KEY="y"; fi
-#	fi
 done < "$IN"
