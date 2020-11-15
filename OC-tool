@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.3(091120)\n\nprebuilt release -> 0.6.3\nprebuilt daily/latest source -> 0.6.4\n\ntested with REL-064-2020-11-09\ntested with Xcode 12.2 beta 3"
+VER="3.6.3 (141120)\n\nprebuilt release -> 0.6.3\nprebuilt daily/latest source -> 0.6.4\n\ntested with REL-064-2020-11-14\ntested with Xcode 12.2 beta 3"
 REL_VER="063"
 
 INI=$(pwd)
@@ -164,7 +164,7 @@ check_tool_for_updates() {
   git fetch --all -q||git_failed "OC-tool"
   if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
     git reset --hard
-    git pull $VERBOSE -q||git_failed "OC-tool (git pull)"
+    git pull "$VERBOSE" -q||git_failed "OC-tool (git pull)"
     msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
     update_log "Updated" "OC-tool"
     exit 2
@@ -204,7 +204,7 @@ check_resources_for_updates() {
       git fetch --all -q||git_failed "${git_dir##*/}"
       msg "\033[2K\r${git_dir##*/} - "
       if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
-        git pull $VERBOSE -q||git_failed "${git_dir##*/}"
+        git pull "$VERBOSE" -q||git_failed "${git_dir##*/}"
         new_hash=$(git rev-parse @|cut -c -7)
         msg "${GRN}updated to ${NC}$new_hash\n"
         echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
@@ -651,7 +651,7 @@ copy_resources() {
                 msg "Copying $res_name to $dest/$dest_name ... "
               fi
               mkdir -p "$BUILD_DIR/$dest"
-              if [ ! -e "$srce/$res_name" ]; then res_not_found $res_name; fi
+              if [ ! -e "$srce/$res_name" ]; then res_not_found "$res_name"; fi
               cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
               if [ -z "$QUIET" ]; then
                 echo "copied $dest_name to $dest"
@@ -670,10 +670,12 @@ copy_resources() {
                 fi
               fi
             else # deferred
-              echo "$srce" >> $INPUT/deferred
-              echo "${res_name##*/}" >> $INPUT/deferred # res name without path
-              echo "${dest#?}" >> $INPUT/deferred # strip leading -
-              echo "${dest_name##*/}" >> $INPUT/deferred # dest res without path
+              {
+                echo "$srce" 
+                echo "${res_name##*/}" # res name without path
+                echo "${dest#?}" # strip leading -
+                echo "${dest_name##*/}" # dest res without path
+              } >> "$INPUT"/deferred
             fi
           fi
         fi
@@ -773,7 +775,7 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 }
 
 check_if_Sample_plist_updated() {
-  if [ -z "$DOC_DIR/Sample.plist" ]; then msg "\nFailed to find docs\n"; exit 1; fi
+  if [ ! -e "$DOC_DIR/Sample.plist" ]; then msg "\nFailed to find docs\n"; exit 1; fi
   if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
     cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
   else
@@ -1677,11 +1679,11 @@ init_bit_editor() {
 }
 
 pow () {
-    set $1 $2 1
-    while [ $2 -gt 0 ]; do
-      set $1 $(($2-1)) $(($1*$3))
+    set "$1" "$2" 1
+    while [ "$2" -gt 0 ]; do
+      set "$1" $(($2-1)) $(($1*$3))
     done
-    echo $3
+    echo "$3"
 }
 
 draw_bit_editor() {
@@ -1835,7 +1837,7 @@ edit_val() {
         elif [ "$type" = "integer" ]; then
           case $data_field in
             1)
-              tval=$(echo $val|sed 's/^0*//')
+              tval=$(echo "$val"|sed 's/^0*//')
               if [ -z "$tval" ]; then tval=0; fi
               if [ "$tval" -ge "0" ]; then
                 e_val="$hex_val"
@@ -2566,19 +2568,6 @@ text_user_interface() {
   msg "${NC}"
 }
 
-#start_logging() {
-#  if [ -z "$VERBOSE" ]; then
-#    exec 6>&1 #start logging
-#    exec > "$LOGFILE"
- #   exec &> >(tee -a "$LOGFILE")
-#    exec 2>&1
-#  fi
-#}
-
-#stop_logging() {
-#  if [ -z "$VERBOSE" ]; then exec 1>&6 6>&- 2>&1; fi #stop logfile
-#}
-
 remove_resource_msg() {
   msg "\n ${RED}***${NC} WARNING: -X option used ${RED}****************************************\n"
   msg " ${RED}*** ${NC}$RES_DIR has been removed\n"
@@ -2631,7 +2620,8 @@ get_config_txt_res() {
   t_sub1="${t_val%%|*}"; t_val="${t_val#*|}"
   t_sub2="${t_val%%|*}"; t_val="${t_val#*|}"
   t_array="${t_val%%|*}"; t_val="${t_val#*|}"
-  t_item="${t_val%%|*}"; t_val="${t_val#*|}"
+#  t_item="${t_val%%|*}" t_item unused right now
+  t_val="${t_val#*|}" # just strip it away
   t_type="${t_val%%|*}"; t_val="${t_val#*|}"
   t_key="${t_val%%|*}"; t_val="${t_val#*\"}"
   t_val="${t_val%\"*}"

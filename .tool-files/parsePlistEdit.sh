@@ -120,6 +120,8 @@ get_res() {
 	type="${val%%|*}"; val="${val#*|}"
 	key="${val%%|*}"; val="${val#*\"}"
 	val="${val%\"*}"
+#  val=${val/|/!} # change "|" character from config.plist to avoid parse errors for now
+  val=$(echo "$val"|tr "|" "!") # POSIX form
 }
 
 while read -r line; do
@@ -134,7 +136,6 @@ while read -r line; do
 done < config.plist.txt
 
 if [ -e "edit_subs.txt" ]; then
-	com=""
 	while read -r line
 	do
 		old="${line%|*}"
@@ -143,20 +144,15 @@ if [ -e "edit_subs.txt" ]; then
 		s2="${line%%_*}"; line="${line#*_}"
 		s3="${line%|*}"
 		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
-#		if [ "$en" = "true" ]; then new="$new\ +"; fi
-		if [ "$en" = "true" ]; then new="$new +"; fi
-#		if [ "$en" = "false" ]; then new="$new\ -"; fi
-		if [ "$en" = "false" ]; then new="$new -"; fi
+		if [ "$en" = "true" ]; then
+      new="$new +"
+    else
+      new="$new -"
+    fi
 		printf "%s\n" "s|$old |$new|" >> comm.txt
-#		com="$com -e s\|'$old '\|'$new'\|"
-#		com="$com -e \"s/'$old '/'$new'/\""
 	done < edit_subs.txt
-	# printf "%s\n" $com > com1.txt
 
 	sed -f comm.txt  edit_text.tmp > edit_text.txt
-#	eval sed "$com" edit_text.tmp > edit_text.txt
 else
 	cp edit_text.tmp edit_text.txt
 fi
-
-# rm -rf edit_text.tmp
