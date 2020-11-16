@@ -164,7 +164,7 @@ check_tool_for_updates() {
   git fetch --all -q||git_failed "OC-tool"
   if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ];then
     git reset --hard
-    git pull "$VERBOSE" -q||git_failed "OC-tool (git pull)"
+    git pull $VERBOSE -q||git_failed "OC-tool (git pull)"
     msg "\n\n${YEL}INFO:${NC} OC-tool has been updated, run tool again to continue\n"
     update_log "Updated" "OC-tool"
     exit 2
@@ -204,7 +204,7 @@ check_resources_for_updates() {
       git fetch --all -q||git_failed "${git_dir##*/}"
       msg "\033[2K\r${git_dir##*/} - "
       if [ "$(git rev-parse "@")" != "$(git rev-parse "@{u}")" ]; then
-        git pull "$VERBOSE" -q||git_failed "${git_dir##*/}"
+        git pull $VERBOSE -q||git_failed "${git_dir##*/}"
         new_hash=$(git rev-parse @|cut -c -7)
         msg "${GRN}updated to ${NC}$new_hash\n"
         echo "$(date) Updated ${git_dir##*/} - $new_hash" >> "$BASE_DIR/update.log"
