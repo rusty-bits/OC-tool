@@ -671,7 +671,7 @@ copy_resources() {
               fi
             else # deferred
               {
-                echo "$srce" 
+                echo "$srce"
                 echo "${res_name##*/}" # res name without path
                 echo "${dest#?}" # strip leading -
                 echo "${dest_name##*/}" # dest res without path
@@ -984,7 +984,7 @@ get_edit_res() {
   L3="${key%%|*}"; key="${key#*|}"
   AD="${key%%|*}"; key="${key#*|}"
   type="${key%%|*}"; key="${key#*|}"
-  val=${key%%|*}; key="${key#*|}"
+  val=${key%|*}; key="${key##*|}"
   en="${key##* }"
   if [ "${#en}" -gt "1" ]; then en="$key"; fi
 }

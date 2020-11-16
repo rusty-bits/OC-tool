@@ -11,9 +11,22 @@ L0=0
 C0=""
 P=0
 
+edit_sub() {
+  new="$1"
+  en=$(grep "$C0|*$C1|$item|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
+  if [ "$en" = "true" ]; then
+    new="$new +"
+  else
+    new="$new -"
+  fi
+  new=${new/|/\\|} # change "|" character from config.plist to avoid parse errors for now
+#  new=$(echo "$new"|tr "|" "#") # POSIX form
+  printf "%s\n" "s|${C0}_${C1}_$item |$new|" >> edit_subs.txt
+}
+
 get_next() {
-	next=""
-	while [ -z "$next" ]
+  next=""
+  while [ -z "$next" ]
 	do
 		case $P in
 			0)
@@ -45,17 +58,16 @@ get_next() {
 				next="$key"
 				if [ -z "$next" ]; then next="error"; fi
 				if [ -z "$ar" ]; then ar="D"; fi
-				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val}" >> edit_subs.txt; fi
-#				if [ "$key" = "BundlePath" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Path" ] && [ "$C0$C1" != "MiscEntries" ]; then edit_sub "${val#*/}"; fi
+				if [ "$key" = "BundlePath" ]; then edit_sub "${val}"; fi
 				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIBlock" ]; then printf "%s\n" "Found invalid ACPI > Block section, should be changed to ACPI > Delete for OpenCore 0.5.9 and later" >> parse_error.txt; fi
-				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIDelete" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Comment" ] && [ "$C0$C1" = "UEFIReservedMemory" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Address" ] && [ "$C0$C1" = "BooterMmioWhitelist" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
-				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelBlock" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Comment" ] && [ "$C0$C1" = "ACPIDelete" ]; then edit_sub "${val#*/}"; fi
+				if [ "$key" = "Comment" ] && [ "$C1" = "Patch" ]; then edit_sub "${val#*/}"; fi
+				if [ "$key" = "Comment" ] && [ "$C0$C1" = "UEFIReservedMemory" ]; then edit_sub "${val#*/}"; fi
+				if [ "$key" = "Address" ] && [ "$C0$C1" = "BooterMmioWhitelist" ]; then edit_sub "${val#*/}"; fi
+				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelBlock" ]; then edit_sub "${val#*/}"; fi
 				if [ "$key" = "Identifier" ] && [ "$C0$C1" = "KernelDelete" ]; then printf "%s\n" "Found invalid Kernel > Delete section, perhaps you want Kernel > Block" >> parse_error.txt; fi
-				if [ "$key" = "Name" ] && [ "$C0$C1" = "MiscEntries" ]; then printf "%s\n" "${C0}_${C1}_$item|${val#*/}" >> edit_subs.txt; fi
+				if [ "$key" = "Name" ] && [ "$C0$C1" = "MiscEntries" ]; then edit_sub "${val#*/}"; fi
 				P=5
 				;;
 			5)
@@ -121,7 +133,7 @@ get_res() {
 	key="${val%%|*}"; val="${val#*\"}"
 	val="${val%\"*}"
 #  val=${val/|/!} # change "|" character from config.plist to avoid parse errors for now
-  val=$(echo "$val"|tr "|" "!") # POSIX form
+#  val=$(echo "$val"|tr "|" "!") # POSIX form
 }
 
 while read -r line; do
@@ -136,23 +148,23 @@ while read -r line; do
 done < config.plist.txt
 
 if [ -e "edit_subs.txt" ]; then
-	while read -r line
-	do
-		old="${line%|*}"
-		new="${line#*|}"
-		s1="${line%%_*}"; line="${line#*_}"
-		s2="${line%%_*}"; line="${line#*_}"
-		s3="${line%|*}"
-		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
-		if [ "$en" = "true" ]; then
-      new="$new +"
-    else
-      new="$new -"
-    fi
-		printf "%s\n" "s|$old |$new|" >> comm.txt
-	done < edit_subs.txt
+#	while read -r line
+#	do
+#		old="${line%%|*}"
+#		new="${line#*|}"
+#		s1="${line%%_*}"; line="${line#*_}"
+#		s2="${line%%_*}"; line="${line#*_}"
+#		s3="${line%|*}"
+#		en=$(grep "$s1|*$s2|$s3|bool|Enabled|" config.plist.txt|cut -f2 -d'"')
+#		if [ "$en" = "true" ]; then
+#      new="$new +"
+#    else
+#      new="$new -"
+#    fi
+#		printf "%s\n" "s|$old |$new|" >> comm.txt
+#	done < edit_subs.txt
 
-	sed -f comm.txt  edit_text.tmp > edit_text.txt
+	sed -f edit_subs.txt  edit_text.tmp > edit_text.txt
 else
 	cp edit_text.tmp edit_text.txt
 fi
