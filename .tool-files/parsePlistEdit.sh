@@ -19,8 +19,8 @@ edit_sub() {
   else
     new="$new -"
   fi
-  new=${new/|/\\|} # change "|" character from config.plist to avoid parse errors for now
-#  new=$(echo "$new"|tr "|" "#") # POSIX form
+#  new=${new/|/\\|} # change "|" character from config.plist to avoid parse errors for now
+  new=$(echo "$new"|tr "|" "#") # POSIX form
   printf "%s\n" "s|${C0}_${C1}_$item |$new|" >> edit_subs.txt
 }
 
