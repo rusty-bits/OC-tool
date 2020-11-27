@@ -1,7 +1,10 @@
-6
+9
 ||${res_name} +
 string||Arguments
-string|Not signed for security reasons|Comment
+bool|false|Auxiliary
+string||Comment
 bool|true|Enabled
 string|${res_name%.*}|Name
 string|${res_name}|Path
+bool|false|RealPath
+bool|false|TextMode

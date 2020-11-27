@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.3 (141120)\n\nprebuilt release -> 0.6.3\nprebuilt daily/latest source -> 0.6.4\n\ntested with REL-064-2020-11-14\ntested with Xcode 12.2 beta 3"
+VER="3.6.3 (271120)\n\nprebuilt release -> 0.6.3\nprebuilt daily/latest source -> 0.6.4\n\ntested with REL-064-2020-11-25\ntested with Xcode 12.2 beta 3"
 REL_VER="063"
 
 INI=$(pwd)
@@ -323,16 +323,24 @@ curl_child() { # need parent first, then zip source
 #  msg "path<$path> parent<$parent>\n"
   git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
   if [ -z "$git_url" ] && [ "$MODE" = "prebuiltDaily" ]; then
-    msg "\nParent $parent not in daily repo, looking in standard repo ... "
+    msg "\n$res_name parent $parent not in daily repo, looking in standard repo ... "
     git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$GIT_JSON_TXT"|cut -f2 -d '"')
     if [ -z "$git_url" ]; then msg "\n${RED}ERROR:${NC} no prebuilt resources found for $parent\n"; exit 1; fi
     msg "${GRN}found${NC}\n"
   fi
 #  msg "git_url<$git_url>\n"
-  if [ "${git_url##*.}" = "git" ]; then
-    cd "$RES_DIR"
-    clone "$git_url"
-    srce="$(pwd)/$pkg_name"
+  if [ "${git_url##*.}" = "curlme" ]; then
+    cd "$BASE_DIR"/extras
+    msg "Downloading $res_name to extras ... "
+    p=""
+    if [ -n "$path" ]; then p="$path/"; fi
+    curl -L -O "${git_url%.curlme}$p$res_name"
+    path=""
+    srce="$BASE_DIR/extras"
+    fin
+#    cd "$RES_DIR"
+#    clone "$git_url"
+#    srce="$(pwd)/$pkg_name"
   else
     if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/${pkg_name}Docs"; fi
     temp="$res_name" # hold self
@@ -362,11 +370,21 @@ build_failed() { # failed build even after backing up 5 commits
 }
 
 build_driver() {
-  cd "$RES_DIR/UDK"
-  clone "$git_url"
-  if [ "${pkg_name##*.}" = "git" ]; then
-    srce="$(pwd)/$pkg_name/Drivers"
+  if [ "${git_url##*.}" = "curlme" ]; then
+    cd "$BASE_DIR"/extras
+    msg "Downloading $res_name to extras ... "
+    path=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || path=""
+    if [ -n "$path" ]; then p="$path/"; fi
+#    curl -L -O "${git_url%.curlme}$p$res_name"
+    msg "${git_url%.curlme}$p$res_name\n"
+    exit 42
+    path=""
+    srce="$BASE_DIR/extras"
+    fin
+#    srce="$(pwd)/$pkg_name/Drivers"
   else
+    cd "$RES_DIR/UDK"
+    clone "$git_url"
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
     if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/$pkg_name/Docs"; fi
     cd "$pkg_name"
@@ -529,6 +547,7 @@ prepare_resources() {
   do
     for S in $(seq 0 "$(eval echo \$G"$G"_NUM)") # cycle through members
     do
+      pkg_name=""
       if [ "$S" -ge "0" ]; then
       get_res "$G$S"
       get_edit_res "$enabled"
@@ -956,7 +975,7 @@ set_build_type() {
 
 print_res_array() { # debug aid to list psuedo array
   msg "\033[J\033[0m\n"
-  for G in $(seq 0 10)
+  for G in $(seq 0 4) # was 0 10
   do
     for S in $(seq 0 "$(eval echo \$G"$G"_NUM)")
     do
@@ -3043,6 +3062,7 @@ fi
 if [ "$TUI_MODE" = "stop" ]; then  exit 0; fi # save and quit
 
 prepare_resources
+
 set_up_dest_dir
 copy_resources
 
