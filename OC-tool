@@ -375,9 +375,8 @@ build_driver() {
     msg "Downloading $res_name to extras ... "
     path=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || path=""
     if [ -n "$path" ]; then p="$path/"; fi
-#    curl -L -O "${git_url%.curlme}$p$res_name"
+    curl -L -O "${git_url%.curlme}$p$res_name"
     msg "${git_url%.curlme}$p$res_name\n"
-    exit 42
     path=""
     srce="$BASE_DIR/extras"
     fin
