@@ -1,0 +1,5 @@
+  Auto --- Automatically select one set of icons based on DefaultBackground colour
+  Default --- Normal icon set (without prefix).
+  Old --- Vintage icon set (Old filename prefix).
+  Modern --- Nouveau icon set (Modern filename prefix).
+  Other_value --- Custom icon set if supported by the resources.
