@@ -559,7 +559,7 @@ Reinstalls Apple IMG4 Verification protocol with a builtin version. This protoco
 AppleSecureBoot
 Reinstalls Apple Secure Boot protocol with a builtin version.
 Arch
-Kext architecture (Any, i386, x86_64)
+Architecture (Any, i386, x86_64)
 Scheme
 Define kernelspace operation mode via parameters
 FuzzyMatch

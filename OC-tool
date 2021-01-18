@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.5 (040121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-065-2020-12-27\ntested with Xcode 12.2 beta 3"
+VER="3.6.5 (180121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-06\ntested with Xcode 12.2 beta 3"
 REL_VER="065"
 
 INI=$(pwd)
@@ -342,7 +342,10 @@ curl_child() { # need parent first, then zip source
 #    clone "$git_url"
 #    srce="$(pwd)/$pkg_name"
   else
-    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/${pkg_name}Docs"; fi
+    if [ "$res_name" = "OpenCore.efi" ]; then
+      DOC_DIR="$(pwd)/${pkg_name}Docs";
+      UTILITIES="$(pwd)/Utilities";
+    fi
     temp="$res_name" # hold self
     res_name="$parent"
     curl_parent # temp use parent resources
@@ -385,7 +388,10 @@ build_driver() {
     cd "$RES_DIR/UDK"
     clone "$git_url"
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-    if [ "$res_name" = "OpenCore.efi" ]; then DOC_DIR="$(pwd)/$pkg_name/Docs"; fi
+    if [ "$res_name" = "OpenCore.efi" ]; then
+      DOC_DIR="$(pwd)/$pkg_name/Docs";
+      UTILITIES="$(pwd)/OpenCorePkg/Utilities";
+    fi
     cd "$pkg_name"
     tempRes="$res_name"
     if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
@@ -814,44 +820,14 @@ vault_failed() {
 }
 
 build_vault() {
-  msg "\nBuilding vault files for $BUILD_DIR ... "
-#  case $MODE in
-#    prebuiltRelease)
-      if [ ! -e "$RES_DIR/UDK/OpenCorePkg" ]; then
-        mkdir -p "$RES_DIR/UDK/OpenCorePkg"
-        cd "$RES_DIR/UDK/OpenCorePkg"
-        ocsupporturl=$(grep "|OpenCorePkg|versions|@0|links|debug " "$GIT_JSON_TXT"|cut -f2 -d '"')
-        curl -L -O "$ocsupporturl"
-        ocsupportzip=${ocsupporturl##*/}
-        tar xvf "$ocsupportzip"
-      fi
-#      ;;
-#  esac
+  msg "\n${GRN}Building vault files for ${YEL}$BUILD_DIR${NC} ... "
   cd "$BUILD_DIR"/OC
   ls vault* 1> /dev/null 2>&1 && rm vault.*
-#  case $MODE in
-#    prebuiltRelease)
-    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-#      ;;
-#    latestSource)
-#      "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
-#      ;;
-#    prebuiltDaily)
-#      "$RES_DIR/daily$AUDK_CONFIG/CreateVault/create_vault.sh" .||return 1
-#      ;;
-#  esac
+  "$UTILITIES"/CreateVault/create_vault.sh .||return 1
+#    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
   if [ "$USE_VAULT" != "Basic" ]; then
-#    case $MODE in
-#      prebuiltRelease)
-    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-#        ;;
-#      latestSource)
-#        "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-#        ;;
-#      prebuiltDaily)
-#        "$RES_DIR/daily$AUDK_CONFIG/CreateVault/RsaTool" -sign vault.plist vault.sig vault.pub||return 1
-#        ;;
-#    esac
+    "$UTILITIES"/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
+#    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
     str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
     off=$((str+16))
     len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
@@ -3070,6 +3046,18 @@ if [ -n "$USE_VAULT" ]; then
   build_vault||vault_failed
 fi
 
+if [ "$MODE" != "latestSource" ]; then
+  msg "\n${GRN}Checking ${YEL}OUTPUT/EFI/OC/config.plist${GRN} against Acidanthera ocvalidate tool${NC} ...\n"
+  "$UTILITIES"/ocvalidate/ocvalidate "$BUILD_DIR/OC/config.plist" > "$TTY_OUT"
+fi
+
+if [ -e "$INPUT/errors.txt" ]; then
+  msg "\n${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
+  msg "\tSome may have been repaired by the input scan.\n"
+  msg "\tSome may not be important. You can view the issues with\n"
+  msg "\t'cat last_run_issues.txt'\n\n"
+  cp "$INPUT/errors.txt" "$BASE_DIR/last_run_issues.txt"
+fi
 msg "\n${GRN}Finished building ${YEL}$BUILD_DIR${NC}\n\n"
 if [ -n "$CONFIG_CHANGED" ]; then
   msg "${YEL}NOTE:${NC}\tconfig.plist in $BUILD_DIR ${YEL}was changed${NC} by $CONFIG_CHANGED\n"
@@ -3078,13 +3066,6 @@ if [ -n "$CONFIG_CHANGED" ]; then
   if [ -n "$MODI" ]; then
     msg "\tthe original $inputFilePath ${YEL}has not been touched${NC}\n\n"
   fi
-fi
-if [ -e "$INPUT/errors.txt" ]; then
-  msg "${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
-  msg "\tSome may have been repaired by the input scan.\n"
-  msg "\tSome may not be important. You can view the issues with\n"
-  msg "\t'cat last_run_issues.txt'\n\n"
-  cp "$INPUT/errors.txt" "$BASE_DIR/last_run_issues.txt"
 fi
 #stop_logging
 
