@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VER="3.6.5 (180121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-06\ntested with Xcode 12.2 beta 3"
+VER="3.6.5 (190121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-19\ntested with Xcode 12.2 beta 3"
 REL_VER="065"
 
 INI=$(pwd)
@@ -20,7 +20,6 @@ BUILD_DIR="$OUTPUT/EFI"
 LOGFILE="$BASE_DIR/tool.log"
 INPUT="$BASE_DIR/INPUT/temp"
 CONFIG_PLIST="$INPUT/config.plist" # set input plist to temp dir, no mod of original
-# CONFIG_TXT="$INPUT/config.plist.txt" # used by add_resource()
 DOC_DIR="" # repo doc location
 HAS_UNZIP=""
 
@@ -287,7 +286,6 @@ curl_parent() {
   if [ -z "$sha" ]; then
     sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$GIT_JSON_TXT"|cut -f2 -d '"')
   fi
-#  sha=$(grep "|$res_name|versions|@0|hashes|$TYPE|sha256 " "$TOOL_FILES/git_repo.json.txt"|cut -f2 -d '"')
   if [ "$(cat shasum256)" != "$sha" ]; then
     if [ -z "$UPDATE" ]; then
       msg "Downloading $zip_name ... "
@@ -320,7 +318,6 @@ curl_parent() {
 
 curl_child() { # need parent first, then zip source
   path="$git_url"
-#  msg "path<$path> parent<$parent>\n"
   git_url=$(grep "|$parent|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
   if [ -z "$git_url" ] && [ "$MODE" = "prebuiltDaily" ]; then
     msg "\n$res_name parent $parent not in daily repo, looking in standard repo ... "
@@ -328,7 +325,6 @@ curl_child() { # need parent first, then zip source
     if [ -z "$git_url" ]; then msg "\n${RED}ERROR:${NC} no prebuilt resources found for $parent\n"; exit 1; fi
     msg "${GRN}found${NC}\n"
   fi
-#  msg "git_url<$git_url>\n"
   if [ "${git_url##*.}" = "curlme" ]; then
     cd "$BASE_DIR"/extras
     msg "Downloading $res_name to extras ... "
@@ -338,9 +334,6 @@ curl_child() { # need parent first, then zip source
     path=""
     srce="$BASE_DIR/extras"
     fin
-#    cd "$RES_DIR"
-#    clone "$git_url"
-#    srce="$(pwd)/$pkg_name"
   else
     if [ "$res_name" = "OpenCore.efi" ]; then
       DOC_DIR="$(pwd)/${pkg_name}Docs";
@@ -372,6 +365,15 @@ build_failed() { # failed build even after backing up 5 commits
   exit 1
 }
 
+build_ocvalidate() {
+  msg "Building ocvalidate tool ... "
+  export UDK_PATH="$RES_DIR/UDK"
+  cd "$UTILITIES/ocvalidate"
+  make clear
+  make -j 6
+  fin
+}
+
 build_driver() {
   if [ "${git_url##*.}" = "curlme" ]; then
     cd "$BASE_DIR"/extras
@@ -383,7 +385,6 @@ build_driver() {
     path=""
     srce="$BASE_DIR/extras"
     fin
-#    srce="$(pwd)/$pkg_name/Drivers"
   else
     cd "$RES_DIR/UDK"
     clone "$git_url"
@@ -391,6 +392,9 @@ build_driver() {
     if [ "$res_name" = "OpenCore.efi" ]; then
       DOC_DIR="$(pwd)/$pkg_name/Docs";
       UTILITIES="$(pwd)/OpenCorePkg/Utilities";
+      if [ ! -e "$UTILITIES/ocvalidate/ocvalidate" ]; then
+        build_ocvalidate
+      fi
     fi
     cd "$pkg_name"
     tempRes="$res_name"
@@ -409,7 +413,6 @@ build_driver() {
         a=1
         while :
         do
-#          msg "Building $AUDK_CONFIG $pkg_name for ${res_name##*/} ... "
           msg "Building $AUDK_CONFIG $pkg_name ... "
           build -a X64 -b "$AUDK_CONFIG" -t XCODE5 -p "$pkg_name"/"$pkg_name".dsc && break
           if [ "$a" -eq "5" ]; then return 1; fi
@@ -420,6 +423,9 @@ build_driver() {
         done
         if [ "$a" -ne "1" ];then git checkout master; fi
         fin
+        if [ "$pkg_name" = "OpenCorePkg" ]; then
+          build_ocvalidate
+        fi
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
       if [ "$res_name" = "Bootstrap.efi" ]; then
@@ -451,7 +457,6 @@ build_kext() {
   if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
     [ ! -e "$srce/${res_name##*/}" ]; then
       msg "Building $AUDK_CONFIG $pkg_name ... "
-#      msg "Building $AUDK_CONFIG $pkg_name for ${res_name##*/} ... "
     rm -rf Lilu.kext # remove Lilu pkg if it came with repo & link to acidanthera version
     if [ ! -L "Lilu.kext" ]; then ln -s "$RES_DIR"/Kext_builds/Lilu/build/Debug/Lilu.kext .; fi
     if [ ! -L "VirtualSMC.kext" ] && [ "$pkg_name" = "AsusSMC" ]; then # AsusSMC needs link to Virtual SMC
@@ -469,7 +474,6 @@ build_kext() {
       if [ -z "$buildScheme" ]; then
         xcodebuild -arch x86_64 -config "$XCODE_CONFIG" build && break
       else
-#        xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" -sdk macosx build && break
         msg "($buildScheme) ... "
         xcodebuild -arch x86_64 -config "$XCODE_CONFIG" -scheme "$buildScheme" build && break
       fi
@@ -478,7 +482,6 @@ build_kext() {
       msg "\n${YEL}COMMIT $git_sha FAILED:${NC} backing up one commit and trying again\n"
       git checkout "$(git log --oneline -2|cat|tail -1|cut -f1 -d" ")"
       msg "Building $pkg_name ... "
-#      msg "Building $pkg_name for ${res_name##*/} ... "
       a=$((a+1))
     done
     if [ "$a" -ne "1" ]; then git checkout master; fi
@@ -487,30 +490,6 @@ build_kext() {
     fin
   fi
 }
-
-#missing_iasl() {
-#  QUIET=""
-#  msg "${RED}ERROR:${NC}\t${B}iasl${NC} command is required to compile $res_name\n"
-#  msg "\tEither:\t* install iasl, or\n\t\t* place $res_name in ${B}extras${NC} directory\n"
-#  exit 1
-#}
-
-#build_acpi() { # compile .dsl into .aml if user hasn't already
-#  pkg_name=${res_name%%.*}
-#
-#  srce="${git_url%/*}"
-#  srce="${srce##*/}"
-#  if [ -e "$srce/$res_name" ];then
-#    return 0
-#  elif [ -e "$RES_DIR/$git_url" ];then
-#    command -v iasl||missing_iasl
-#    msg "Building $res_name ... "
-#    iasl "$RES_DIR/$git_url"||return 1
-#    fin
-#  else
-#    return 1
-#  fi
-#}
 
 get_res() { # extract resource from psuedo array (needed for POSIX)
   eval enabled="\$res$1"
@@ -543,8 +522,6 @@ prepare_resources() {
           msg "\tDownloading will continue, but there is no way to check zip file sums\n"
           msg "\tinstall the shasum command if this is an issue\n\n"
         fi;;
-#      "prebuiltDaily")
-#        msg "\n${GRN}Cloning needed or updated resources${NC}\n";;
     esac
   fi
 
@@ -573,8 +550,6 @@ prepare_resources() {
                   set_build_type "release"
                 fi
                 build_kext||build_failed;;
-#              "aml")
-#                build_acpi||build_failed;;
               esac;;
             "prebuiltRelease"|"prebuiltDaily")
               case ${res_name##*.} in
@@ -590,18 +565,6 @@ prepare_resources() {
                 ;;
               esac
               ;;
-#            "prebuiltDaily")
-#              case ${res_name##*.} in
-#                "efi"|"kext"|"aml")
-#                  if [ -n "$parent" ]; then
-#                    clone_child
-#                  else
-#                    clone_parent
-#                  fi
-#                  srce="$srce$temp"
-#                  ;;
-#              esac
-#              ;;
           esac
           set_res "$G$S"
         fi
@@ -684,7 +647,6 @@ copy_resources() {
               fin
               if [ "$dest_name" = "BOOTx64.efi" ] && [ -n "$BOOT_PROTECT_NUM" ]; then # BootProtect
                 dest_name="Bootstrap.efi"
-#                if [ "$MODE" = "latestSource" ]; then dest_name="Bootstrap.efi"; fi
                 get_edit_res "$BOOT_PROTECT_NUM"
                 if [ "$val" = "Bootstrap" ]; then
                   msg "Copying $dest_name to OC/Bootstrap/Bootstrap.efi ... "
@@ -824,10 +786,8 @@ build_vault() {
   cd "$BUILD_DIR"/OC
   ls vault* 1> /dev/null 2>&1 && rm vault.*
   "$UTILITIES"/CreateVault/create_vault.sh .||return 1
-#    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/create_vault.sh .||return 1
   if [ "$USE_VAULT" != "Basic" ]; then
     "$UTILITIES"/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
-#    "$RES_DIR"/UDK/OpenCorePkg/Utilities/CreateVault/RsaTool -sign vault.plist vault.sig vault.pub||return 1
     str=$(strings -a -t d OpenCore.efi | grep "=BEGIN OC VAULT=" | cut -f1 -d" ")
     off=$((str+16))
     len=$(wc -c vault.pub|cut -f1 -d 'v'|tr -d ' ')
@@ -839,7 +799,6 @@ build_vault() {
 
 find_srce_url() {
   parent=$(grep "|$res_name|parent " "$GIT_JSON_TXT"|cut -f2 -d '"')
-#  msg "res_name<$res_name> parent<$parent>\n"
   if [ "$MODE" = "latestSource" ]; then
     git_url=$(grep "|$res_name|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"')
     if [ -z "$git_url" ]; then git_url=$(grep "|$parent|latestSource " "$GIT_JSON_TXT"|cut -f2 -d '"'); fi
@@ -849,9 +808,6 @@ find_srce_url() {
       git_url=$(grep "|$res_name|versions|@0|links|$TYPE " "$JSON_FILE"|cut -f2 -d '"')
     else # is child
       git_url=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"')
-#      if [ "$MODE" = "prebuiltDaily" ]; then  # needs to be fixed to read dorito config.json
-#        checkDaily=$(grep "|$parent|versions|@0|links" "$TOOL_FILES/config.txt")||parent=""
-#      fi
     fi
   fi
 }
@@ -861,22 +817,17 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
   tempDest=""
   if [ "#${res_name#?}" = "$res_name" ]; then res_name="${res_name#?}"; temp="#"; fi # ignore res with #
   if [ "${res_name##*/}" != "$res_name" ]; then # strip off path from plugin
-#    tempDest="${res_name%/*/*}/"
     tempDest="${res_name%/*}/"
-#    res_name="${res_name#$tempDest}"
-#    tempDest="/$tempDest${res_name%/*}"
     tempDest="/$tempDest"
     dest="-$dest" # mark dest as deferred
   fi
   find_srce_url
-#  res_name="$temp${res_name#*/}"
   dest="$dest$tempDest"
   temp=""
   if [ -e "$BASE_DIR/extras/${res_name##*/}" ]; then #found directory (kext) or file (driver) at root level
     srce="$BASE_DIR/extras"
   elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) as plugin
     srce="$BASE_DIR/extras$tempDest"
-#  elif [ -n "$git_url" ]; then # found repo
   elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
     srce="-$tempDest" #save path for Plugins
   elif [ "${key##* }" = "-" ];then
@@ -3046,10 +2997,8 @@ if [ -n "$USE_VAULT" ]; then
   build_vault||vault_failed
 fi
 
-if [ "$MODE" != "latestSource" ]; then
-  msg "\n${GRN}Checking ${YEL}OUTPUT/EFI/OC/config.plist${GRN} against Acidanthera ocvalidate tool${NC} ...\n"
-  "$UTILITIES"/ocvalidate/ocvalidate "$BUILD_DIR/OC/config.plist" > "$TTY_OUT"
-fi
+msg "\n${GRN}Checking ${YEL}OUTPUT/EFI/OC/config.plist${GRN} against Acidanthera ocvalidate tool${NC} ...\n"
+"$UTILITIES"/ocvalidate/ocvalidate "$BUILD_DIR/OC/config.plist" > "$TTY_OUT"
 
 if [ -e "$INPUT/errors.txt" ]; then
   msg "\n${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
