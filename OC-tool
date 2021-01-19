@@ -2997,8 +2997,10 @@ if [ -n "$USE_VAULT" ]; then
   build_vault||vault_failed
 fi
 
-msg "\n${GRN}Checking ${YEL}OUTPUT/EFI/OC/config.plist${GRN} against Acidanthera ocvalidate tool${NC} ...\n"
-"$UTILITIES"/ocvalidate/ocvalidate "$BUILD_DIR/OC/config.plist" > "$TTY_OUT"
+if [ "$UNAME" = "Darwin" ]; then
+  msg "\n${GRN}Checking ${YEL}OUTPUT/EFI/OC/config.plist${GRN} against Acidanthera ocvalidate tool${NC} ...\n"
+  "$UTILITIES"/ocvalidate/ocvalidate "$BUILD_DIR/OC/config.plist" > "$TTY_OUT"
+fi
 
 if [ -e "$INPUT/errors.txt" ]; then
   msg "\n${YEL}NOTE:${NC}\tissues were found in $inputFilePath\n"
