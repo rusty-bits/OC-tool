@@ -3,6 +3,7 @@
 
 VER="3.6.5 (240121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-24\ntested with Xcode 12.2 beta 3"
 REL_VER="065"
+SRC_VER="066"
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -35,7 +36,7 @@ INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""; BOOT_PROTECT_NUM=""
 USE_CUSTOM=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
-COPY_RESOURCES=""; PLAY_CHIME=""
+COPY_RESOURCES=""; PLAY_CHIME=""; UPDATE_OCVALIDATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 ADD_RES_NUM="-1"; LA="1"
 
@@ -125,12 +126,18 @@ clone() { # will only clone if pkg is not local
     if [ -z "$UPDATE" ]; then
       msg "Cloning $1 into $pkg_name ... "
       if [ "$pkg_name" = "UDK" ]; then
-        git clone --recursive "$1" -b master --depth=1 "$2"
+        git clone --depth=1 "$1" "$2"
+#        git clone --recursive "$1" -b master --depth=1 "$2"
       else
         git clone "$1" "$pkg_name"
       fi
       fin
       cd "$pkg_name"
+      if [ "$pkg_name" = "UDK" ]; then
+        msg "Updating UDK submodules ... "
+        git submodule update --init --recommend-shallow
+        fin
+      fi
       update_log "Cloned" "$pkg_name"
       cd ..
     else
@@ -390,13 +397,6 @@ build_driver() {
     cd "$RES_DIR/UDK"
     clone "$git_url"
     srce="$(pwd)/Build/$pkg_name/$AUDK_BUILD_DIR/X64"
-    if [ "$res_name" = "OpenCore.efi" ]; then
-      DOC_DIR="$(pwd)/$pkg_name/Docs";
-      UTILITIES="$(pwd)/OpenCorePkg/Utilities";
-      if [ ! -e "$UTILITIES/ocvalidate/ocvalidate" ]; then
-        build_ocvalidate
-      fi
-    fi
     cd "$pkg_name"
     tempRes="$res_name"
     if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
@@ -424,9 +424,7 @@ build_driver() {
         done
         if [ "$a" -ne "1" ];then git checkout master; fi
         fin
-        if [ "$pkg_name" = "OpenCorePkg" ]; then
-          build_ocvalidate
-        fi
+        if [ "$res_name" = "OpenCore.efi" ]; then UPDATE_OCVALIDATE="yes"; fi
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
       if [ "$res_name" = "Bootstrap.efi" ]; then
@@ -435,7 +433,15 @@ build_driver() {
         fin
       fi
     fi
+    if [ "$res_name" = "OpenCore.efi" ]; then
+      DOC_DIR="$(pwd)/Docs";
+      UTILITIES="$(pwd)/Utilities";
+      if [ ! -e "$UTILITIES/ocvalidate/ocvalidate" ] || [ -n "$UPDATE_OCVALIDATE" ]; then
+        build_ocvalidate
+        UPDATE_OCVALIDATE=""
+      fi
     fi
+  fi
 }
 
 build_kext() {
@@ -751,8 +757,8 @@ copy_resources() {
 }
 
 plist_changed() { # plist from OpenCorePkg has changed, warn user to check their plist
-  diff -u "$BASE_DIR/Docs/Sample.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
-  cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
+  diff -u "$BASE_DIR/Docs/Sample$SRC_VER.plist" "$DOC_DIR/Sample.plist" > "$BASE_DIR/Docs/diff_Sample.txt"||true
+  cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample$SRC_VER.plist"
   msg "\n${YEL}NOTE:${NC}\tDocs/Sample.plist has changed from last run.\n"
   msg "\tdiffs have been placed in $BASE_DIR/Docs/diff_Sample.plist\n"
   msg "\tyou can see the differences with 'cat ./Docs/diff_Sample.txt'\n"
@@ -763,12 +769,12 @@ plist_changed() { # plist from OpenCorePkg has changed, warn user to check their
 
 check_if_Sample_plist_updated() {
   if [ ! -e "$DOC_DIR/Sample.plist" ]; then msg "\nFailed to find docs\n"; exit 1; fi
-  if [ -e "$BASE_DIR/Docs/Sample.plist" ]; then
-    cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample.plist||plist_changed
+  if [ -e "$BASE_DIR/Docs/Sample$SRC_VER.plist" ]; then
+    cmp --silent "$DOC_DIR"/Sample.plist "$BASE_DIR"/Docs/Sample$SRC_VER.plist||plist_changed
   else
-    cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample.plist"
+    cp "$DOC_DIR/Sample.plist" "$BASE_DIR/Docs/Sample$SRC_VER.plist"
   fi
-  cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/."
+  cp "$DOC_DIR/SampleCustom.plist" "$BASE_DIR/Docs/SampleCustom$SRC_VER.plist"
   cp "$DOC_DIR/Configuration.pdf" "$BASE_DIR/Docs/."
   if [ "$MODE" = "latestSource" ]; then DOC_DIR="$DOC_DIR/Differences"; fi
   cp "$DOC_DIR/Differences.pdf" "$BASE_DIR/Docs/."
@@ -2655,13 +2661,13 @@ process_plist() {
       if [ "$MODE" = "prebuiltRelease" ]; then
         cp "$BASE_DIR/Docs/Sample$REL_VER.plist" sample.plist.tmp
       else
-        cp "$BASE_DIR/Docs/Sample.plist" sample.plist.tmp
+        cp "$BASE_DIR/Docs/Sample$SRC_VER.plist" sample.plist.tmp
       fi
     else
       if [ "$MODE" = "prebuiltRelease" ]; then
         cp "$BASE_DIR/Docs/SampleCustom$REL_VER.plist" sample.plist.tmp
       else
-        cp "$BASE_DIR/Docs/SampleCustom.plist" sample.plist.tmp
+        cp "$BASE_DIR/Docs/SampleCustom$SRC_VER.plist" sample.plist.tmp
       fi
     fi
     tr -d '\r' < sample.plist.tmp > sample.plist # strip CRLF on windows
