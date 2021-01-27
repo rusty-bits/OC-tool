@@ -602,3 +602,5 @@ MaxBIOSVersion
 Sets BIOSVersion to 9999.999.999.999.999, recommended for legacy Macs when using Automatic PlatformInfo to avoid BIOS updates in unofficially supported macOS versions.
 SetApfsTrimTimeout
 Set trim timeout in microseconds for APFS filesystems on SSDs.  Depending on the SSD controller trim procedure may take considerable amount of time, causing noticeable boot slowdown as this is when the APFS driver executes the trim operation. If the SSD supports over-provisioning or there exists a dedicated unused partition that can be used to reserve blocks, trim operation may not be necessary. On the other side if the SSD is slow, the default timeout (equals to 9.999999 seconds) may not be enough. See more details in this https://interface31.ru/tech_it/2015/04/mozhno-li-effektivno-ispolzovat-ssd-bez-podderzhki-trim. Set this value to 4294967295 for the maximum timeout to guarantee trim success or to 999 to essentially disable trim.
+DisableSecurityPolicy
+Disable platform security policy. Note: This setting disables various security features of the firmware, defeating the purpose of any kind of Secure Boot. Do NOT enable if you use UEFI Secure Boot.

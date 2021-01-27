@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.5 (240121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-24\ntested with Xcode 12.2 beta 3"
+VER="3.6.5 (270121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-27\ntested with Xcode 12.4"
 REL_VER="065"
 SRC_VER="066"
 
@@ -424,7 +424,7 @@ build_driver() {
         done
         if [ "$a" -ne "1" ];then git checkout master; fi
         fin
-        if [ "$res_name" = "OpenCore.efi" ]; then UPDATE_OCVALIDATE="yes"; fi
+        if [ "$pkg_name" = "OpenCorePkg" ]; then UPDATE_OCVALIDATE="yes"; fi
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
       if [ "$res_name" = "Bootstrap.efi" ]; then
