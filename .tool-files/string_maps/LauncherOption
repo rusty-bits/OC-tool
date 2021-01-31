@@ -1,0 +1,3 @@
+Disabled — do nothing
+Full — create or update top-priority boot option in UEFI
+Short — create a short boot option instead of a complete one
