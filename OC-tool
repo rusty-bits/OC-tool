@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.6 (310121)\n\nprebuilt release -> 0.6.6\nprebuilt daily/latest source -> 0.6.7\n\ntested with REL-066-2020-01-31\ntested with Xcode 12.4"
+VER="3.6.6 (020221)\n\nprebuilt release -> 0.6.6\nprebuilt daily/latest source -> 0.6.7\n\ntested with REL-067-2020-02-02\ntested with Xcode 12.4"
 REL_VER="066"
 SRC_VER="067"
 
@@ -401,6 +401,7 @@ build_driver() {
     cd "$pkg_name"
     tempRes="$res_name"
     if [ "$res_name" = "OpenShell.efi" ]; then tempRes="Shell.efi"; fi # use Shell.efi for source build
+    if [ "$res_name" = "BOOTx64.efi" ]; then tempRes="Bootstrap.efi"; fi # use Bootstrap.efi for source build
     if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
       { [ ! -e "$srce/$tempRes" ] && [ "$res_name" != "base" ]; }; then
       rm -rf "$srce" # extreme, but does force whole pkg build if a piece is missing
@@ -430,7 +431,7 @@ build_driver() {
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
       if [ "$res_name" = "BOOTx64.efi" ]; then
         msg "Placing Acidanthera Research (C) into BOOTx64.efi ... "
-        dd if="$TOOL_FILES"/ARC of="$srce"/BOOTx64.efi bs=64 seek=1 count=1 conv=notrunc
+        dd if="$TOOL_FILES"/ARC of="$srce/$tempRes" bs=64 seek=1 count=1 conv=notrunc
         fin
       fi
     fi
@@ -633,8 +634,8 @@ copy_resources() {
             res_not_found "$res_name"
           else
             dest_name="$res_name"
+            if [ "$dest_name" = "BOOTx64.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Bootstrap.efi"; fi
             if [ "$dest_name" = "OpenShell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Shell.efi"; fi
-            if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
             if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
             if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
