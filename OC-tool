@@ -1,9 +1,9 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.5 (310121)\n\nprebuilt release -> 0.6.5\nprebuilt daily/latest source -> 0.6.6\n\ntested with REL-066-2020-01-31\ntested with Xcode 12.4"
-REL_VER="065"
-SRC_VER="066"
+VER="3.6.6 (310121)\n\nprebuilt release -> 0.6.6\nprebuilt daily/latest source -> 0.6.7\n\ntested with REL-066-2020-01-31\ntested with Xcode 12.4"
+REL_VER="066"
+SRC_VER="067"
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -34,7 +34,7 @@ JSON_FILE="$GIT_JSON_TXT"
 
 INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
-IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""; BOOT_PROTECT_NUM=""
+IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""
 USE_CUSTOM=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
 COPY_RESOURCES=""; PLAY_CHIME=""; UPDATE_OCVALIDATE=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
@@ -428,9 +428,9 @@ build_driver() {
         if [ "$pkg_name" = "OpenCorePkg" ]; then UPDATE_OCVALIDATE="yes"; fi
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
-      if [ "$res_name" = "Bootstrap.efi" ]; then
-        msg "Placing Acidanthera Research (C) into Bootstrap.efi ... "
-        dd if="$TOOL_FILES"/ARC of="$srce"/Bootstrap.efi bs=64 seek=1 count=1 conv=notrunc
+      if [ "$res_name" = "BOOTx64.efi" ]; then
+        msg "Placing Acidanthera Research (C) into BOOTx64.efi ... "
+        dd if="$TOOL_FILES"/ARC of="$srce"/BOOTx64.efi bs=64 seek=1 count=1 conv=notrunc
         fin
       fi
     fi
@@ -635,7 +635,6 @@ copy_resources() {
             dest_name="$res_name"
             if [ "$dest_name" = "OpenShell.efi" ] && [ "$MODE" = "latestSource" ]; then res_name="Shell.efi"; fi
             if [ "$dest_name" = "Shell.efi" ] && [ "$MODE" != "latestSource" ]; then res_name="OpenShell.efi"; fi
-            if [ "$dest_name" = "Bootstrap.efi" ]; then dest_name="BOOTx64.efi"; fi
             if [ "$dest_name" = "OpenCanopy.efi" ]; then COPY_RESOURCES="true"; fi
             if [ "$dest_name" = "config.plist" ] && [ -n "$CONFIG_CHANGED" ]; then res_name="modified.$inputFileName"; fi
             if [ "$dest_name" = "AtherosE2200Ethernet.kext" ] && [ "$MODE" = "prebuiltRelease" ]; then srce="$srce/$XCODE_CONFIG"; fi
@@ -653,16 +652,6 @@ copy_resources() {
               fi
               num=$((num+1))
               fin
-              if [ "$dest_name" = "BOOTx64.efi" ] && [ -n "$BOOT_PROTECT_NUM" ]; then # BootProtect
-                dest_name="Bootstrap.efi"
-                get_edit_res "$BOOT_PROTECT_NUM"
-                if [ "$val" = "Bootstrap" ]; then
-                  msg "Copying $dest_name to OC/Bootstrap/Bootstrap.efi ... "
-                  mkdir -p "$BUILD_DIR/OC/Bootstrap"
-                  cp -r "$srce/$res_name" "$BUILD_DIR/OC/Bootstrap/Bootstrap.efi"||copy_failed
-                  fin
-                fi
-              fi
             else # deferred
               {
                 echo "$srce"
@@ -1483,7 +1472,6 @@ load_edit_text() {
       fi
       if [ "$key" = "Vault" ]; then USE_VAULT_STR="$num"; fi # Optional Basic Secure
       if [ "$key" = "PlayChime" ]; then PLAY_CHIME="$num"; fi
-      if [ "$key" = "BootProtect" ]; then BOOT_PROTECT_NUM="$num"; fi # OC\Bootstrap\Bootstrap.efi
       if [ "$key" = "Enabled" ] && [ -n "$IGNORE_BOOL" ]; then
         val="false"
         IGNORE_BOOL=""
