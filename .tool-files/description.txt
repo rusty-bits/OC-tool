@@ -610,3 +610,9 @@ LauncherPath
 Launch path for LauncherOption. Default stays for launched OpenCore.efi, any other path, e.g. \EFI\Launcher.efi, can be used to provide custom loaders, which are supposed to load OpenCore.efi themselves.
 UseRawUuidEncoding
 Use raw encoding for SMBIOS UUIDs. OpenCore always sets a recent SMBIOS version (currently 3.2) when generating the modified DMI tables. If UseRawUuidEncoding is enabled, then Big Endian format is used to store the SystemUUID data. Otherwise Little Endian is used.
+ResetTrafficClass
+Set HDA Traffic Class Select Register to TC0. AppleHDA kext will function correctly only if TCSEL register is configured to use TC0 traffic class. Refer to Intel I/O Controller Hub 9 (ICH9) Family Datasheet (or any other ICH datasheet) for more details about this register. Note: This option is independent from AudioSupport. If AppleALC is used it is preferred to use AppleALC alctsel property instead.
+GopPassThrough
+Provide GOP protocol instances on top of UGA protocol instances. This option provides the GOP protocol via a UGA-based proxy for firmware that do not implement the protocol. Note: This option requires ProvideConsoleGop to be enabled.
+ActivateHpetSupport
+Activates HPET support. Older boards like ICH6 may not always have HPET setting in the firmware preferences, this option tries to force enable it.

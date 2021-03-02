@@ -1,9 +1,9 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.6 (230221)\n\nprebuilt release -> 0.6.6\nprebuilt daily/latest source -> 0.6.7\n\ntested with REL-067-2020-02-03\ntested with Xcode 12.4"
-REL_VER="066"
-SRC_VER="067"
+VER="3.6.7 (010321)\n\nprebuilt release -> 0.6.7\nprebuilt daily/latest source -> 0.6.8\n\ntested with REL-067-2020-02-03\ntested with Xcode 12.4"
+REL_VER="067"
+SRC_VER="068"
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
