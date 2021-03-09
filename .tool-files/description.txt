@@ -616,3 +616,5 @@ GopPassThrough
 Provide GOP protocol instances on top of UGA protocol instances. This option provides the GOP protocol via a UGA-based proxy for firmware that do not implement the protocol. Note: This option requires ProvideConsoleGop to be enabled.
 ActivateHpetSupport
 Activates HPET support. Older boards like ICH6 may not always have HPET setting in the firmware preferences, this option tries to force enable it.
+ForceBooterSignature
+Set macOS boot-signature to OpenCore launcher. Booter signature, essentially a SHA-1 hash of the loaded image, is used by Mac EFIto verify the authenticity of the bootloader when waking from hibernation. This option forces macOS to use OpenCore launcher SHA-1 hash as a booter signature to let OpenCore shim hibernation wake on Mac EFI firmware. Note: OpenCore launcher path is determined from LauncherPath property.
