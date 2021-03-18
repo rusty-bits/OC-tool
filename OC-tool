@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.7 (090321)\n\nprebuilt release -> 0.6.7\nprebuilt daily/latest source -> 0.6.8\n\ntested with REL-068-2021-03-09\ntested with Xcode 12.4"
+VER="3.6.7 (180321)\n\nprebuilt release -> 0.6.7\nprebuilt daily/latest source -> 0.6.8\n\ntested with REL-068-2021-03-18\ntested with Xcode 12.4"
 REL_VER="067"
 SRC_VER="068"
 

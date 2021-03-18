@@ -144,6 +144,8 @@ Cpuid1Mask
 Bit mask of active bits in Cpuid1Data. When each Cpuid1Mask bit is set to 0, the original CPU bit is used, otherwise set bits take the value of Cpuid1Data.
 Base
 Selects symbol-matched base for patch lookup (or immediate replacement) by obtaining the address of provided symbol name. Can be set to empty string to be ignored.
+BaseSkip
+Number of found Base occurrences to skip before finds and replacements are applied.
 Identifier
 Kext bundle identifier (e.g. com.apple.driver.AppleHDA) or kernel for kernel patch.
 Limit
