@@ -620,5 +620,7 @@ ActivateHpetSupport
 Activates HPET support. Older boards like ICH6 may not always have HPET setting in the firmware preferences, this option tries to force enable it.
 ForceBooterSignature
 Set macOS boot-signature to OpenCore launcher. Booter signature, essentially a SHA-1 hash of the loaded image, is used by Mac EFIto verify the authenticity of the bootloader when waking from hibernation. This option forces macOS to use OpenCore launcher SHA-1 hash as a booter signature to let OpenCore shim hibernation wake on Mac EFI firmware. Note: OpenCore launcher path is determined from LauncherPath property.
-KeySkipFirstDelay
-Suppress initial delay before key repeat in OpenCore implementation of Apple Event protocol. When combining OpenCore KeySupport with the Apple Event protocol, key repeat behaviour may show one additional slow key repeat before normal key repeat starts. Enabling this option works around this problem by suppressing the initial repeat delay in the OpenCore Apple Event implementation. This option is recommended to be set when using KeySupport mode, in most cases, and is not recommended to be set on any systems which are not using KeySupport mode.
+KeyInitialDelay
+Configure initial keyboard repeat delay in OpenCore implementation of Apple Event protocol, in units of 10ms.
+KeySubsequentDelay
+Configure subsequent keyboard repeat delay in OpenCore implementation of Apple Event protocol, in units of 10ms.
