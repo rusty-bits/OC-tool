@@ -1,0 +1,3 @@
+Auto --- Performs automatic choice of implementation. Because of optimisations used to achieve fast boot times, this actually means that the OpenCore re-implementation will be found and used except in the case that OpenCore was been explicitly selected and started (not just auto-booted) from Apple's boot picker (where present).
+Builtin --- Use OpenCore's updated re-implementation of the Apple Event protocol. Recommended.
+OEM --- Assume Apple's protocol will be available at driver connection. This results in Apple's implementation being reliably used on Apple systems. It results in no keyboard or mouse support otherwise.

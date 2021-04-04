@@ -1,0 +1,3 @@
+Auto --- Treated as Enabled when KeySupport is true and Disabled otherwise.
+Enabled --- The values KeyInitialDelay and KeySubsequentDelay are used.
+Disabled --- Apple default values of 500ms (50) and 50ms (5) are used.

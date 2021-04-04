@@ -499,7 +499,7 @@ Reinstalls Apple Boot Policy protocol with a builtin version. This may be used t
 AppleDebugLog
 Reinstalls Apple Debug Log protocol with a builtin version.
 AppleEvent
-Reinstalls Apple Event protocol with a builtin version. This may be used to ensure File Vault 2 compatibility on VMs or legacy Macs.
+Determine whether OC builtin or OEM Apple Event protocol is used. This option determines whether Apple's OEM Apple Event protocol is used (where available), or whether OpenCore's reversed engineered and updated re-implementation is used. In general OpenCore's re-implementation should be preferred, since it contains updates such as noticeably improved fine mouse cursor movement and configurable key repeat delays.
 AppleImageConversion
 Reinstalls Apple Image Conversion protocol with a builtin version.
 AppleKeyMap
@@ -624,3 +624,9 @@ KeyInitialDelay
 Configure initial keyboard repeat delay in OpenCore implementation of Apple Event protocol, in units of 10ms.
 KeySubsequentDelay
 Configure subsequent keyboard repeat delay in OpenCore implementation of Apple Event protocol, in units of 10ms.
+CustomDelays
+Enable custom key repeat delays.
+PointerSpeedDiv
+Configure pointer speed divisor in OpenCore implementation of Apple Event protocol.
+PointerSpeedMul
+Configure pointer speed multiplier in OpenCore implementation of Apple Event protocol.
