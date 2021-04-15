@@ -1,6 +1,9 @@
 0x0001 — OC_ATTR_USE_VOLUME_ICON, provides custom icons for boot entries
 0x0002 — OC_ATTR_USE_DISK_LABEL_FILE, provides custom rendered titles for boot entries
 0x0004 — OC_ATTR_USE_GENERIC_LABEL_IMAGE, provides predefined label images for boot entries
-0x0008 — OC_ATTR_USE_ALTERNATE_ICONS, changes used icon set to an alternate one if it is supported
+0x0008 — OC_ATTR_HIDE_THEMED_ICONS, prefers builtin icons for certain icon categories
+0x0010 - OC_ATTR_USE_POINTER_CONTROL, enables pointer control the OpenCore picker when available
+0x0020 - OC_ATTR_SHOW_DEBUG_DISPLAY, enable display of additional timing and debug information
+0x0040 - OC_ATTR_USE_MINIMAL_UI, use minimal UI display, no Shutdown or Restart buttons
 
 1 failsafe
