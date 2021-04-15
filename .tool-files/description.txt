@@ -630,3 +630,7 @@ PointerSpeedDiv
 Configure pointer speed divisor in OpenCore implementation of Apple Event protocol.
 PointerSpeedMul
 Configure pointer speed multiplier in OpenCore implementation of Apple Event protocol.
+ForgeUefiSupport
+Implement partial UEFI 2.x support on EFI 1.x firmware. This setting allows running some software written for UEFI 2.x firmware like NVIDIA GOP Option ROMs on hardware with older EFI 1.x firmware like MacPro5,1
+ReloadOptionRoms
+Query PCI devices and reload their Option ROMs if available. For example, this option allows reloading NVIDIA GOP Option ROM on older Macs after the firmware version is upgraded via ForgeUefiSupport
