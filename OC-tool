@@ -824,7 +824,7 @@ add_res_array() { # add a resource to the psuedo array (needed for POSIX)
   temp=""
   if [ -e "$BASE_DIR/extras/${res_name##*/}" ]; then #found directory (kext) or file (driver) at root level
     srce="$BASE_DIR/extras"
-  elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/$res_name" ]; then #found directory (kext) or file (driver) as plugin
+  elif [ -n "$tempDest" ] && [ -e "$BASE_DIR/extras$tempDest/${res_name##*/}" ]; then #found directory (kext) or file (driver) as plugin
     srce="$BASE_DIR/extras$tempDest"
   elif [ -n "$git_url" ] || [ -n "$parent" ]; then # found repo
     srce="-$tempDest" #save path for Plugins
