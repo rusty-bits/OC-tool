@@ -679,6 +679,7 @@ copy_resources() {
         msg "Copying $dest_name to $dest ... "
       fi
       mkdir -p "$BUILD_DIR/$dest"
+      rm -rf "$BUILD_DIR/$dest/$dest_name" # ensure plugin is desired version (e.g. user has modified ver in extras)
       cp -r "$srce/$res_name" "$BUILD_DIR/$dest/$dest_name"||copy_failed
       if [ -z "$QUIET" ]; then
         echo "copied $dest_name to $dest"
