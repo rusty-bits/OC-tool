@@ -636,3 +636,7 @@ ReloadOptionRoms
 Query PCI devices and reload their Option ROMs if available. For example, this option allows reloading NVIDIA GOP Option ROM on older Macs after the firmware version is upgraded via ForgeUefiSupport
 EnableVectorAcceleration
 Enable AVX vector acceleration of SHA-512 and SHA-384 hashing algorithm
+ForceDisplayRotationInEFI
+32-bit integer defining display rotation. Can be \textbf{0} for no rotation or any of 90, 180, 270 for matching rotation in degrees
+AppleEg2Info
+Replaces the Apple EFI Graphics 2 protocol with a builtin version. Note: This protocol allows newer EfiBoot versions (at least 10.15) to expose screen rotation to macOS. Refer to ForceDisplayRotationInEFI variable description on how to set screen rotation angle
