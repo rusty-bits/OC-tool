@@ -599,7 +599,7 @@ Run the entry in text mode instead of graphics mode. This setting may be benefit
 AllowRelocationBlock
 Allows booting macOS through a relocation block. Relocation block is a scratch buffer allocated in lower 4 GB to be used for loading the kernel and related structures by EfiBoot on firmwares where lower memory is otherwise occupied by the (assumed to be) non-runtime data. Right before kernel startup the relocation block is copied back to lower addresses. Similarly all the other addresses pointing to relocation block are also carefully adjusted.
 PickerVariant
-Choose specific icon set used for boot management. Auto --- Automatically select one set of icons based on DefaultBackground colour. Default --- Normal icon set (without prefix). Old --- Vintage icon set (Old filename prefix). Modern --- Nouveau icon set (Modern filename prefix). Other value --- Custom icon set if supported by the resources.
+Choose specific icon set used for boot management. Auto --- Automatically select one set of icons based on DefaultBackground colour. Default --- Acidanthera\GoldenGate   or manual entry with Vendor\Set that is relative to Resources\Image
 MaxBIOSVersion
 Sets BIOSVersion to 9999.999.999.999.999, recommended for legacy Macs when using Automatic PlatformInfo to avoid BIOS updates in unofficially supported macOS versions.
 SetApfsTrimTimeout
