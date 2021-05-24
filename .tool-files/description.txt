@@ -615,7 +615,7 @@ Use raw encoding for SMBIOS UUIDs. OpenCore always sets a recent SMBIOS version 
 ResetTrafficClass
 Set HDA Traffic Class Select Register to TC0. AppleHDA kext will function correctly only if TCSEL register is configured to use TC0 traffic class. Refer to Intel I/O Controller Hub 9 (ICH9) Family Datasheet (or any other ICH datasheet) for more details about this register. Note: This option is independent from AudioSupport. If AppleALC is used it is preferred to use AppleALC alctsel property instead.
 GopPassThrough
-Provide GOP protocol instances on top of UGA protocol instances. This option provides the GOP protocol via a UGA-based proxy for firmware that do not implement the protocol. Note: This option requires ProvideConsoleGop to be enabled.
+Provide GOP protocol instances on top of UGA protocol instances. This option provides the GOP protocol via a UGA-based proxy for firmware that do not implement the protocol. Note: This option requires ProvideConsoleGop to be enabled. The supported values for the option are as follow: Enabled — provide GOP for all UGA protocols, Apple — provide GOP for AppleFramebufferInfo-enabled protocols, Disabled — do not provide GOP.
 ActivateHpetSupport
 Activates HPET support. Older boards like ICH6 may not always have HPET setting in the firmware preferences, this option tries to force enable it.
 ForceBooterSignature
@@ -640,3 +640,7 @@ ForceDisplayRotationInEFI
 32-bit integer defining display rotation. Can be \textbf{0} for no rotation or any of 90, 180, 270 for matching rotation in degrees
 AppleEg2Info
 Replaces the Apple EFI Graphics 2 protocol with a builtin version. Note: This protocol allows newer EfiBoot versions (at least 10.15) to expose screen rotation to macOS. Refer to ForceDisplayRotationInEFI variable description on how to set screen rotation angle
+Flavour
+The Flavour value is a sequence of : separated names limited to 64 characters of printable 7-bit ASCII. This is designed to support up to approximately five names. Each name refers to a flavour, with the first name having the highest priority and the last name having the lowest priority. Such a structure allows describing an entry in a more specific way, with icons selected flexibly depending on support by the audio-visual pack.
+ProvideCurrentCpuInfo
+Provides current CPU info to the kernel. This quirk currently provides the correct TSC and FSB values to the kernel, as well as disables CPU topology validation.
