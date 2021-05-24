@@ -1,0 +1,4 @@
+Enabled — provide GOP for all UGA protocols
+Apple — provide GOP for AppleFramebufferInfo-enabled protocols
+Disabled — do not provide GOP
+
