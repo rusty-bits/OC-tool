@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.6.9 (230521)\n\nprebuilt release -> 0.6.9\nprebuilt daily/latest source -> 0.7.0\n\ntested with REL-070-2021-05-23\ntested with Xcode 12.5"
+VER="3.6.9 (280521)\n\nprebuilt release -> 0.6.9\nprebuilt daily/latest source -> 0.7.0\n\ntested with REL-070-2021-05-28\ntested with Xcode 12.5"
 REL_VER="069"
 SRC_VER="070"
 
@@ -13,7 +13,7 @@ BASE_DIR=$(pwd)
 FINDER=""
 if [ "$INI" != "$BASE_DIR" ]; then FINDER="true"; fi # double-click from finder
 
-OPTSPEC="dfhinoqstvCDINTVX"
+OPTSPEC="dhinoqstvCDINTVX"
 UNAME=$(uname)
 TOOL_FILES="$BASE_DIR/.tool-files"
 GIT_JSON_TXT="$TOOL_FILES/git_repo.json.txt"
@@ -50,7 +50,7 @@ msg() { #write $1 to screen if not quiet
   fi
 }
 
-msgs() { #write $1 to screen if not quiet don't interpres esc codes
+msgs() { #write $1 to screen if not quiet, don't interpret esc codes
   if [ -z "$QUIET" ]; then
     printf "%s" "$1" > "$TTY_OUT"
   else
@@ -2671,11 +2671,7 @@ process_plist() {
   fin
 
   if [ "$IGNORE_SAMPLE" != "true" ]; then
-    if [ "$IGNORE_SAMPLE" = "full" ]; then
-      tr -d '\r' < "$TOOL_FILES/miss_extra_legacy" > miss_extra.txt # strip CRLF ?
-    else
-      tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
-    fi
+    tr -d '\r' < "$TOOL_FILES/miss_extra" > miss_extra.txt # strip CRLF ?
     msg "Checking for missing fields ... "
     while read -r line
     do
@@ -2805,8 +2801,6 @@ case "${optchar}" in
     d)
       MODE="prebuiltDaily"
       EX_COM="${EX_COM}d";;
-    f)
-      IGNORE_SAMPLE="full";;
     h) # help
       QUIET=""
       msg "$(cat "$TOOL_FILES"/help.msg)\n"

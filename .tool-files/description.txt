@@ -644,3 +644,5 @@ Flavour
 The Flavour value is a sequence of : separated names limited to 64 characters of printable 7-bit ASCII. This is designed to support up to approximately five names. Each name refers to a flavour, with the first name having the highest priority and the last name having the lowest priority. Such a structure allows describing an entry in a more specific way, with icons selected flexibly depending on support by the audio-visual pack.
 ProvideCurrentCpuInfo
 Provides current CPU info to the kernel. This quirk currently provides the correct TSC and FSB values to the kernel, as well as disables CPU topology validation.
+AllowToggleSip
+Enable entry for disabling and enabling System Integrity Protection in OpenCore picker. This will toggle Apple NVRAM variable between 0 for SIP Enabled and the current macOS default for SIP Disabled (currently 0x6F for Big Sur).
