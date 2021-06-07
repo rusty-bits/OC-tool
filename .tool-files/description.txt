@@ -646,3 +646,19 @@ ProvideCurrentCpuInfo
 Provides current CPU info to the kernel. This quirk currently provides the correct TSC and FSB values to the kernel, as well as disables CPU topology validation.
 AllowToggleSip
 Enable entry for disabling and enabling System Integrity Protection in OpenCore picker. This will toggle Apple NVRAM variable between 0 for SIP Enabled and the current macOS default for SIP Disabled (currently 0x6F for Big Sur).
+AdviseFeatures
+Updates FirmwareFeatures with supported bits. Added bits to FirmwareFeatures: FW\_FEATURE\_SUPPORTS\_CSM\_LEGACY\_MODE 0x1 - Without this bit, it is not possible to reboot to Windows installed on a drive with an EFI partition that is not the first partition on the disk. FW\_FEATURE\_SUPPORTS\_UEFI\_WINDOWS\_BOOT 0x20000000 - Without this bit, it is not possible to reboot to Windows installed on a drive with an EFI partition that is the first partition on the disk. FW\_FEATURE\_SUPPORTS\_APFS 0x00080000 - Without this bit, it is not possible to install macOS on an APFS disk. Note: On most newer firmwares these bits are already set, the option may be necessary when "upgrading" the firmware with new features
+prev-lang:kbd
+ASCII string defining default keyboard layout. Format is lang-COUNTRY:keyboard, e.g. ru-RU:252 for Russian locale and ABC keyboard. Also accepts short forms: ru:252 or ru:0 (U.S. keyboard, compatible with 10.9). Full decoded keyboard list from AppleKeyboardLayouts-L.dat can be found here. Using non-latin keyboard on 10.14 will not enable ABC keyboard, unlike previous and subsequent macOS versions, and is thus not recommended in case 10.14 is needed.
+csr-active-config
+32-bit System Integrity Protection bitmask. Declared in XNU source code in csr.h
+boot-args
+Kernel arguments, used to pass configuration to Apple kernel and drivers. There are many arguments, which may be found by looking for the use of PE_parse_boot_argn function in the kernel or driver code.
+run-efi-updater
+Override EFI firmware updating support in macOS (MultiUpdater, ThorUtil, and so on). Setting this to No or alternative boolean-castable value will prevent any firmware updates in macOS starting with 10.10 at least.
+DefaultBackgroundColor
+Four-byte BGRA data defining boot.efi user interface background colour. Standard colours include BF BF BF 00 (Light Gray) and 00 00 00 00 (Syrah Black). Other colours may be set at user’s preference.
+UIScale
+One-byte data defining boot.efi user interface scaling. Should be 01 for normal screens and 02 for HiDPI screens.
+rtc-blacklist
+Builtin version of Apple RTC RAM protocol may filter out I/O attempts to certain RTC memory addresses. The list of addresses can be specified in 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:rtc-blacklist variable as a data array.
