@@ -688,61 +688,71 @@ copy_resources() {
       fin
     done < "$INPUT/deferred"
   fi
-  if [ -n "$COPY_RESOURCES" ]; then
+  if [ -n "$COPY_RESOURCES" ]; then # handle OpenCanopy resources
     msg "\n${GRN}Moving ${YEL}OpenCanopy${GRN} resources into place${NC}\n"
-    rd="$BASE_DIR/extras/Resources/Font"
-    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Font"; fi
-    n="$(ls "$rd" 2>/dev/null|wc -l)"
+    rd="$BASE_DIR/extras/Resources"
+    if [ ! -e "$rd" ]; then
+            cd "$BASE_DIR/resources"
+            msg "${GRN}No ${YEL}Resources${GRN} found in ${YEL}extras${NC}\n"
+            msg "${GRN}Updating ${YEL}OpenCanopy${GRN} resources from Acidanthera${NC}\n"
+            clone "https://github.com/Acidanthera/OCBinaryData"
+            RES_DIR="$BASE_DIR/resources/OCBinaryData"
+            check_resources_for_updates
+            rd="$BASE_DIR/resources/OCBinaryData/Resources"
+    else
+            msg "${GRN}Found ${YEL}Resources${GRN} in ${YEL}extras${NC}\n"
+    fi
+    n="$(ls -R "$rd/Font" 2>/dev/null|grep -v '/'|wc -l)" # yes, this is ugly, but I want to show a count onscreen
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+      cp -r "$rd/Font" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Font resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Fonts found in ${YEL}INPUT/Resources/Font${NC} folder\n"
-      msg "         or ${YEL}extras/Resources/Font${NC} folder\n\n"
+      msg "${YEL}WARNING:${NC} No Fonts found in ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
-    rd="$BASE_DIR/extras/Resources/Image"
-    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Image"; fi
-    n="$(ls "$rd" 2>/dev/null|wc -l)"
+    n="$(ls -Rp "$rd/Image" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+      cp -r "$rd/Image" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Image resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Images found in ${YEL}INPUT/Resources/Image${NC} folder\n"
-      msg "         or ${YEL}extras/Resources/Image${NC} folder\n\n"
+      msg "${YEL}WARNING:${NC} No Images found in ${YEL}extras/Resources/Image${NC} folder\n\n"
     fi
-    rd="$BASE_DIR/extras/Resources/Label"
-    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Label"; fi
-    n="$(ls "$rd" 2>/dev/null|wc -l)"
+    n="$(ls -R "$rd/Label" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd" "$BUILD_DIR/OC/Resources/."
+      cp -r "$rd/Label" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Label resource(s) to OUTPUT\n"
     else
-      msg "${YEL}WARNING:${NC} No Labels found in ${YEL}INPUT/Resources/Label${NC} folder\n"
-      msg "         or ${YEL}extras/Resources/Font${NC} folder\n\n"
+      msg "${YEL}WARNING:${NC} No Labels found in ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
   fi
   if [ -n "$PLAY_CHIME" ]; then
     get_edit_res "$PLAY_CHIME"
     if [ "$val" = "true" ]; then COPY_RESOURCES="true"; fi
   fi
-  if [ -n "$COPY_RESOURCES" ]; then
-    rd="$BASE_DIR/extras/Resources/Audio"
-    if [ ! -e "$rd" ]; then rd="$BASE_DIR/INPUT/Resources/Audio"; fi
-    n="$(ls "$rd" 2>/dev/null|wc -l)"
+  if [ -n "$COPY_RESOURCES" ]; then # make sure to include audio for play chime + no opencanopy
+    n="$(ls -R "$rd/Audio" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
-      mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd" "$BUILD_DIR/OC/Resources/."
-      num=$((num+n))
+      lang=$(echo $LANG|cut -f1 -d'_')
+      mkdir -p "$BUILD_DIR/OC/Resources/Audio"
+      for au in $(ls "$rd/Audio"|grep "OC.*_${lang}_")
+      do
+              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
+#              num=$((num+1))
+      done
+      for au in $(ls "$rd/Audio"|grep -v '_.._')
+      do
+              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
+      done
+      n="$(ls "$BUILD_DIR/OC/Resources/Audio" 2>/dev/null|wc -l)"
       msg "Copied $n Audio resource(s) to OUTPUT\n"
+      num=$((num+n))
     else
-      msg "${YEL}WARNING:${NC} No Audio found in ${YEL}INPUT/Resources/Audio${NC} folder\n"
-      msg "         or ${YEL}extras/Resources/Audio${NC} folder\n\n"
+      msg "${YEL}WARNING:${NC} No Audio found in ${YEL}extras/Resources/Audio${NC} folder\n\n"
     fi
   fi
   msg "\n${GRN}Copied $num resources to $BUILD_DIR${NC}\n"
