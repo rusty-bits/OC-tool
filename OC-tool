@@ -737,18 +737,19 @@ copy_resources() {
   if [ -n "$COPY_RESOURCES" ]; then # make sure to include audio for play chime + no opencanopy
     n="$(ls -R "$rd/Audio" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
-      lang=$(echo $LANG|cut -f1 -d'_')
-      mkdir -p "$BUILD_DIR/OC/Resources/Audio"
-      for au in $(ls "$rd/Audio"|grep "OC.*_${lang}_")
-      do
-              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
-#              num=$((num+1))
-      done
-      for au in $(ls "$rd/Audio"|grep -v '_.._')
-      do
-              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
-      done
-      n="$(ls "$BUILD_DIR/OC/Resources/Audio" 2>/dev/null|wc -l)"
+#      lang=$(echo $LANG|cut -f1 -d'_')
+#      mkdir -p "$BUILD_DIR/OC/Resources/Audio"
+#      for au in $(ls "$rd/Audio"|grep "OC.*_${lang}_")
+#      do
+#              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
+##              num=$((num+1))
+#      done
+#      for au in $(ls "$rd/Audio"|grep -v '_.._')
+#      do
+#              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
+#      done
+#      n="$(ls "$BUILD_DIR/OC/Resources/Audio" 2>/dev/null|wc -l)"
+        cp -r "$rd/Audio" "$BUILD_DIR/OC/Resources/."
       msg "Copied $n Audio resource(s) to OUTPUT\n"
       num=$((num+n))
     else
