@@ -36,7 +36,7 @@ INIT_COM="$0"; EX_COM=""; QUIET=""; VERBOSE=""; CONFIG_CHANGED=""
 REMOVE_RES=""; BASE_TOOLS=""; IGNORE=""; UPDATE=""; SPEC_KEY=""
 IGNORE_BOOL=""; USE_VAULT=""; USE_VAULT_STR=""
 USE_CUSTOM=""; IGNORE_SAMPLE=""; DISABLE_RES=""; USING_TEMPLATE=""
-COPY_RESOURCES=""; PLAY_CHIME=""; UPDATE_OCVALIDATE=""
+COPY_RESOURCES=""; PLAY_CHIME=""
 G10_NUM="0"; EDIT_RES_NUM="-1"; LONE=""; HEX_LEN="2"; BIT_NUM=""; BIT_EDIT="0"; BIT_TOGGLE="-1"
 ADD_RES_NUM="-1"; LA="1"
 
@@ -200,11 +200,9 @@ check_lilu_for_updates() {
   fi
 }
 
-check_resources_for_updates() {
-  res_updated=""
-  msg "\n${GRN}Checking resources folder for updates${NC} ... \n"
-  if [ -d "$RES_DIR" ]; then
-    for git_dir in $(find "$RES_DIR" -maxdepth 3 -name .git -type d)
+scan_folders_for_git_update() {
+  if [ -d "$SCAN_DIR" ]; then
+    for git_dir in $(find "$SCAN_DIR" -maxdepth 3 -name .git -type d)
     do
       git_dir="${git_dir%/*}"
       cd "$git_dir"
@@ -227,6 +225,17 @@ check_resources_for_updates() {
       msg "have been updated\n"
     fi
   fi
+}
+
+check_resources_for_updates() {
+  res_updated=""
+  msg "\n${GRN}Checking ${YEL}${MODE}${GRN} resources folder for updates${NC} ... \n"
+  SCAN_DIR="$RES_DIR"
+  scan_folders_for_git_update
+  msg "\n${GRN}Checking ${YEL}resources/Extras${GRN} folder for updates${NC} ... \n"
+  SCAN_DIR="$BASE_DIR/resources/Extras"
+  scan_folders_for_git_update
+
   if [ "$MODE" = "prebuiltDaily" ] && [ ! -d "$RES_DIR/dailyJson" ]; then
     mkdir -p "$RES_DIR"
     cd "$RES_DIR"
@@ -334,13 +343,14 @@ curl_child() { # need parent first, then zip source
     msg "${GRN}found${NC}\n"
   fi
   if [ "${git_url##*.}" = "curlme" ]; then
-    cd "$BASE_DIR"/extras
-    msg "Downloading $res_name to extras ... "
+          mkdir -p "$BASE_DIR/resources/Extras"
+    cd "$BASE_DIR/resources/Extras"
+    msg "Downloading $res_name to resources/Extras ... "
     p=""
     if [ -n "$path" ]; then p="$path/"; fi
     curl -L -O "${git_url%.curlme}$p$res_name"
     path=""
-    srce="$BASE_DIR/extras"
+    srce="$BASE_DIR/resources/Extras"
     fin
   else
     if [ "$res_name" = "OpenCore.efi" ]; then
@@ -385,15 +395,18 @@ build_ocvalidate() {
 
 build_driver() {
   if [ "${git_url##*.}" = "curlme" ]; then
-    cd "$BASE_DIR"/extras
-    msg "Downloading $res_name to extras ... "
-    path=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || path=""
-    if [ -n "$path" ]; then p="$path/"; fi
-    curl -L -O "${git_url%.curlme}$p$res_name"
-    msg "${git_url%.curlme}$p$res_name\n"
-    path=""
-    srce="$BASE_DIR/extras"
-    fin
+          mkdir -p "$BASE_DIR/resources/Extras"
+    cd "$BASE_DIR/resources/Extras"
+    if [ ! -e "$res_name" ]; then
+            msg "Downloading $res_name to resources/Extras ... "
+            path=$(grep "|$res_name|path " "$GIT_JSON_TXT"|cut -f2 -d '"') || path=""
+            if [ -n "$path" ]; then p="$path/"; fi
+            curl -L -O "${git_url%.curlme}$p$res_name"
+        #    msg "${git_url%.curlme}$p$res_name\n"
+            path=""
+            fin
+    fi
+    srce="$BASE_DIR/resources/Extras"
   else
     cd "$RES_DIR/UDK"
     clone "$git_url"
@@ -426,7 +439,6 @@ build_driver() {
         done
         if [ "$a" -ne "1" ];then git checkout master; fi
         fin
-        if [ "$pkg_name" = "OpenCorePkg" ]; then UPDATE_OCVALIDATE="yes"; fi
       fi
       git rev-parse HEAD > git"$AUDK_CONFIG"sha
       if [ "$res_name" = "BOOTx64.efi" ]; then
@@ -438,10 +450,7 @@ build_driver() {
     if [ "$res_name" = "OpenCore.efi" ]; then
       DOC_DIR="$(pwd)/Docs";
       UTILITIES="$(pwd)/Utilities";
-      if [ ! -e "$UTILITIES/ocvalidate/ocvalidate" ] || [ -n "$UPDATE_OCVALIDATE" ]; then
-        build_ocvalidate
-        UPDATE_OCVALIDATE=""
-      fi
+      build_ocvalidate
     fi
   fi
 }
@@ -690,40 +699,38 @@ copy_resources() {
   fi
   if [ -n "$COPY_RESOURCES" ]; then # handle OpenCanopy resources
     msg "\n${GRN}Moving ${YEL}OpenCanopy${GRN} resources into place${NC}\n"
-    rd="$BASE_DIR/extras/Resources"
-    if [ ! -e "$rd" ]; then
-            cd "$BASE_DIR/resources"
-            msg "${GRN}No ${YEL}Resources${GRN} found in ${YEL}extras${NC}\n"
-            msg "${GRN}Updating ${YEL}OpenCanopy${GRN} resources from Acidanthera${NC}\n"
-            clone "https://github.com/Acidanthera/OCBinaryData"
-            RES_DIR="$BASE_DIR/resources/OCBinaryData"
-            check_resources_for_updates
-            rd="$BASE_DIR/resources/OCBinaryData/Resources"
+    RES_DIR="$BASE_DIR/extras/Resources"
+    if [ ! -e "$RES_DIR" ]; then
+            mkdir -p "$BASE_DIR/resources/Extras"
+            cd "$BASE_DIR/resources/Extras"
+            msg "${GRN}Resources not in ${YEL}extras${GRN}, using ${YEL}resources/Extras/OcBinaryData${NC}\n"
+            clone "https://github.com/Acidanthera/OcBinaryData"
+            RES_DIR="$BASE_DIR/resources/Extras/OCBinaryData/Resources"
     else
             msg "${GRN}Found ${YEL}Resources${GRN} in ${YEL}extras${NC}\n"
     fi
-    n="$(ls -R "$rd/Font" 2>/dev/null|grep -v '/'|wc -l)" # yes, this is ugly, but I want to show a count onscreen
+    n="$(ls -R "$RES_DIR/Font" 2>/dev/null|grep -v '/'|wc -l)" # yes, this is ugly, but I want to show a count onscreen
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd/Font" "$BUILD_DIR/OC/Resources/."
+      cp -r "$RES_DIR/Font" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Font resource(s) to OUTPUT\n"
     else
       msg "${YEL}WARNING:${NC} No Fonts found in ${YEL}extras/Resources/Font${NC} folder\n\n"
     fi
-    n="$(ls -Rp "$rd/Image" 2>/dev/null|grep -v '/'|wc -l)"
+    n="$(ls -Rp "$RES_DIR/Image" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd/Image" "$BUILD_DIR/OC/Resources/."
+      cp -r "$RES_DIR/Image" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Image resource(s) to OUTPUT\n"
     else
       msg "${YEL}WARNING:${NC} No Images found in ${YEL}extras/Resources/Image${NC} folder\n\n"
     fi
-    n="$(ls -R "$rd/Label" 2>/dev/null|grep -v '/'|wc -l)"
+    n="$(ls -R "$RES_DIR/Label" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
       mkdir -p "$BUILD_DIR/OC/Resources"
-      cp -r "$rd/Label" "$BUILD_DIR/OC/Resources/."
+      cp -r "$RES_DIR/Label" "$BUILD_DIR/OC/Resources/."
       num=$((num+n))
       msg "Copied $n Label resource(s) to OUTPUT\n"
     else
@@ -735,7 +742,7 @@ copy_resources() {
     if [ "$val" = "true" ]; then COPY_RESOURCES="true"; fi
   fi
   if [ -n "$COPY_RESOURCES" ]; then # make sure to include audio for play chime + no opencanopy
-    n="$(ls -R "$rd/Audio" 2>/dev/null|grep -v '/'|wc -l)"
+    n="$(ls -R "$RES_DIR/Audio" 2>/dev/null|grep -v '/'|wc -l)"
     if [ "$n" -gt "0" ]; then
 #      lang=$(echo $LANG|cut -f1 -d'_')
 #      mkdir -p "$BUILD_DIR/OC/Resources/Audio"
@@ -749,7 +756,7 @@ copy_resources() {
 #              cp "$rd/Audio/$au" "$BUILD_DIR/OC/Resources/Audio/."
 #      done
 #      n="$(ls "$BUILD_DIR/OC/Resources/Audio" 2>/dev/null|wc -l)"
-        cp -r "$rd/Audio" "$BUILD_DIR/OC/Resources/."
+        cp -r "$RES_DIR/Audio" "$BUILD_DIR/OC/Resources/."
       msg "Copied $n Audio resource(s) to OUTPUT\n"
       num=$((num+n))
     else
