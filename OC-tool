@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.7.0 (070621)\n\nprebuilt release -> 0.7.0\nprebuilt daily/latest source -> 0.7.1\n\ntested with REL-070-2021-05-28\ntested with Xcode 12.5"
+VER="3.7.0 (090621)\n\nprebuilt release -> 0.7.0\nprebuilt daily/latest source -> 0.7.1\n\ntested with REL-071-2021-06-09\ntested with Xcode 12.5"
 REL_VER="070"
 SRC_VER="071"
 
@@ -343,15 +343,17 @@ curl_child() { # need parent first, then zip source
     msg "${GRN}found${NC}\n"
   fi
   if [ "${git_url##*.}" = "curlme" ]; then
-          mkdir -p "$BASE_DIR/resources/Extras"
+    mkdir -p "$BASE_DIR/resources/Extras"
     cd "$BASE_DIR/resources/Extras"
-    msg "Downloading $res_name to resources/Extras ... "
-    p=""
-    if [ -n "$path" ]; then p="$path/"; fi
-    curl -L -O "${git_url%.curlme}$p$res_name"
+    if [ ! -e "$res_name" ]; then
+            msg "Downloading $res_name to resources/Extras ... "
+            p=""
+            if [ -n "$path" ]; then p="$path/"; fi
+            curl -L -O "${git_url%.curlme}$p$res_name"
+            fin
+    fi
     path=""
     srce="$BASE_DIR/resources/Extras"
-    fin
   else
     if [ "$res_name" = "OpenCore.efi" ]; then
       DOC_DIR="$(pwd)/${pkg_name}Docs";
@@ -403,9 +405,9 @@ build_driver() {
             if [ -n "$path" ]; then p="$path/"; fi
             curl -L -O "${git_url%.curlme}$p$res_name"
         #    msg "${git_url%.curlme}$p$res_name\n"
-            path=""
             fin
     fi
+    path=""
     srce="$BASE_DIR/resources/Extras"
   else
     cd "$RES_DIR/UDK"
@@ -466,11 +468,11 @@ build_kext() {
   clone "$git_url"
   cd "$pkg_name"
   if [ ! -L "MacKernelSDK" ]; then ln -s "$RES_DIR"/Kext_builds/MacKernelSDK .; fi
-  if [ -n "$REMOVE_RES" ];then
-    msg "Removing Xcode DerivedData for $pkg_name ... "
-    rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
-    fin
-  fi
+#  if [ -n "$REMOVE_RES" ];then
+#    msg "Removing Xcode DerivedData for $pkg_name ... "
+#    rm -rf "${HOME}"/Library/Developer/Xcode/DerivedData/"${pkg_name}"*
+#    fin
+#  fi
   srce="$(pwd)/build/$XCODE_CONFIG$temp"
   if [ "$(git rev-parse HEAD)" != "$(cat git"$AUDK_CONFIG"sha)" ] || \
     [ ! -e "$srce/${res_name##*/}" ]; then
@@ -2959,7 +2961,10 @@ else
   inputFileName="${inputFilePath##*/}"
 fi
 
-if [ -n "$REMOVE_RES" ]; then rm -rf "$RES_DIR"; fi
+if [ -n "$REMOVE_RES" ]; then
+        rm -rf "$RES_DIR"
+        rm -rf "$BASE_DIR/resources/Extras"
+fi
 
 set_build_type "$TYPE"
 
