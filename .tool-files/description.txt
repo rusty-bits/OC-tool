@@ -664,3 +664,5 @@ rtc-blacklist
 Builtin version of Apple RTC RAM protocol may filter out I/O attempts to certain RTC memory addresses. The list of addresses can be specified in 4D1FDA02-38C7-4A6A-9CC6-4BCCA8B30102:rtc-blacklist variable as a data array.
 SyncTableIds
 Sync table identifiers with the SLIC table. This works around patched tables becoming incompatible with the SLIC table causing licensing issues in older Windows operating systems.
+CustomKernel
+Use customised kernel cache from the Kernels directory located at the root of the ESP partition. Unsupported platforms including Atom and AMD require modified versions of XNU kernel in order to boot. This option provides the possibility to using a customised kernel cache which contains such modifications from ESP partition.
