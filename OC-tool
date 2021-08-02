@@ -1,7 +1,7 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.7.1 (050727)\n\nprebuilt release -> 0.7.1\nprebuilt daily/latest source -> 0.7.2\n\ntested with REL-072-2021-07-05\ntested with Xcode 13.0"
+VER="3.7.1 (020821)\n\nprebuilt release -> 0.7.1\nprebuilt daily/latest source -> 0.7.2\n\ntested with REL-072-2021-07-05\ntested with Xcode 13.0"
 REL_VER="071"
 SRC_VER="072"
 
@@ -2687,6 +2687,7 @@ process_plist() {
   fi
   tr -d '\r' < config.plist.tmp > config.plist # strip CRLF on windows
   rm config.plist.tmp
+  echo '\n' >> config.plist #add newline at end
   "$TOOL_FILES/parsePlistMod.sh" "config.plist"
   fin
 

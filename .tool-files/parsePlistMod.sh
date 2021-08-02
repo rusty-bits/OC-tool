@@ -98,7 +98,7 @@ while read -r line; do
 				found_empty_dict
 			fi
 			;;
-		"<dict/")
+		"<dict/" | "<dict /")
 			found_empty_dict
 			;;
 		"<array")
@@ -118,7 +118,7 @@ while read -r line; do
 			array=""
 			item="" # reset item count
 			;;
-		"<array/")
+		"<array/" | "<array /")
 			ds=""
 			found_empty_array
 			array="$key"
@@ -143,13 +143,13 @@ while read -r line; do
 			msg
 			key=""
 			;;
-		"<true/")
+		"<true/" | "<true /")
 			ds=""
 			type="bool"
 			val="true"
 			msg
 			key="";;
-		"<false/")
+		"<false/" | "<false /")
 			ds=""
 			type="bool"
 			val="false"
