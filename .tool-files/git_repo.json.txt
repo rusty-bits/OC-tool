@@ -41,6 +41,8 @@
 |OpenCore.efi|path "X64/EFI/OC"
 |OpenHfsPlus.efi|parent "OpenCorePkg"
 |OpenHfsPlus.efi|path "X64/EFI/OC/Drivers"
+|OpenLinuxBoot.efi|parent "OpenCorePkg"
+|OpenLinuxBoot.efi|path "X64/EFI/OC/Drivers"
 |OpenPartitionDxe.efi|parent "OpenCorePkg"
 |OpenPartitionDxe.efi|path "X64/EFI/OC/Drivers"
 |OpenRuntime.efi|parent "OpenCorePkg"
