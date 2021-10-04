@@ -1,9 +1,9 @@
 #!/bin/sh -e
 # shellcheck disable=SC2086
 
-VER="3.7.3 (030821)\n\nprebuilt release -> 0.7.3\nprebuilt daily/latest source -> 0.7.4\n\ntested with REL-074-2021-09-08\ntested with Xcode 13.0"
-REL_VER="073"
-SRC_VER="074"
+VER="3.7.4 (041021) final\n\nprebuilt release -> 0.7.4\nprebuilt daily/latest source -> 0.7.5\n\ntested with REL-074-2021-10-04\ntested with Xcode 13.0"
+REL_VER="074"
+SRC_VER="075"
 
 INI=$(pwd)
 cd -- "$(dirname "$0")"
@@ -3038,6 +3038,12 @@ if [ -n "$CONFIG_CHANGED" ]; then
     msg "\tthe original $inputFilePath ${YEL}has not been touched${NC}\n\n"
   fi
 fi
+msg "\n${YEL}NOTICE:${GRN}\tthis is the final release of ${YEL}OC-tool${GRN}\n"
+msg "\tthis version will build an EFI for OpenCore 0.7.4 if the standard options are used\n"
+msg "\tand will build the latest version from source (0.7.5 at the time of this notice)\n"
+msg "\tbut beyond that the results are undefined.  If you wish to use a tool that will be\n"
+msg "\tmaintained you can use the replacement ${YEL}octool${GRN} from here\n"
+msg "\t${YEL}https://github.com/rusty-bits/octool${NC}\n\n"
 #stop_logging
 
 if [ -n "$FINDER" ] && [ "$UNAME" = "Darwin" ];then open "$OUTPUT"; fi # open to EFI if -o or dbl-click
