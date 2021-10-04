@@ -6,6 +6,8 @@ Can also be double-clicked in macOS Finder which will run as `./OC-tool -o`
 see either the [OC-tool wiki pages](https://github.com/rusty-bits/OC-tool/wiki) for more detailed information  
 or the [Docs/tool-changelog.md](https://github.com/rusty-bits/OC-tool/blob/master/Docs/tool-changelog.md)  
 
+- 0.7.4 marks the last update for this tool, if you want a tool that will be maintained going forwards, you can check out the [replacement](https://github.com/rusty-bits/octool) here [https://github.com/rusty-bits/octool](https://github.com/rusty-bits/octool)
+
 ---
 
 **Installation**  
